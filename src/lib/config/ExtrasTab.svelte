@@ -14,12 +14,14 @@
 
     function navigateToSaveEditor(e) {
         e.preventDefault();
+        if (opfsDisabled) return;
         history.pushState({ page: 'save-editor' }, '', '#save-editor');
         currentPage.set('save-editor');
     }
 
     function handleNavigateToMultiplayer(e) {
         e.preventDefault();
+        if (opfsDisabled) return;
         navigateToMultiplayer();
     }
 </script>
@@ -90,10 +92,10 @@
     </div>
     <div class="nav-links-row">
         <div class="config-section-card">
-            <a href="#multiplayer" class="config-card-header nav-link" onclick={handleNavigateToMultiplayer}>Multiplayer</a>
+            <a href="#multiplayer" class="config-card-header nav-link" class:disabled={opfsDisabled} onclick={handleNavigateToMultiplayer}>Multiplayer</a>
         </div>
         <div class="config-section-card">
-            <a href="#save-editor" class="config-card-header nav-link" onclick={navigateToSaveEditor}>Save Editor</a>
+            <a href="#save-editor" class="config-card-header nav-link" class:disabled={opfsDisabled} onclick={navigateToSaveEditor}>Save Editor</a>
         </div>
     </div>
 </div>

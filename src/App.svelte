@@ -1,7 +1,8 @@
 <script>
     import { onMount } from 'svelte';
     import { computePosition, flip, shift, offset } from '@floating-ui/dom';
-    import { currentPage, debugEnabled, multiplayerRoom, parseHash, initialInvalidRoom, configToastVisible, configToastMessage, configToastError } from './stores.js';
+    import { currentPage, debugEnabled, multiplayerRoom, parseHash, initialInvalidRoom } from './stores.js';
+    import { showToast } from './core/toast.js';
     import { registerServiceWorker, checkCacheStatus } from './core/service-worker.js';
     import { setupCanvasEvents } from './core/emscripten.js';
     import TopContent from './lib/TopContent.svelte';
@@ -76,19 +77,6 @@
         }
     }
 
-    let errorToastTimeout = null;
-
-    function showErrorToast(message) {
-        if (errorToastTimeout) clearTimeout(errorToastTimeout);
-        configToastMessage.set(message);
-        configToastError.set(true);
-        configToastVisible.set(true);
-        errorToastTimeout = setTimeout(() => {
-            configToastVisible.set(false);
-            configToastError.set(false);
-        }, 3000);
-    }
-
     onMount(async () => {
         // Disable browser's automatic scroll restoration
         if ('scrollRestoration' in history) {
@@ -122,7 +110,7 @@
 
         // Show error toast if initial URL had an invalid room
         if (initialInvalidRoom) {
-            showErrorToast('Invalid room URL');
+            showToast('Invalid room URL', { error: true, duration: 3000 });
         }
 
         // Handle browser back/forward
@@ -138,7 +126,7 @@
                 multiplayerRoom.set(result.room);
                 currentPage.set(result.page);
                 if (result.invalidRoom) {
-                    showErrorToast('Invalid room URL');
+                    showToast('Invalid room URL', { error: true, duration: 3000 });
                 }
             }
         });

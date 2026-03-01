@@ -56,7 +56,6 @@ export const installState = writable({
 // Config toast
 export const configToastVisible = writable(false);
 export const configToastMessage = writable('Settings saved');
-export const configToastError = writable(false);
 
 // Debug UI visible (set when game reaches intro animation)
 export const debugUIVisible = writable(false);

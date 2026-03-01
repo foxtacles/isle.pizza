@@ -1,12 +1,14 @@
 <script>
     import { onDestroy } from 'svelte';
     import BackButton from './BackButton.svelte';
-    import { multiplayerRoom, currentPage, gameRunning, configToastVisible, configToastMessage, configToastError } from '../stores.js';
+    import { multiplayerRoom, currentPage, gameRunning } from '../stores.js';
     import { navigateToRoom } from '../core/navigation.js';
     import { generateRoomName } from '../core/room-names.js';
     import { launchGame } from '../core/emscripten.js';
-    import { updateMultiplayerInConfig, RELAY_URL } from '../core/opfs.js';
+    import { saveConfigFromDOM } from '../core/opfs.js';
+    import { showToast } from '../core/toast.js';
 
+    const RELAY_URL = __RELAY_URL__;
     const RELAY_HTTP = RELAY_URL.replace('wss://', 'https://').replace('ws://', 'http://');
 
     let maxPlayers = 5;
@@ -19,7 +21,6 @@
     let previewLoading = false;
     let previewError = null;
     let pollInterval = null;
-    let toastTimeout = null;
 
     let fetching = false;
     let lastPolledRoom = null;
@@ -33,7 +34,7 @@
             sessionStorage.removeItem('exit-code');
             if (Number(exitCode) === EXIT_ROOM_FULL) {
                 // Defer so toast renders after mount
-                setTimeout(() => showErrorToast('Room is full'), 0);
+                setTimeout(() => showToast('Room is full', { error: true, duration: 3000 }), 0);
             }
         }
     }
@@ -110,7 +111,7 @@
 
     async function handleRunGame() {
         if (!roomName) return;
-        await updateMultiplayerInConfig(true, roomName, RELAY_URL);
+        await saveConfigFromDOM({ room: roomName, relayUrl: RELAY_URL });
         launchGame();
     }
 
@@ -124,28 +125,8 @@
         }
     }
 
-    function showToast(message) {
-        if (toastTimeout) clearTimeout(toastTimeout);
-        configToastMessage.set(message);
-        configToastError.set(false);
-        configToastVisible.set(true);
-        toastTimeout = setTimeout(() => configToastVisible.set(false), 2000);
-    }
-
-    function showErrorToast(message) {
-        if (toastTimeout) clearTimeout(toastTimeout);
-        configToastMessage.set(message);
-        configToastError.set(true);
-        configToastVisible.set(true);
-        toastTimeout = setTimeout(() => {
-            configToastVisible.set(false);
-            configToastError.set(false);
-        }, 3000);
-    }
-
     onDestroy(() => {
         stopPolling();
-        if (toastTimeout) clearTimeout(toastTimeout);
     });
 </script>
 
@@ -307,10 +288,10 @@
             transparent 270deg,
             var(--color-primary)
         ) border-box;
-        mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0) border-box;
-        mask-composite: exclude;
         -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0) border-box;
         -webkit-mask-composite: xor;
+        mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0) border-box;
+        mask-composite: exclude;
         pointer-events: none;
     }
 

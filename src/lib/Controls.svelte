@@ -2,7 +2,7 @@
     import { showGoodbyePopup } from '../stores.js';
     import { launchGame } from '../core/emscripten.js';
     import { navigateTo } from '../core/navigation.js';
-    import { updateMultiplayerInConfig } from '../core/opfs.js';
+    import { saveConfigFromDOM } from '../core/opfs.js';
     import ImageButton from './ImageButton.svelte';
 
     const buttons = [
@@ -14,7 +14,7 @@
     ];
 
     async function handleRunGame() {
-        await updateMultiplayerInConfig(false);
+        await saveConfigFromDOM();
         launchGame();
     }
 </script>
