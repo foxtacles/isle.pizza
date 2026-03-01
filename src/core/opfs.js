@@ -1,8 +1,22 @@
 // OPFS Config Manager - handles saving/loading configuration via Origin Private File System
-import { configToastVisible, configToastMessage } from '../stores.js';
+import { configToastVisible, configToastMessage, configToastError } from '../stores.js';
 
 const CONFIG_FILE = 'isle.ini';
+const RELAY_URL = __RELAY_URL__;
 let toastTimeout = null;
+
+// Multiplayer state (kept in sync with INI)
+let _mpEnabled = false;
+let _mpRoom = null;
+let _mpRelayUrl = RELAY_URL;
+
+export function setMultiplayerConfig(enabled, room = null, relayUrl = RELAY_URL) {
+    _mpEnabled = enabled;
+    _mpRoom = room;
+    _mpRelayUrl = relayUrl;
+}
+
+export { RELAY_URL };
 
 // ============================================================================
 // Core OPFS Operations
@@ -173,8 +187,89 @@ function showToast(message) {
         clearTimeout(toastTimeout);
     }
     configToastMessage.set(message);
+    configToastError.set(false);
     configToastVisible.set(true);
     toastTimeout = setTimeout(() => configToastVisible.set(false), 2000);
+}
+
+// ============================================================================
+// Multiplayer Config Operations
+// ============================================================================
+
+export async function updateMultiplayerInConfig(enabled, roomName = null, relayUrl = RELAY_URL) {
+    setMultiplayerConfig(enabled, roomName, relayUrl);
+
+    // Read existing INI text
+    let text = '';
+    try {
+        const handle = await getFileHandle(CONFIG_FILE, false);
+        if (handle) {
+            const file = await handle.getFile();
+            text = await file.text();
+        }
+    } catch (e) {
+        // File doesn't exist yet, start fresh
+    }
+
+    // Process line-by-line: remove existing multiplayer config
+    const lines = text.split('\n');
+    const filtered = [];
+    let inMultiplayerSection = false;
+    let hasExtensionsSection = false;
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+
+        // Skip existing multiplayer key in [extensions]
+        if (trimmed.toLowerCase().startsWith('multiplayer=')) continue;
+
+        // Track/skip [multiplayer] section
+        if (trimmed === '[multiplayer]') {
+            inMultiplayerSection = true;
+            continue;
+        }
+        if (inMultiplayerSection) {
+            if (trimmed.startsWith('[')) {
+                inMultiplayerSection = false;
+                // Fall through to process this line normally
+            } else {
+                continue;
+            }
+        }
+
+        if (trimmed === '[extensions]') hasExtensionsSection = true;
+        filtered.push(line);
+    }
+
+    // Build result
+    const result = [];
+    let extensionsWritten = false;
+
+    for (const line of filtered) {
+        result.push(line);
+        if (line.trim() === '[extensions]') {
+            result.push(`Multiplayer=${enabled ? 'YES' : 'NO'}`);
+            extensionsWritten = true;
+        }
+    }
+
+    // If no [extensions] section existed, add one
+    if (!hasExtensionsSection) {
+        result.push('[extensions]');
+        result.push(`Multiplayer=${enabled ? 'YES' : 'NO'}`);
+    }
+
+    // Append [multiplayer] section if enabled
+    if (enabled && roomName) {
+        result.push('[multiplayer]');
+        result.push(`relay url=${relayUrl}`);
+        result.push(`room=${roomName}`);
+    }
+
+    // Clean up trailing empty lines and ensure final newline
+    let output = result.join('\n').replace(/\n+$/, '') + '\n';
+
+    return writeTextFile(CONFIG_FILE, output, true);
 }
 
 // ============================================================================
@@ -281,6 +376,7 @@ export async function saveConfig(form, getSiFiles, silent = false) {
         iniContent += "[extensions]\n";
         const value = hdTextures.checked ? 'YES' : 'NO';
         iniContent += `${hdTextures.name}=${value}\n`;
+        iniContent += `Multiplayer=${_mpEnabled ? 'YES' : 'NO'}\n`;
     }
 
     const siFiles = getSiFiles();
@@ -307,6 +403,12 @@ export async function saveConfig(form, getSiFiles, silent = false) {
 
     if (directives.length > 0) {
         iniContent += `directives=${directives.join(",\\\n")}\n`;
+    }
+
+    if (_mpEnabled && _mpRoom) {
+        iniContent += "[multiplayer]\n";
+        iniContent += `relay url=${_mpRelayUrl}\n`;
+        iniContent += `room=${_mpRoom}\n`;
     }
 
     return writeTextFile(CONFIG_FILE, iniContent, silent);

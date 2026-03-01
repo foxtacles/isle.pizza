@@ -1,7 +1,7 @@
 <script>
     import { onMount } from 'svelte';
     import { computePosition, flip, shift, offset } from '@floating-ui/dom';
-    import { currentPage, debugEnabled } from './stores.js';
+    import { currentPage, debugEnabled, multiplayerRoom, parseHash, initialInvalidRoom, configToastVisible, configToastMessage, configToastError } from './stores.js';
     import { registerServiceWorker, checkCacheStatus } from './core/service-worker.js';
     import { setupCanvasEvents } from './core/emscripten.js';
     import TopContent from './lib/TopContent.svelte';
@@ -10,6 +10,7 @@
     import ConfigurePage from './lib/ConfigurePage.svelte';
     import FreeStuffPage from './lib/FreeStuffPage.svelte';
     import SaveEditorPage from './lib/SaveEditorPage.svelte';
+    import MultiplayerPage from './lib/MultiplayerPage.svelte';
     import UpdatePopup from './lib/UpdatePopup.svelte';
     import GoodbyePopup from './lib/GoodbyePopup.svelte';
     import ConfigToast from './lib/ConfigToast.svelte';
@@ -75,6 +76,19 @@
         }
     }
 
+    let errorToastTimeout = null;
+
+    function showErrorToast(message) {
+        if (errorToastTimeout) clearTimeout(errorToastTimeout);
+        configToastMessage.set(message);
+        configToastError.set(true);
+        configToastVisible.set(true);
+        errorToastTimeout = setTimeout(() => {
+            configToastVisible.set(false);
+            configToastError.set(false);
+        }, 3000);
+    }
+
     onMount(async () => {
         // Disable browser's automatic scroll restoration
         if ('scrollRestoration' in history) {
@@ -96,19 +110,36 @@
         // Initialize history state based on current page
         const initialHash = window.location.hash;
         if (initialHash) {
-            // Set up proper history state for the current hash
             history.replaceState({ page: 'main' }, '', window.location.pathname);
-            history.pushState({ page: $currentPage }, '', initialHash);
+            const state = { page: $currentPage };
+            if (initialHash.startsWith('#r/') && $multiplayerRoom) {
+                state.room = $multiplayerRoom;
+            }
+            history.pushState(state, '', initialInvalidRoom ? '#multiplayer' : initialHash);
         } else {
             history.replaceState({ page: 'main' }, '', window.location.pathname);
         }
 
+        // Show error toast if initial URL had an invalid room
+        if (initialInvalidRoom) {
+            showErrorToast('Invalid room URL');
+        }
+
         // Handle browser back/forward
         window.addEventListener('popstate', (e) => {
-            if (e.state && e.state.page && e.state.page !== 'main') {
+            if (e.state && e.state.page === 'multiplayer') {
+                multiplayerRoom.set(e.state.room || null);
+                currentPage.set('multiplayer');
+            } else if (e.state && e.state.page && e.state.page !== 'main') {
                 currentPage.set(e.state.page);
             } else {
-                currentPage.set('main');
+                // No state (e.g. URL pasted in address bar) — parse hash directly
+                const result = parseHash(window.location.hash);
+                multiplayerRoom.set(result.room);
+                currentPage.set(result.page);
+                if (result.invalidRoom) {
+                    showErrorToast('Invalid room URL');
+                }
             }
         });
     });
@@ -142,6 +173,9 @@
     </div>
     <div class="page-wrapper" class:active={$currentPage === 'save-editor'}>
         <SaveEditorPage />
+    </div>
+    <div class="page-wrapper" class:active={$currentPage === 'multiplayer'}>
+        <MultiplayerPage />
     </div>
 
     <div class="footer-disclaimer">

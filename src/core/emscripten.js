@@ -1,7 +1,18 @@
 // Emscripten-related functions for game launching and canvas events
 import { gameRunning, debugUIVisible } from '../stores.js';
+import { pauseInstallAudio } from './audio.js';
 
+const DEFAULT_RENDERER = "0 0x682656f3 0x0 0x0 0x4000000"; // WebGL default
 let progressUpdates = 0;
+
+export function launchGame() {
+    pauseInstallAudio();
+
+    const rendererSelect = document.getElementById('renderer-select');
+    const rendererValue = rendererSelect ? rendererSelect.value : DEFAULT_RENDERER;
+
+    startGame(rendererValue);
+}
 
 export function startGame(rendererValue) {
     const mainContainer = document.getElementById('main-container');
