@@ -16,6 +16,7 @@
     import GoodbyePopup from './lib/GoodbyePopup.svelte';
     import ConfigToast from './lib/ConfigToast.svelte';
     import DebugPanel from './lib/DebugPanel.svelte';
+    import MultiplayerOverlay from './lib/MultiplayerOverlay.svelte';
     import CanvasWrapper from './lib/CanvasWrapper.svelte';
 
     async function positionTooltip(trigger) {
@@ -181,6 +182,8 @@
 </main>
 
 <CanvasWrapper />
+
+<MultiplayerOverlay />
 
 {#if $debugEnabled}
     <DebugPanel />

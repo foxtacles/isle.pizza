@@ -1,5 +1,5 @@
 // Emscripten-related functions for game launching and canvas events
-import { gameRunning, debugUIVisible } from '../stores.js';
+import { gameRunning, debugUIVisible, multiplayerPlayerCount } from '../stores.js';
 import { pauseInstallAudio } from './audio.js';
 
 const DEFAULT_RENDERER = "0 0x682656f3 0x0 0x0 0x4000000"; // WebGL default
@@ -52,6 +52,10 @@ export function setupCanvasEvents() {
             const percent = (progressUpdates / 1003 * 100).toFixed();
             statusMessageBar.innerHTML = 'Loading LEGO® Island... please wait! <code>' + percent + '%</code>';
         }
+    });
+
+    canvas.addEventListener('playerCountChanged', function (event) {
+        multiplayerPlayerCount.set(event.detail.count);
     });
 
     canvas.addEventListener('extensionProgress', function (event) {

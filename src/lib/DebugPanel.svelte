@@ -1,28 +1,8 @@
 <script>
-    import { onDestroy } from 'svelte';
     import { debugUIVisible } from '../stores.js';
+    import { keepVisible } from '../core/keep-visible.js';
 
     let debugPanelOpen = false;
-    let debugUIElement;
-    let observer = null;
-
-    // Set up MutationObserver when the element becomes available
-    $: if (debugUIElement && !observer) {
-        observer = new MutationObserver(() => {
-            if (debugUIElement && debugUIElement.style.display === 'none') {
-                debugUIElement.style.setProperty('display', 'block', 'important');
-            }
-        });
-        observer.observe(debugUIElement, { attributes: true, attributeFilter: ['style'] });
-    }
-
-    // Clean up observer when component is destroyed
-    onDestroy(() => {
-        if (observer) {
-            observer.disconnect();
-            observer = null;
-        }
-    });
 
     let debugModeActive = false;
     let selectedLocation = '';
@@ -305,7 +285,7 @@
 </script>
 
 {#if $debugUIVisible}
-    <div id="debug-ui" bind:this={debugUIElement}>
+    <div id="debug-ui" use:keepVisible>
         <button id="debug-toggle" title="Debug Options" class:active={debugPanelOpen} onclick={() => debugPanelOpen = !debugPanelOpen}>⚙</button>
 
         {#if debugPanelOpen}

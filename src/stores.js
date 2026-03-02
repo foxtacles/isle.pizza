@@ -63,6 +63,9 @@ export const debugUIVisible = writable(false);
 // Game running state
 export const gameRunning = writable(false);
 
+// Multiplayer player count (push-based from C++ via CustomEvent)
+export const multiplayerPlayerCount = writable(null);
+
 // Service worker registration
 export const swRegistration = writable(null);
 
