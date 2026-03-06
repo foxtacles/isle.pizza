@@ -424,7 +424,7 @@ body {
 .config-art-panel {
     flex: 0 0 200px;
     border-radius: 8px 0 0 8px;
-    min-height: 420px;
+    aspect-ratio: 25 / 67;
 }
 
 .config-art-panel img {

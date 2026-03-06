@@ -1,6 +1,7 @@
 <script>
     import { onDestroy } from 'svelte';
     import BackButton from './BackButton.svelte';
+    import PanningImage from './PanningImage.svelte';
     import { multiplayerRoom, currentPage, gameRunning } from '../stores.js';
     import { navigateToRoom } from '../core/navigation.js';
     import { generateRoomName } from '../core/room-names.js';
@@ -134,7 +135,7 @@
     <BackButton />
     <div class="page-inner-content config-layout">
         <div class="config-art-panel">
-            <img src="images/multi.webp" alt="LEGO Island Multiplayer">
+            <PanningImage src="images/multi.webp" alt="LEGO Island Multiplayer" duration={30} />
         </div>
         <div class="config-main">
             <h2 class="mp-title">Multiplayer <span class="mp-badge">Experimental</span></h2>

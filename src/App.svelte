@@ -17,6 +17,7 @@
     import ConfigToast from './lib/ConfigToast.svelte';
     import DebugPanel from './lib/DebugPanel.svelte';
     import MultiplayerOverlay from './lib/MultiplayerOverlay.svelte';
+    import WhatsNewBanner from './lib/WhatsNewBanner.svelte';
     import CanvasWrapper from './lib/CanvasWrapper.svelte';
 
     async function positionTooltip(trigger) {
@@ -142,6 +143,7 @@
     <source src="audio/install.mp3" type="audio/mpeg">
 </audio>
 
+<WhatsNewBanner />
 <GoodbyePopup />
 <UpdatePopup />
 <ConfigToast />
