@@ -15,6 +15,7 @@
     const RELAY_HTTP = RELAY_URL.replace('wss://', 'https://').replace('ws://', 'http://');
 
     let maxPlayers = 5;
+    let maxActors = 5;
     let creating = false;
     let selectedActorIndex = Number(sessionStorage.getItem('mp-actor')) || 0;
 
@@ -102,7 +103,7 @@
             await fetch(`${RELAY_HTTP}/room/${name}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ maxPlayers })
+                body: JSON.stringify({ maxPlayers, maxActors })
             });
 
             navigateToRoom(name);
@@ -150,25 +151,33 @@
 
             {#if !hasRoom}
                 <div class="mp-section">
-                    <p class="mp-section-text">Choose a room size and create a room. Share the link with friends so they can join directly.</p>
+                    <p class="mp-section-text">Create a room and share the link with friends to play together.</p>
 
-                    <div class="mp-slider-field">
-                        <label class="form-group-label" for="max-players-slider">Room size ({maxPlayers} {maxPlayers === 1 ? 'player' : 'players'})</label>
-                        <input type="range" id="max-players-slider" min="2" max="20" bind:value={maxPlayers}>
-                    </div>
-
-                    <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions a11y_no_static_element_interactions -->
-                    <div class="mp-create-action">
-                        <div
-                            class="mp-create-img-wrap"
-                            tabindex="0"
-                            onclick={handleCreateRoom}
-                            onkeydown={(e) => e.key === 'Enter' && handleCreateRoom()}
-                        >
-                            <img class="mp-create-img" src="images/congrats.webp" alt="Create Room" />
+                    <div class="mp-slider-row">
+                        <div class="mp-slider-field">
+                            <label class="form-group-label" for="max-players-slider">
+                                Room size ({maxPlayers})
+                                <span class="tooltip-trigger">?
+                                    <span class="tooltip-content">Maximum number of players that can join this room at the same time.</span>
+                                </span>
+                            </label>
+                            <input type="range" id="max-players-slider" min="2" max="20" bind:value={maxPlayers}>
                         </div>
-                        <span class="mp-create-hint">{creating ? 'Creating room...' : 'Click to create a room'}</span>
+
+                        <div class="mp-slider-field">
+                            <label class="form-group-label" for="max-actors-slider">
+                                Maximum actors ({maxActors})
+                                <span class="tooltip-trigger">?
+                                    <span class="tooltip-content">Maximum number of LEGO actors to exist in the world at a time. The game will gradually increase the number of actors until this maximum is reached and while performance is acceptable.</span>
+                                </span>
+                            </label>
+                            <input type="range" id="max-actors-slider" min="5" max="40" bind:value={maxActors}>
+                        </div>
                     </div>
+
+                    <button class="preset-btn mp-create-btn" onclick={handleCreateRoom} disabled={creating}>
+                        {creating ? 'Creating...' : 'Create Room'}
+                    </button>
                 </div>
             {:else}
                 <div class="mp-section">
@@ -263,73 +272,18 @@
     }
 
     /* Room creation */
-    .mp-slider-field {
-        width: 100%;
-    }
-
-    .mp-create-action {
+    .mp-slider-row {
         display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
+        gap: 12px;
     }
 
-    .mp-create-img-wrap {
-        position: relative;
-        width: 160px;
-        border-radius: 8px;
-        cursor: pointer;
-        overflow: hidden;
+    .mp-slider-field {
+        flex: 1;
+        min-width: 0;
     }
 
-    .mp-create-img-wrap::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border-radius: 8px;
-        border: 2px solid transparent;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        background: conic-gradient(
-            from var(--mp-border-angle, 0deg),
-            var(--color-primary),
-            transparent 90deg,
-            transparent 270deg,
-            var(--color-primary)
-        ) border-box;
-        -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0) border-box;
-        -webkit-mask-composite: xor;
-        mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0) border-box;
-        mask-composite: exclude;
-        pointer-events: none;
-    }
-
-    .mp-create-img-wrap:hover::after,
-    .mp-create-img-wrap:focus-within::after {
-        opacity: 1;
-        animation: mp-border-spin 2s linear infinite;
-    }
-
-    @keyframes mp-border-spin {
-        to { --mp-border-angle: 360deg; }
-    }
-
-    @property --mp-border-angle {
-        syntax: "<angle>";
-        initial-value: 0deg;
-        inherits: false;
-    }
-
-    .mp-create-img {
-        width: 100%;
-        height: auto;
-        border-radius: 8px;
-        display: block;
-    }
-
-    .mp-create-hint {
-        color: var(--color-text-muted);
-        font-size: 0.75em;
+    .mp-create-btn {
+        margin-top: 4px;
     }
 
     /* Room info bar */
