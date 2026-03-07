@@ -11,6 +11,7 @@
     let activeEmote = -1;
     let isTouchDevice = false;
     let thirdPersonCam = true;
+    let showNameBubbles = true;
 
     // Close toolbar when leaving Isle world
     $: if ($multiplayerPlayerCount == null) {
@@ -69,6 +70,12 @@
     function toggleThirdPersonCam() {
         thirdPersonCam = !thirdPersonCam;
         window.Module?._mp_toggle_third_person();
+        refocusCanvas();
+    }
+
+    function toggleNameBubbles() {
+        showNameBubbles = !showNameBubbles;
+        window.Module?._mp_toggle_name_bubbles();
         refocusCanvas();
     }
 
@@ -245,7 +252,7 @@
                 <div class="mp-divider"></div>
 
                 <!-- Camera toggle -->
-                <button class="mp-cat-btn mp-cam-btn" class:cam-active={thirdPersonCam}
+                <button class="mp-cat-btn mp-toggle-btn" class:toggle-active={thirdPersonCam}
                     onclick={toggleThirdPersonCam} title="Toggle 3rd-person camera">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M23 7l-7 5 7 5V7z"/>
@@ -253,10 +260,19 @@
                     </svg>
                 </button>
 
+                <!-- Name bubble toggle -->
+                <button class="mp-cat-btn mp-toggle-btn" class:toggle-active={showNameBubbles}
+                    onclick={toggleNameBubbles} title="Toggle name bubbles">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </button>
+
                 <div class="mp-divider"></div>
 
                 <!-- Share -->
-                <button class="mp-cat-btn mp-share-btn" onclick={handleCopyLink} title="Copy room link">
+                <button class="mp-cat-btn mp-toggle-btn mp-share-btn" onclick={handleCopyLink} title="Copy room link">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
                         <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
@@ -427,25 +443,20 @@
         border-color: rgba(255, 215, 0, 0.4);
     }
 
-    /* --- Camera toggle --- */
-    .mp-cam-btn {
+    /* --- Toggle buttons (camera, name bubbles, share) --- */
+    .mp-toggle-btn {
         color: var(--color-text-muted);
     }
 
-    .mp-cam-btn:hover {
+    .mp-toggle-btn:hover {
         color: var(--color-text-light);
     }
 
-    .mp-cam-btn.cam-active {
+    .mp-toggle-btn.toggle-active {
         color: var(--color-primary);
         border-color: rgba(255, 215, 0, 0.4);
         background: rgba(255, 215, 0, 0.12);
         box-shadow: 0 0 8px rgba(255, 215, 0, 0.15);
-    }
-
-    /* --- Share button --- */
-    .mp-share-btn {
-        color: var(--color-text-muted);
     }
 
     .mp-share-btn:hover {
