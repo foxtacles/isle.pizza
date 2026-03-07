@@ -5,15 +5,18 @@
 
     let expanded = false;
     let openCategory = null;
+    let characterExpanded = false;
     let selectedWalk = 0;
     let selectedIdle = 0;
     let activeEmote = -1;
     let isTouchDevice = false;
+    let thirdPersonCam = true;
 
     // Close toolbar when leaving Isle world
     $: if ($multiplayerPlayerCount == null) {
         expanded = false;
         openCategory = null;
+        characterExpanded = false;
     }
 
     $: disabled = $multiplayerPlayerCount == null;
@@ -54,7 +57,19 @@
         if (disabled) return;
         expanded = !expanded;
         openCategory = null;
+        characterExpanded = false;
         if (!expanded) refocusCanvas();
+    }
+
+    function toggleCharacterMenu() {
+        characterExpanded = !characterExpanded;
+        if (!characterExpanded) openCategory = null;
+    }
+
+    function toggleThirdPersonCam() {
+        thirdPersonCam = !thirdPersonCam;
+        window.Module?._mp_toggle_third_person();
+        refocusCanvas();
     }
 
     function handleCategoryEnter(category) {
@@ -111,9 +126,11 @@
     }
 
     function handleWindowClick(e) {
-        // Close popout when tapping outside a category on touch devices
-        if (isTouchDevice && openCategory && !e.target.closest('.mp-category')) {
-            openCategory = null;
+        if (isTouchDevice && !e.target.closest('.mp-category')) {
+            if (openCategory) openCategory = null;
+            if (characterExpanded && !e.target.closest('.mp-character-wrap')) {
+                characterExpanded = false;
+            }
         }
     }
 </script>
@@ -136,79 +153,107 @@
             {/if}
         </button>
 
-        <!-- Toolbar -->
+        <!-- Toolbar (vertical) -->
         {#if expanded}
             <div class="mp-toolbar">
-                <!-- Walk -->
-                <div class="mp-category" role="group"
-                    onmouseenter={() => handleCategoryEnter('walk')}
-                    onmouseleave={handleCategoryLeave}
-                >
-                    <button class="mp-cat-btn" class:has-popout={openCategory === 'walk'}
-                        onclick={() => handleCategoryClick('walk')}
-                        title="Walk style">
-                        {walkOptions[selectedWalk].emoji}
-                    </button>
-                    {#if openCategory === 'walk'}
-                        <div class="mp-popout">
-                            {#each walkOptions as opt, i}
-                                <button class="mp-opt-btn" class:selected={selectedWalk === i}
-                                    onclick={() => selectWalk(i)} title={opt.label}>
-                                    {opt.emoji}
-                                </button>
-                            {/each}
-                        </div>
-                    {/if}
-                </div>
-
-                <!-- Idle -->
-                <div class="mp-category" role="group"
-                    onmouseenter={() => handleCategoryEnter('idle')}
-                    onmouseleave={handleCategoryLeave}
-                >
-                    <button class="mp-cat-btn" class:has-popout={openCategory === 'idle'}
-                        onclick={() => handleCategoryClick('idle')}
-                        title="Idle style">
-                        {idleOptions[selectedIdle].emoji}
-                    </button>
-                    {#if openCategory === 'idle'}
-                        <div class="mp-popout">
-                            {#each idleOptions as opt, i}
-                                <button class="mp-opt-btn" class:selected={selectedIdle === i}
-                                    onclick={() => selectIdle(i)} title={opt.label}>
-                                    {opt.emoji}
-                                </button>
-                            {/each}
-                        </div>
-                    {/if}
-                </div>
-
-                <!-- Emotes -->
-                <div class="mp-category" role="group"
-                    onmouseenter={() => handleCategoryEnter('emote')}
-                    onmouseleave={handleCategoryLeave}
-                >
-                    <button class="mp-cat-btn" class:has-popout={openCategory === 'emote'}
-                        onclick={() => handleCategoryClick('emote')}
-                        title="Emotes">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                            <line x1="9" y1="9" x2="9.01" y2="9"/>
-                            <line x1="15" y1="9" x2="15.01" y2="9"/>
+                <!-- Character button + horizontal sub-bar -->
+                <div class="mp-character-wrap">
+                    <button class="mp-cat-btn" class:has-popout={characterExpanded}
+                        onclick={toggleCharacterMenu} title="Character">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
                         </svg>
                     </button>
-                    {#if openCategory === 'emote'}
-                        <div class="mp-popout">
-                            {#each emoteOptions as opt, i}
-                                <button class="mp-opt-btn mp-emote-opt" class:emote-active={activeEmote === i}
-                                    onclick={() => triggerEmote(i)} title={opt.label}>
-                                    {opt.emoji}
+
+                    {#if characterExpanded}
+                        <div class="mp-character-bar">
+                            <!-- Walk -->
+                            <div class="mp-category" role="group"
+                                onmouseenter={() => handleCategoryEnter('walk')}
+                                onmouseleave={handleCategoryLeave}
+                            >
+                                <button class="mp-cat-btn" class:has-popout={openCategory === 'walk'}
+                                    onclick={() => handleCategoryClick('walk')}
+                                    title="Walk style">
+                                    {walkOptions[selectedWalk].emoji}
                                 </button>
-                            {/each}
+                                {#if openCategory === 'walk'}
+                                    <div class="mp-popout">
+                                        {#each walkOptions as opt, i}
+                                            <button class="mp-opt-btn" class:selected={selectedWalk === i}
+                                                onclick={() => selectWalk(i)} title={opt.label}>
+                                                {opt.emoji}
+                                            </button>
+                                        {/each}
+                                    </div>
+                                {/if}
+                            </div>
+
+                            <!-- Idle -->
+                            <div class="mp-category" role="group"
+                                onmouseenter={() => handleCategoryEnter('idle')}
+                                onmouseleave={handleCategoryLeave}
+                            >
+                                <button class="mp-cat-btn" class:has-popout={openCategory === 'idle'}
+                                    onclick={() => handleCategoryClick('idle')}
+                                    title="Idle style">
+                                    {idleOptions[selectedIdle].emoji}
+                                </button>
+                                {#if openCategory === 'idle'}
+                                    <div class="mp-popout">
+                                        {#each idleOptions as opt, i}
+                                            <button class="mp-opt-btn" class:selected={selectedIdle === i}
+                                                onclick={() => selectIdle(i)} title={opt.label}>
+                                                {opt.emoji}
+                                            </button>
+                                        {/each}
+                                    </div>
+                                {/if}
+                            </div>
+
+                            <!-- Emotes -->
+                            <div class="mp-category" role="group"
+                                onmouseenter={() => handleCategoryEnter('emote')}
+                                onmouseleave={handleCategoryLeave}
+                            >
+                                <button class="mp-cat-btn" class:has-popout={openCategory === 'emote'}
+                                    onclick={() => handleCategoryClick('emote')}
+                                    title="Emotes">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                                        <line x1="9" y1="9" x2="9.01" y2="9"/>
+                                        <line x1="15" y1="9" x2="15.01" y2="9"/>
+                                    </svg>
+                                </button>
+                                {#if openCategory === 'emote'}
+                                    <div class="mp-popout">
+                                        {#each emoteOptions as opt, i}
+                                            <button class="mp-opt-btn mp-emote-opt" class:emote-active={activeEmote === i}
+                                                onclick={() => triggerEmote(i)} title={opt.label}>
+                                                {opt.emoji}
+                                            </button>
+                                        {/each}
+                                    </div>
+                                {/if}
+                            </div>
                         </div>
                     {/if}
                 </div>
+
+                <div class="mp-divider"></div>
+
+                <!-- Camera toggle -->
+                <button class="mp-cat-btn mp-cam-btn" class:cam-active={thirdPersonCam}
+                    onclick={toggleThirdPersonCam} title="Toggle 3rd-person camera">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 7l-7 5 7 5V7z"/>
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                    </svg>
+                </button>
+
+                <div class="mp-divider"></div>
 
                 <!-- Share -->
                 <button class="mp-cat-btn mp-share-btn" onclick={handleCopyLink} title="Copy room link">
@@ -229,7 +274,8 @@
         left: 10px;
         z-index: 1000;
         display: flex;
-        align-items: flex-start;
+        flex-direction: column;
+        align-items: center;
         gap: 6px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
@@ -237,8 +283,9 @@
     /* --- Toggle button --- */
     .mp-toggle {
         position: relative;
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
+        box-sizing: border-box;
         border-radius: 50%;
         background: rgba(24, 24, 24, 0.85);
         border: 2px solid rgba(255, 215, 0, 0.5);
@@ -289,8 +336,46 @@
         pointer-events: none;
     }
 
-    /* --- Toolbar --- */
+    /* --- Toolbar (vertical) --- */
     .mp-toolbar {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        background: rgba(24, 24, 24, 0.9);
+        border: 1px solid var(--color-border-medium);
+        border-radius: 22px;
+        padding: 4px;
+        width: 44px;
+        box-sizing: border-box;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        animation: mp-toolbar-in 0.15s ease-out;
+    }
+
+    @keyframes mp-toolbar-in {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* --- Divider --- */
+    .mp-divider {
+        width: 24px;
+        height: 1px;
+        background: var(--color-border-medium);
+    }
+
+    /* --- Character wrapper (anchors the horizontal sub-bar) --- */
+    .mp-character-wrap {
+        position: relative;
+    }
+
+    /* --- Horizontal character sub-bar --- */
+    .mp-character-bar {
+        position: absolute;
+        top: 50%;
+        left: calc(100% + 6px);
+        transform: translateY(-50%);
         display: flex;
         align-items: center;
         gap: 4px;
@@ -300,12 +385,13 @@
         padding: 4px;
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        animation: mp-toolbar-in 0.15s ease-out;
+        animation: mp-charbar-in 0.15s ease-out;
+        white-space: nowrap;
     }
 
-    @keyframes mp-toolbar-in {
-        from { opacity: 0; transform: translateX(-8px); }
-        to { opacity: 1; transform: translateX(0); }
+    @keyframes mp-charbar-in {
+        from { opacity: 0; transform: translateY(-50%) translateX(-8px); }
+        to { opacity: 1; transform: translateY(-50%) translateX(0); }
     }
 
     /* --- Category wrapper (for popout positioning) --- */
@@ -320,6 +406,7 @@
         border-radius: 50%;
         background: transparent;
         border: 1.5px solid transparent;
+        box-sizing: border-box;
         color: var(--color-text-light);
         cursor: pointer;
         font-size: 18px;
@@ -340,6 +427,23 @@
         border-color: rgba(255, 215, 0, 0.4);
     }
 
+    /* --- Camera toggle --- */
+    .mp-cam-btn {
+        color: var(--color-text-muted);
+    }
+
+    .mp-cam-btn:hover {
+        color: var(--color-text-light);
+    }
+
+    .mp-cam-btn.cam-active {
+        color: var(--color-primary);
+        border-color: rgba(255, 215, 0, 0.4);
+        background: rgba(255, 215, 0, 0.12);
+        box-shadow: 0 0 8px rgba(255, 215, 0, 0.15);
+    }
+
+    /* --- Share button --- */
     .mp-share-btn {
         color: var(--color-text-muted);
     }
@@ -348,7 +452,7 @@
         color: var(--color-primary);
     }
 
-    /* --- Popout --- */
+    /* --- Popout (dropdown below buttons in the character bar) --- */
     .mp-popout {
         position: absolute;
         top: 100%;
