@@ -301,6 +301,9 @@ export async function saveConfig(form, getSiFiles, silent = false, multiplayer =
         iniContent += "[multiplayer]\n";
         iniContent += `relay url=${multiplayer.relayUrl}\n`;
         iniContent += `room=${multiplayer.room}\n`;
+        if (multiplayer.actor) {
+            iniContent += `actor=${multiplayer.actor}\n`;
+        }
     }
 
     return writeTextFile(CONFIG_FILE, iniContent, silent);

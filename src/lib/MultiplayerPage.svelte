@@ -2,18 +2,21 @@
     import { onDestroy } from 'svelte';
     import BackButton from './BackButton.svelte';
     import PanningImage from './PanningImage.svelte';
+    import ActorPicker from './ActorPicker.svelte';
     import { multiplayerRoom, currentPage, gameRunning } from '../stores.js';
     import { navigateToRoom } from '../core/navigation.js';
     import { generateRoomName } from '../core/room-names.js';
     import { launchGame } from '../core/emscripten.js';
     import { saveConfigFromDOM } from '../core/opfs.js';
     import { showToast } from '../core/toast.js';
+    import { ActorInfoInit } from '../core/savegame/actorConstants.js';
 
     const RELAY_URL = __RELAY_URL__;
     const RELAY_HTTP = RELAY_URL.replace('wss://', 'https://').replace('ws://', 'http://');
 
     let maxPlayers = 5;
     let creating = false;
+    let selectedActorIndex = Number(sessionStorage.getItem('mp-actor')) || 0;
 
     // Room lobby state
     let playerCount = 0;
@@ -112,7 +115,8 @@
 
     async function handleRunGame() {
         if (!roomName) return;
-        await saveConfigFromDOM({ room: roomName, relayUrl: RELAY_URL });
+        const actorName = ActorInfoInit[selectedActorIndex].name;
+        await saveConfigFromDOM({ room: roomName, relayUrl: RELAY_URL, actor: actorName });
         launchGame();
     }
 
@@ -168,36 +172,40 @@
                 </div>
             {:else}
                 <div class="mp-section">
-                    <div class="mp-room-info">
-                        <span class="mp-room-label">Room</span>
-                        <div class="mp-room-name-row">
+                    <div class="mp-room-bar">
+                        <span class="mp-room-bar-info">
                             <span class="mp-room-name">{roomName}</span>
-                            <button class="mp-share-btn" onclick={handleCopyLink} title="Copy room link">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                                </svg>
-                            </button>
-                        </div>
+                            <span class="mp-room-sep">&middot;</span>
+                            <span class="mp-room-players">
+                                {#if previewLoading}
+                                    ...
+                                {:else if previewError}
+                                    <span class="mp-error">{previewError}</span>
+                                {:else}
+                                    {playerCount}/{roomMaxPlayers} players
+                                {/if}
+                            </span>
+                        </span>
+                        <button class="mp-share-btn" onclick={handleCopyLink} title="Copy room link">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                            </svg>
+                            Copy link to invite
+                        </button>
                     </div>
 
-                    <div class="mp-room-info">
-                        <span class="mp-room-label">Players</span>
-                        <span class="mp-room-value">
-                            {#if previewLoading}
-                                ...
-                            {:else if previewError}
-                                <span class="mp-error">{previewError}</span>
-                            {:else}
-                                {playerCount} / {roomMaxPlayers}
-                            {/if}
-                        </span>
-                    </div>
+                    {#if !$gameRunning}
+                        <ActorPicker
+                            selectedIndex={selectedActorIndex}
+                            onSelect={(idx) => { selectedActorIndex = idx; sessionStorage.setItem('mp-actor', idx); }}
+                        />
+                    {/if}
 
                     {#if roomFull}
-                        <p class="mp-full-msg">This room is full. Wait for a player to leave or create a new room.</p>
+                        <p class="mp-full-msg">Room is full. Wait for a player to leave or create a new room.</p>
                     {:else}
-                        <button class="mp-run-btn" onclick={handleRunGame}>Run Game</button>
+                        <button class="preset-btn mp-run-btn" onclick={handleRunGame}>Run Game</button>
                     {/if}
                 </div>
             {/if}
@@ -208,16 +216,16 @@
 <style>
     .mp-title {
         color: var(--color-text-light);
-        font-size: 1.2em;
-        margin: 0 0 8px 0;
+        font-size: 1.05em;
+        margin: 0 0 6px 0;
     }
 
     .mp-badge {
         display: inline-block;
-        font-size: 0.6em;
+        font-size: 0.55em;
         font-weight: bold;
         text-transform: uppercase;
-        padding: 2px 6px;
+        padding: 1px 5px;
         border-radius: 4px;
         background: var(--color-primary);
         color: #000;
@@ -227,9 +235,9 @@
 
     .mp-description {
         color: var(--color-text-medium);
-        font-size: 0.9em;
-        line-height: 1.6;
-        margin-bottom: 16px;
+        font-size: 0.8em;
+        line-height: 1.5;
+        margin-bottom: 10px;
     }
 
     .mp-description p {
@@ -241,16 +249,16 @@
         background: var(--gradient-panel);
         border: 1px solid var(--color-bg-panel);
         border-radius: 8px;
-        padding: 16px;
+        padding: 12px;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 10px;
     }
 
     .mp-section-text {
         color: var(--color-text-muted);
-        font-size: 0.9em;
-        line-height: 1.5;
+        font-size: 0.8em;
+        line-height: 1.4;
         margin: 0;
     }
 
@@ -321,54 +329,66 @@
 
     .mp-create-hint {
         color: var(--color-text-muted);
-        font-size: 0.8em;
+        font-size: 0.75em;
     }
 
-    /* Room lobby */
-    .mp-room-info {
-        display: flex;
-        align-items: baseline;
-        gap: 10px;
-    }
-
-    .mp-room-label {
-        color: var(--color-text-muted);
-        font-size: 0.85em;
-        min-width: 50px;
-    }
-
-    .mp-room-name-row {
+    /* Room info bar */
+    .mp-room-bar {
         display: flex;
         align-items: center;
-        gap: 8px;
+        justify-content: space-between;
+        gap: 6px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 6px;
+        padding: 6px 10px;
+    }
+
+    .mp-room-bar-info {
+        display: flex;
+        align-items: center;
+        gap: 6px;
         min-width: 0;
     }
 
     .mp-room-name {
         font-weight: bold;
+        font-size: 0.85em;
         color: var(--color-primary);
-        word-break: break-all;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mp-room-sep {
+        color: var(--color-text-muted);
+        font-size: 0.75em;
     }
 
     .mp-share-btn {
         flex-shrink: 0;
         background: none;
-        border: none;
+        border: 1px solid var(--color-border-medium);
         color: var(--color-text-muted);
         cursor: pointer;
-        padding: 4px;
-        border-radius: 4px;
+        padding: 3px 8px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
-        transition: color 0.2s ease;
+        gap: 4px;
+        font-family: inherit;
+        font-size: 0.7em;
+        transition: color 0.2s ease, border-color 0.2s ease;
     }
 
     .mp-share-btn:hover {
         color: var(--color-primary);
+        border-color: var(--color-primary);
     }
 
-    .mp-room-value {
-        color: var(--color-text-light);
+    .mp-room-players {
+        color: var(--color-text-muted);
+        font-size: 0.75em;
+        white-space: nowrap;
     }
 
     .mp-error {
@@ -376,27 +396,13 @@
     }
 
     .mp-run-btn {
-        padding: 12px 24px;
-        background: var(--gradient-panel);
-        border: 1px solid var(--color-primary);
-        border-radius: 8px;
-        color: var(--color-primary);
-        font-size: 1em;
-        font-weight: bold;
-        font-family: inherit;
-        cursor: pointer;
-        transition: background 0.2s ease, box-shadow 0.2s ease;
-        align-self: stretch;
-    }
-
-    .mp-run-btn:hover {
-        background: var(--gradient-hover);
-        box-shadow: 0 0 12px rgba(255, 215, 0, 0.25);
+        width: 100%;
     }
 
     .mp-full-msg {
         color: var(--color-text-muted);
-        font-size: 0.85em;
+        font-size: 0.75em;
         margin: 0;
+        text-align: center;
     }
 </style>
