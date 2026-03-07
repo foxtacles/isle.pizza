@@ -12,6 +12,7 @@
     let isTouchDevice = false;
     let thirdPersonCam = true;
     let showNameBubbles = true;
+    let allowCustomize = true;
 
     // Close toolbar when leaving Isle world
     $: if ($multiplayerPlayerCount == null) {
@@ -76,6 +77,12 @@
     function toggleNameBubbles() {
         showNameBubbles = !showNameBubbles;
         window.Module?._mp_toggle_name_bubbles();
+        refocusCanvas();
+    }
+
+    function toggleAllowCustomize() {
+        allowCustomize = !allowCustomize;
+        window.Module?._mp_toggle_allow_customize();
         refocusCanvas();
     }
 
@@ -263,9 +270,20 @@
                 <!-- Name bubble toggle -->
                 <button class="mp-cat-btn mp-toggle-btn" class:toggle-active={showNameBubbles}
                     onclick={toggleNameBubbles} title="Toggle name bubbles">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </button>
+
+                <!-- Customize toggle -->
+                <button class="mp-cat-btn mp-toggle-btn" class:toggle-active={allowCustomize}
+                    onclick={toggleAllowCustomize} title="Allow other players to customize you">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 21l10-10"/>
+                        <path d="M13 11l2.5-2.5a1.5 1.5 0 0 1 2 0l.5.5a1.5 1.5 0 0 1 0 2L15.5 13.5"/>
+                        <path d="M7 3l.5 1.5L9 5l-1.5.5L7 7l-.5-1.5L5 5l1.5-.5z" fill="currentColor" stroke="none"/>
+                        <path d="M17 2l.4 1.1L18.5 3.5l-1.1.4L17 5l-.4-1.1L15.5 3.5l1.1-.4z" fill="currentColor" stroke="none"/>
+                        <path d="M21 8l.4 1.1L22.5 9.5l-1.1.4L21 11l-.4-1.1L19.5 9.5l1.1-.4z" fill="currentColor" stroke="none"/>
                     </svg>
                 </button>
 

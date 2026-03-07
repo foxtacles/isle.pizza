@@ -145,7 +145,7 @@
             <h2 class="mp-title">Multiplayer <span class="mp-badge">Experimental</span></h2>
 
             <div class="mp-description">
-                <p>Explore LEGO Island together with other players. You can see each other walking around the island and interact with plants and buildings together. Missions, vehicles, and other game systems are not shared between players.</p>
+                <p>Explore LEGO Island together with other players. You can see each other walking around the island and interact with each other, plants, and buildings together. Missions, vehicles, and other game systems are not shared between players.</p>
             </div>
 
             {#if !hasRoom}
