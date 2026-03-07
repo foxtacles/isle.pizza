@@ -4,7 +4,7 @@
     export let src;
     export let alt = '';
     /** Full cycle duration in seconds (left-to-right-to-left) */
-    export let duration = 20;
+    export let duration = 45;
 
     let imgEl;
     let animationId;

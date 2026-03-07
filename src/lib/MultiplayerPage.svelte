@@ -139,7 +139,7 @@
     <BackButton />
     <div class="page-inner-content config-layout">
         <div class="config-art-panel">
-            <PanningImage src="images/multi.webp" alt="LEGO Island Multiplayer" duration={30} />
+            <PanningImage src="images/multi.webp" alt="LEGO Island Multiplayer" duration={45} />
         </div>
         <div class="config-main">
             <h2 class="mp-title">Multiplayer <span class="mp-badge">Experimental</span></h2>
