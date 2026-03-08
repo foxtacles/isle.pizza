@@ -169,7 +169,7 @@
 
                         <div class="mp-slider-field">
                             <label class="form-group-label" for="max-actors-slider">
-                                Max actors ({maxActors})
+                                Maximum NPCs ({maxActors})
                                 <span class="tooltip-trigger">?
                                     <span class="tooltip-content">Maximum number of LEGO actors to exist in the world at a time. The game will gradually increase the number of actors until this maximum is reached and while performance is acceptable.</span>
                                 </span>

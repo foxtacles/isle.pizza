@@ -66,6 +66,12 @@
 </script>
 
 <div class="actor-picker">
+    <div class="actor-heading">
+        <span class="actor-heading-label">Choose your character</span>
+        <span class="tooltip-trigger">?
+            <span class="tooltip-content">This is the visual model you'll use in multiplayer, regardless of which actor is selected in the Infocenter.</span>
+        </span>
+    </div>
     <div class="actor-preview">
         <div class="actor-preview-container">
             <canvas bind:this={canvas} class:hidden={loading || error} width="180" height="180"></canvas>
@@ -101,6 +107,18 @@
         flex-direction: column;
         align-items: center;
         gap: 10px;
+    }
+
+    .actor-heading {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .actor-heading-label {
+        color: var(--color-text-light);
+        font-size: 0.8em;
+        font-weight: bold;
     }
 
     .actor-preview {

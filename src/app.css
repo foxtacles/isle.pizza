@@ -1613,6 +1613,10 @@ select:focus {
     right: 10px;
     z-index: 1000;
     font-family: Arial, sans-serif;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 #debug-toggle {

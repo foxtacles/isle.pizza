@@ -5,7 +5,6 @@
 
     let expanded = false;
     let openCategory = null;
-    let characterExpanded = false;
     let selectedWalk = 0;
     let selectedIdle = 0;
     let activeEmote = -1;
@@ -13,34 +12,53 @@
     let thirdPersonCam = true;
     let showNameBubbles = true;
     let allowCustomize = true;
+    let showHelp = false;
 
     // Close toolbar when leaving Isle world
     $: if ($multiplayerPlayerCount == null) {
         expanded = false;
         openCategory = null;
-        characterExpanded = false;
     }
 
     $: disabled = $multiplayerPlayerCount == null;
 
     const walkOptions = [
-        { emoji: '\u{1F6B6}', label: 'Normal' },
-        { emoji: '\u{1F604}', label: 'Joyful' },
-        { emoji: '\u{1F614}', label: 'Gloomy' },
-        { emoji: '\u{1F3C3}', label: 'Leaning' },
-        { emoji: '\u{1F628}', label: 'Scared' },
-        { emoji: '\u{1F92A}', label: 'Hyper' }
+        { emoji: '\u{1F6B6}', label: 'Normal', id: 0 },
+        { emoji: '\u{1F3C3}', label: 'Leaning', id: 3 },
+        { emoji: '\u{1F57A}', label: 'Joyful', id: 1 },
+        { emoji: '\u{1F327}\u{FE0F}', label: 'Gloomy', id: 2 },
+        { emoji: '\u{1F648}', label: 'Scared', id: 4 },
+        { emoji: '\u{26A1}', label: 'Hyper', id: 5 }
     ];
 
     const idleOptions = [
-        { emoji: '\u{1F3B5}', label: 'Sway' },
-        { emoji: '\u{1F483}', label: 'Groove' },
+        { emoji: '\u{1F343}', label: 'Sway' },
+        { emoji: '\u{1FAA9}', label: 'Groove' },
         { emoji: '\u{1F64C}', label: 'Excited' }
     ];
 
     const emoteOptions = [
         { emoji: '\u{1F44B}', label: 'Wave' },
         { emoji: '\u{1F3A9}', label: 'Hat Tip' }
+    ];
+
+    const svgIcons = {
+        emote: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>',
+        camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+        bubble: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+        wand: '<path d="M3 21l10-10"/><path d="M13 11l2.5-2.5a1.5 1.5 0 0 1 2 0l.5.5a1.5 1.5 0 0 1 0 2L15.5 13.5"/><path d="M7 3l.5 1.5L9 5l-1.5.5L7 7l-.5-1.5L5 5l1.5-.5z" fill="currentColor" stroke="none"/><path d="M17 2l.4 1.1L18.5 3.5l-1.1.4L17 5l-.4-1.1L15.5 3.5l1.1-.4z" fill="currentColor" stroke="none"/><path d="M21 8l.4 1.1L22.5 9.5l-1.1.4L21 11l-.4-1.1L19.5 9.5l1.1-.4z" fill="currentColor" stroke="none"/>',
+        help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+        share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>',
+    };
+
+    const helpItems = [
+        { emoji: walkOptions[0].emoji, title: 'Walk Style', desc: 'Change how your character walks. Hover or tap to pick from several walking animations.' },
+        { emoji: idleOptions[0].emoji, title: 'Idle Style', desc: 'Change what your character does while standing still. Choose from sway, groove, or excited.' },
+        { svg: svgIcons.emote, title: 'Emotes', desc: 'Trigger a one-time animation like waving or tipping your hat. Other players will see it too.' },
+        { svg: svgIcons.camera, title: 'Third-Person Camera', desc: 'Toggle a camera that follows behind your character so you can see yourself walking, riding vehicles, and performing emotes.' },
+        { svg: svgIcons.bubble, title: 'Name Bubbles', desc: 'Show or hide the floating name labels above other players\u2019 characters.' },
+        { svg: svgIcons.wand, title: 'Customization', desc: 'Allow other players to click on your character to cycle your colors, hats, moods, and sounds.' },
+        { svg: svgIcons.share, title: 'Share', desc: 'Copy a link to this room so you can invite others to join.' },
     ];
 
     function detectTouch(node) {
@@ -59,13 +77,7 @@
         if (disabled) return;
         expanded = !expanded;
         openCategory = null;
-        characterExpanded = false;
         if (!expanded) refocusCanvas();
-    }
-
-    function toggleCharacterMenu() {
-        characterExpanded = !characterExpanded;
-        if (!characterExpanded) openCategory = null;
     }
 
     function toggleThirdPersonCam() {
@@ -103,7 +115,7 @@
     function selectWalk(index) {
         selectedWalk = index;
         if (window.Module?._mp_set_walk_animation) {
-            window.Module._mp_set_walk_animation(index);
+            window.Module._mp_set_walk_animation(walkOptions[index].id);
         }
         openCategory = null;
         refocusCanvas();
@@ -140,16 +152,18 @@
     }
 
     function handleWindowClick(e) {
-        if (isTouchDevice && !e.target.closest('.mp-category')) {
-            if (openCategory) openCategory = null;
-            if (characterExpanded && !e.target.closest('.mp-character-wrap')) {
-                characterExpanded = false;
-            }
+        if (showHelp) return;
+        if (isTouchDevice && openCategory && !e.target.closest('.mp-category')) {
+            openCategory = null;
         }
+    }
+
+    function handleWindowKeydown(e) {
+        if (showHelp && e.key === 'Escape') showHelp = false;
     }
 </script>
 
-<svelte:window onclick={handleWindowClick} />
+<svelte:window onclick={handleWindowClick} onkeydown={handleWindowKeydown} />
 
 {#if $gameRunning && $multiplayerRoom}
     <div class="mp-overlay" use:keepVisible use:detectTouch>
@@ -167,91 +181,73 @@
             {/if}
         </button>
 
-        <!-- Toolbar (vertical) -->
+        <!-- Toolbar (horizontal) -->
         {#if expanded}
             <div class="mp-toolbar">
-                <!-- Character button + horizontal sub-bar -->
-                <div class="mp-character-wrap">
-                    <button class="mp-cat-btn" class:has-popout={characterExpanded}
-                        onclick={toggleCharacterMenu} title="Character">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                            <circle cx="12" cy="7" r="4"/>
+                <!-- Walk -->
+                <div class="mp-category" role="group"
+                    onmouseenter={() => handleCategoryEnter('walk')}
+                    onmouseleave={handleCategoryLeave}
+                >
+                    <button class="mp-cat-btn" class:has-popout={openCategory === 'walk'}
+                        onclick={() => handleCategoryClick('walk')}
+                        title="Walk style">
+                        {walkOptions[selectedWalk].emoji}
+                    </button>
+                    {#if openCategory === 'walk'}
+                        <div class="mp-popout">
+                            {#each walkOptions as opt, i}
+                                <button class="mp-opt-btn" class:selected={selectedWalk === i}
+                                    onclick={() => selectWalk(i)} title={opt.label}>
+                                    {opt.emoji}
+                                </button>
+                            {/each}
+                        </div>
+                    {/if}
+                </div>
+
+                <!-- Idle -->
+                <div class="mp-category" role="group"
+                    onmouseenter={() => handleCategoryEnter('idle')}
+                    onmouseleave={handleCategoryLeave}
+                >
+                    <button class="mp-cat-btn" class:has-popout={openCategory === 'idle'}
+                        onclick={() => handleCategoryClick('idle')}
+                        title="Idle style">
+                        {idleOptions[selectedIdle].emoji}
+                    </button>
+                    {#if openCategory === 'idle'}
+                        <div class="mp-popout">
+                            {#each idleOptions as opt, i}
+                                <button class="mp-opt-btn" class:selected={selectedIdle === i}
+                                    onclick={() => selectIdle(i)} title={opt.label}>
+                                    {opt.emoji}
+                                </button>
+                            {/each}
+                        </div>
+                    {/if}
+                </div>
+
+                <!-- Emotes -->
+                <div class="mp-category" role="group"
+                    onmouseenter={() => handleCategoryEnter('emote')}
+                    onmouseleave={handleCategoryLeave}
+                >
+                    <button class="mp-cat-btn" class:has-popout={openCategory === 'emote'}
+                        onclick={() => handleCategoryClick('emote')}
+                        title="Emotes">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            {@html svgIcons.emote}
                         </svg>
                     </button>
-
-                    {#if characterExpanded}
-                        <div class="mp-character-bar">
-                            <!-- Walk -->
-                            <div class="mp-category" role="group"
-                                onmouseenter={() => handleCategoryEnter('walk')}
-                                onmouseleave={handleCategoryLeave}
-                            >
-                                <button class="mp-cat-btn" class:has-popout={openCategory === 'walk'}
-                                    onclick={() => handleCategoryClick('walk')}
-                                    title="Walk style">
-                                    {walkOptions[selectedWalk].emoji}
+                    {#if openCategory === 'emote'}
+                        <div class="mp-popout">
+                            {#each emoteOptions as opt, i}
+                                <button class="mp-opt-btn mp-emote-opt" class:emote-active={activeEmote === i}
+                                    onclick={() => triggerEmote(i)} title={opt.label}>
+                                    {opt.emoji}
                                 </button>
-                                {#if openCategory === 'walk'}
-                                    <div class="mp-popout">
-                                        {#each walkOptions as opt, i}
-                                            <button class="mp-opt-btn" class:selected={selectedWalk === i}
-                                                onclick={() => selectWalk(i)} title={opt.label}>
-                                                {opt.emoji}
-                                            </button>
-                                        {/each}
-                                    </div>
-                                {/if}
-                            </div>
-
-                            <!-- Idle -->
-                            <div class="mp-category" role="group"
-                                onmouseenter={() => handleCategoryEnter('idle')}
-                                onmouseleave={handleCategoryLeave}
-                            >
-                                <button class="mp-cat-btn" class:has-popout={openCategory === 'idle'}
-                                    onclick={() => handleCategoryClick('idle')}
-                                    title="Idle style">
-                                    {idleOptions[selectedIdle].emoji}
-                                </button>
-                                {#if openCategory === 'idle'}
-                                    <div class="mp-popout">
-                                        {#each idleOptions as opt, i}
-                                            <button class="mp-opt-btn" class:selected={selectedIdle === i}
-                                                onclick={() => selectIdle(i)} title={opt.label}>
-                                                {opt.emoji}
-                                            </button>
-                                        {/each}
-                                    </div>
-                                {/if}
-                            </div>
-
-                            <!-- Emotes -->
-                            <div class="mp-category" role="group"
-                                onmouseenter={() => handleCategoryEnter('emote')}
-                                onmouseleave={handleCategoryLeave}
-                            >
-                                <button class="mp-cat-btn" class:has-popout={openCategory === 'emote'}
-                                    onclick={() => handleCategoryClick('emote')}
-                                    title="Emotes">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <circle cx="12" cy="12" r="10"/>
-                                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                                        <line x1="9" y1="9" x2="9.01" y2="9"/>
-                                        <line x1="15" y1="9" x2="15.01" y2="9"/>
-                                    </svg>
-                                </button>
-                                {#if openCategory === 'emote'}
-                                    <div class="mp-popout">
-                                        {#each emoteOptions as opt, i}
-                                            <button class="mp-opt-btn mp-emote-opt" class:emote-active={activeEmote === i}
-                                                onclick={() => triggerEmote(i)} title={opt.label}>
-                                                {opt.emoji}
-                                            </button>
-                                        {/each}
-                                    </div>
-                                {/if}
-                            </div>
+                            {/each}
                         </div>
                     {/if}
                 </div>
@@ -262,8 +258,7 @@
                 <button class="mp-cat-btn mp-toggle-btn" class:toggle-active={thirdPersonCam}
                     onclick={toggleThirdPersonCam} title="Toggle 3rd-person camera">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M23 7l-7 5 7 5V7z"/>
-                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                        {@html svgIcons.camera}
                     </svg>
                 </button>
 
@@ -271,7 +266,7 @@
                 <button class="mp-cat-btn mp-toggle-btn" class:toggle-active={showNameBubbles}
                     onclick={toggleNameBubbles} title="Toggle name bubbles">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        {@html svgIcons.bubble}
                     </svg>
                 </button>
 
@@ -279,26 +274,59 @@
                 <button class="mp-cat-btn mp-toggle-btn" class:toggle-active={allowCustomize}
                     onclick={toggleAllowCustomize} title="Allow other players to customize you">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 21l10-10"/>
-                        <path d="M13 11l2.5-2.5a1.5 1.5 0 0 1 2 0l.5.5a1.5 1.5 0 0 1 0 2L15.5 13.5"/>
-                        <path d="M7 3l.5 1.5L9 5l-1.5.5L7 7l-.5-1.5L5 5l1.5-.5z" fill="currentColor" stroke="none"/>
-                        <path d="M17 2l.4 1.1L18.5 3.5l-1.1.4L17 5l-.4-1.1L15.5 3.5l1.1-.4z" fill="currentColor" stroke="none"/>
-                        <path d="M21 8l.4 1.1L22.5 9.5l-1.1.4L21 11l-.4-1.1L19.5 9.5l1.1-.4z" fill="currentColor" stroke="none"/>
+                        {@html svgIcons.wand}
                     </svg>
                 </button>
 
                 <div class="mp-divider"></div>
 
+                <!-- Help -->
+                <button class="mp-cat-btn mp-toggle-btn" onclick={() => showHelp = true} title="Toolbar guide">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        {@html svgIcons.help}
+                    </svg>
+                </button>
+
                 <!-- Share -->
                 <button class="mp-cat-btn mp-toggle-btn mp-share-btn" onclick={handleCopyLink} title="Copy room link">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                        {@html svgIcons.share}
                     </svg>
                 </button>
             </div>
         {/if}
     </div>
+
+    <!-- Help modal -->
+    {#if showHelp}
+        <div class="mp-help-backdrop" role="presentation" onclick={() => showHelp = false} onkeydown={() => {}}>
+            <div class="mp-help-panel" role="dialog" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
+                <div class="mp-help-header">
+                    <span class="mp-help-title">Toolbar Guide</span>
+                    <button class="mp-help-close" onclick={() => showHelp = false}>&times;</button>
+                </div>
+                <div class="mp-help-body">
+                    {#each helpItems as item}
+                        <div class="mp-help-row">
+                            <span class="mp-help-icon" class:mp-help-icon-svg={item.svg}>
+                                {#if item.svg}
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        {@html item.svg}
+                                    </svg>
+                                {:else}
+                                    {item.emoji}
+                                {/if}
+                            </span>
+                            <div class="mp-help-text">
+                                <strong>{item.title}</strong>
+                                <span>{item.desc}</span>
+                            </div>
+                        </div>
+                    {/each}
+                </div>
+            </div>
+        </div>
+    {/if}
 {/if}
 
 <style>
@@ -307,11 +335,11 @@
         top: 10px;
         left: 10px;
         z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
     }
 
     /* --- Toggle button --- */
@@ -370,62 +398,38 @@
         pointer-events: none;
     }
 
-    /* --- Toolbar (vertical) --- */
+    /* --- Toolbar (horizontal, anchored to right of toggle) --- */
     .mp-toolbar {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        background: rgba(24, 24, 24, 0.9);
-        border: 1px solid var(--color-border-medium);
-        border-radius: 22px;
-        padding: 4px;
-        width: 44px;
-        box-sizing: border-box;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        animation: mp-toolbar-in 0.15s ease-out;
-    }
-
-    @keyframes mp-toolbar-in {
-        from { opacity: 0; transform: translateY(-8px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* --- Divider --- */
-    .mp-divider {
-        width: 24px;
-        height: 1px;
-        background: var(--color-border-medium);
-    }
-
-    /* --- Character wrapper (anchors the horizontal sub-bar) --- */
-    .mp-character-wrap {
-        position: relative;
-    }
-
-    /* --- Horizontal character sub-bar --- */
-    .mp-character-bar {
         position: absolute;
         top: 50%;
         left: calc(100% + 6px);
         transform: translateY(-50%);
         display: flex;
+        flex-direction: row;
         align-items: center;
         gap: 4px;
         background: rgba(24, 24, 24, 0.9);
         border: 1px solid var(--color-border-medium);
         border-radius: 22px;
         padding: 4px;
+        height: 44px;
+        box-sizing: border-box;
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        animation: mp-charbar-in 0.15s ease-out;
+        animation: mp-toolbar-in 0.15s ease-out;
         white-space: nowrap;
     }
 
-    @keyframes mp-charbar-in {
+    @keyframes mp-toolbar-in {
         from { opacity: 0; transform: translateY(-50%) translateX(-8px); }
         to { opacity: 1; transform: translateY(-50%) translateX(0); }
+    }
+
+    /* --- Divider --- */
+    .mp-divider {
+        width: 1px;
+        height: 24px;
+        background: var(--color-border-medium);
     }
 
     /* --- Category wrapper (for popout positioning) --- */
@@ -481,7 +485,7 @@
         color: var(--color-primary);
     }
 
-    /* --- Popout (dropdown below buttons in the character bar) --- */
+    /* --- Popout (dropdown below buttons) --- */
     .mp-popout {
         position: absolute;
         top: 100%;
@@ -555,8 +559,132 @@
         transform: scale(0.9);
     }
 
+    /* --- Help modal --- */
+    .mp-help-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1001;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+    }
+
+    .mp-help-panel {
+        max-width: 340px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        background: rgba(24, 24, 24, 0.98);
+        border: 1px solid var(--color-border-medium);
+        border-radius: 12px;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+        animation: mp-help-in 0.15s ease-out;
+    }
+
+    @keyframes mp-help-in {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    .mp-help-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--color-border-medium);
+    }
+
+    .mp-help-title {
+        color: var(--color-text-light);
+        font-size: 0.85em;
+        font-weight: 700;
+    }
+
+    .mp-help-close {
+        background: none;
+        border: none;
+        color: var(--color-text-muted);
+        font-size: 20px;
+        cursor: pointer;
+        padding: 0 4px;
+        line-height: 1;
+        transition: color 0.15s ease;
+    }
+
+    .mp-help-close:hover {
+        color: var(--color-text-light);
+    }
+
+    .mp-help-body {
+        padding: 10px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .mp-help-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .mp-help-icon {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        background: rgba(255, 215, 0, 0.1);
+        font-size: 16px;
+        line-height: 1;
+    }
+
+    .mp-help-icon-svg {
+        color: var(--color-primary);
+    }
+
+    .mp-help-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    .mp-help-text strong {
+        color: var(--color-text-light);
+        font-size: 0.75em;
+    }
+
+    .mp-help-text span {
+        color: var(--color-text-muted);
+        font-size: 0.7em;
+        line-height: 1.4;
+    }
+
     /* --- Mobile --- */
     @media (max-width: 480px) {
+        .mp-toolbar {
+            height: 40px;
+            gap: 2px;
+            padding: 3px;
+        }
+
+        .mp-cat-btn {
+            width: 32px;
+            height: 32px;
+            font-size: 16px;
+        }
+
         .mp-opt-btn {
             min-width: 42px;
             min-height: 42px;
