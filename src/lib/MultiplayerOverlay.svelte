@@ -1,6 +1,6 @@
 <script>
+    import { onDestroy } from 'svelte';
     import { gameRunning, multiplayerRoom, multiplayerPlayerCount } from '../stores.js';
-    import { showToast } from '../core/toast.js';
     import { keepVisible } from '../core/keep-visible.js';
 
     let sheetOpen = false;
@@ -12,7 +12,16 @@
     let showNameBubbles = true;
     let allowCustomize = true;
     let badgeBump = false;
+    let pinned = false;
+    let linkCopied = false;
+    let linkCopiedTimer = null;
+    let badgeBumpTimer = null;
     let prevPlayerCount = null;
+
+    onDestroy(() => {
+        clearTimeout(linkCopiedTimer);
+        clearTimeout(badgeBumpTimer);
+    });
 
     // Close sheet when leaving Isle world
     $: if ($multiplayerPlayerCount == null) {
@@ -25,14 +34,15 @@
     $: {
         if (prevPlayerCount !== null && $multiplayerPlayerCount !== null && $multiplayerPlayerCount !== prevPlayerCount) {
             badgeBump = true;
-            setTimeout(() => { badgeBump = false; }, 400);
+            clearTimeout(badgeBumpTimer);
+            badgeBumpTimer = setTimeout(() => { badgeBump = false; }, 400);
         }
         prevPlayerCount = $multiplayerPlayerCount;
     }
 
     const walkOptions = [
         { emoji: '\u{1F6B6}', label: 'Normal', id: 0 },
-        { emoji: '\u{1F3C3}', label: 'Leaning', id: 3 },
+        { emoji: '\u{1F3C3}', label: 'Charging', id: 3 },
         { emoji: '\u{1F57A}', label: 'Joyful', id: 1 },
         { emoji: '\u{1F327}\u{FE0F}', label: 'Gloomy', id: 2 },
         { emoji: '\u{1F648}', label: 'Scared', id: 4 },
@@ -48,7 +58,7 @@
     const emoteOptions = [
         { emoji: '\u{1F44B}', label: 'Wave' },
         { emoji: '\u{1F3A9}', label: 'Hat Tip' },
-        { emoji: '\u{1F9E9}', label: 'Disassemble' }
+        { emoji: '\u{1F9E9}', label: 'Transform', twoPhase: true }
     ];
 
     const settingsItems = [
@@ -81,6 +91,14 @@
         { id: 'settings', label: 'Settings' },
     ];
 
+    let tabElements = [];
+    let indicatorStyle = '';
+
+    $: activeTabIndex = tabs.findIndex(t => t.id === activeTab);
+    $: if (activeTabIndex >= 0 && tabElements[activeTabIndex]) {
+        const el = tabElements[activeTabIndex];
+        indicatorStyle = `left: ${el.offsetLeft}px; width: ${el.offsetWidth}px`;
+    }
     $: settingsState = { thirdPersonCam, showNameBubbles, allowCustomize };
 
     function refocusCanvas() {
@@ -120,22 +138,30 @@
         setTimeout(() => { activeEmote = -1; }, 300);
     }
 
-    async function handleCopyLink() {
+    const canNativeShare = !!navigator.share && matchMedia('(pointer: coarse)').matches;
+
+    async function handleShare() {
         const url = `${window.location.origin}${window.location.pathname}#r/${$multiplayerRoom}`;
-        try {
-            await navigator.clipboard.writeText(url);
-            showToast('Link copied to clipboard');
-        } catch {
-            showToast('Could not copy link');
+        if (canNativeShare) {
+            try {
+                await navigator.share({ text: "Let's play LEGO Island together!", url });
+            } catch { /* user cancelled */ }
+        } else {
+            try {
+                await navigator.clipboard.writeText(url);
+                linkCopied = true;
+                clearTimeout(linkCopiedTimer);
+                linkCopiedTimer = setTimeout(() => { linkCopied = false; }, 2000);
+            } catch { /* ignore */ }
         }
     }
 
     function handleWindowKeydown(e) {
-        if (sheetOpen && e.key === 'Escape') closeSheet();
+        if (sheetOpen && !pinned && e.key === 'Escape') closeSheet();
     }
 
     function handleWindowClick(e) {
-        if (sheetOpen && !e.target.closest('.mp-sheet') && !e.target.closest('.mp-fab')) {
+        if (sheetOpen && !pinned && !e.target.closest('.mp-sheet') && !e.target.closest('.mp-fab')) {
             closeSheet();
         }
     }
@@ -159,7 +185,7 @@
     }
 
     function handleSheetTouchEnd() {
-        if (touchDeltaY > 60) {
+        if (touchDeltaY > 60 && !pinned) {
             closeSheet();
         }
         touchDeltaY = 0;
@@ -187,11 +213,11 @@
 
     <!-- Bottom sheet -->
     {#if sheetOpen}
-        <div class="mp-backdrop" role="presentation" onclick={closeSheet} onkeydown={() => {}}></div>
         <div class="mp-sheet"
             style={touchDeltaY > 0 ? `transform: translateY(${touchDeltaY}px)` : ''}
         >
             <!-- Drag handle -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div class="mp-sheet-handle"
                 ontouchstart={handleSheetTouchStart}
                 ontouchmove={handleSheetTouchMove}
@@ -200,13 +226,20 @@
 
             <!-- Tab bar -->
             <div class="mp-tabs" role="tablist">
-                {#each tabs as tab}
+                {#each tabs as tab, i}
                     <button class="mp-tab" class:active={activeTab === tab.id}
                         role="tab" aria-selected={activeTab === tab.id}
+                        bind:this={tabElements[i]}
                         onclick={() => activeTab = tab.id}>
                         {tab.label}
                     </button>
                 {/each}
+                <button class="mp-pin" class:pinned={pinned} onclick={() => pinned = !pinned}
+                    title={pinned ? 'Unpin menu' : 'Pin menu open'}>&#x1F4CC;</button>
+                <div class="mp-tab-indicator" style={indicatorStyle}></div>
+                {#if $multiplayerPlayerCount != null}
+                    <span class="mp-tab-player-count">{$multiplayerPlayerCount} player{$multiplayerPlayerCount === 1 ? '' : 's'}</span>
+                {/if}
             </div>
 
             <!-- Tab content -->
@@ -225,6 +258,7 @@
                                 onclick={() => onSelect(i)}>
                                 <span class="mp-grid-emoji">{opt.emoji}</span>
                                 <span class="mp-grid-label">{opt.label}</span>
+                                {#if opt.twoPhase}<span class="mp-two-phase">2&times;</span>{/if}
                             </button>
                         {/each}
                     </div>
@@ -242,14 +276,18 @@
                             </button>
                         {/each}
                         <div class="mp-setting-divider"></div>
-                        <button class="mp-setting-row mp-share-row" onclick={handleCopyLink}>
-                            <svg class="mp-setting-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                {@html shareIcon}
-                            </svg>
-                            <span class="mp-setting-label">Copy room link</span>
-                            <svg class="mp-setting-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="9 18 15 12 9 6"/>
-                            </svg>
+                        <button class="mp-share-btn" class:copied={linkCopied} onclick={handleShare}>
+                            {#if linkCopied}
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                                Copied!
+                            {:else}
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    {@html shareIcon}
+                                </svg>
+                                {canNativeShare ? 'Share room' : 'Copy link'}
+                            {/if}
                         </button>
                     </div>
                 {/if}
@@ -333,25 +371,9 @@
         100% { transform: scale(1); }
     }
 
-    /* --- Backdrop --- */
-    .mp-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.4);
-        z-index: 1001;
-        animation: mp-fade-in 0.15s ease-out;
-        touch-action: none;
-        user-select: none;
-        -webkit-user-select: none;
-        -webkit-touch-callout: none;
-    }
-
-    @keyframes mp-fade-in {
-        from { opacity: 0; }
-        to { opacity: 1; }
+    /* --- No focus outlines on any interactive element --- */
+    .mp-sheet button, .mp-fab {
+        outline: none;
     }
 
     /* --- Bottom Sheet --- */
@@ -397,25 +419,51 @@
         opacity: 0.5;
     }
 
+    /* --- Pin button --- */
+    .mp-pin {
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px;
+        margin-right: 4px;
+        flex-shrink: 0;
+        font-size: 12px;
+        line-height: 1;
+        opacity: 0.4;
+        transition: opacity 0.15s ease;
+    }
+
+    .mp-pin:hover {
+        opacity: 0.7;
+    }
+
+    .mp-pin.pinned {
+        opacity: 1;
+    }
+
     /* --- Tab bar --- */
     .mp-tabs {
+        position: relative;
         display: flex;
+        justify-content: space-evenly;
         border-bottom: 1px solid var(--color-border-dark);
-        padding: 0 8px;
+        padding: 0;
     }
 
     .mp-tab {
-        flex: 1;
         background: none;
         border: none;
-        border-bottom: 2px solid transparent;
         color: var(--color-text-muted);
         font-family: inherit;
         font-size: 0.8em;
         font-weight: 600;
         padding: 8px 4px;
         cursor: pointer;
-        transition: color 0.15s ease, border-color 0.15s ease;
+        transition: color 0.15s ease;
         text-align: center;
     }
 
@@ -425,14 +473,26 @@
 
     .mp-tab.active {
         color: var(--color-primary);
-        border-bottom-color: var(--color-primary);
+    }
+
+    .mp-tab-indicator {
+        position: absolute;
+        bottom: -1px;
+        height: 2px;
+        background: var(--color-primary);
+        transition: left 0.25s ease, width 0.25s ease;
+        border-radius: 1px;
+    }
+
+    .mp-tab-player-count {
+        display: none;
     }
 
     /* --- Sheet content --- */
     .mp-sheet-content {
         padding: 10px;
         overflow-y: auto;
-        max-height: 35vh;
+        height: 200px;
         -webkit-overflow-scrolling: touch;
         touch-action: pan-y;
     }
@@ -445,13 +505,16 @@
     }
 
     .mp-grid-btn {
+        position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         gap: 4px;
         padding: 10px 4px;
-        min-height: 56px;
+        height: 56px;
+        min-width: 0;
+        overflow: hidden;
         background: rgba(255, 255, 255, 0.04);
         border: 1.5px solid transparent;
         border-radius: 10px;
@@ -490,6 +553,19 @@
         color: var(--color-primary);
     }
 
+    .mp-two-phase {
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        font-size: 8px;
+        font-weight: 700;
+        color: var(--color-text-muted);
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        padding: 1px 3px;
+        line-height: 1;
+    }
+
     /* --- Emote buttons --- */
     .mp-emote-btn:active, .mp-emote-btn.emote-active {
         background: rgba(255, 215, 0, 0.25);
@@ -513,6 +589,7 @@
         display: flex;
         flex-direction: column;
         gap: 2px;
+        height: 100%;
     }
 
     .mp-setting-row {
@@ -520,7 +597,7 @@
         align-items: center;
         gap: 10px;
         padding: 10px;
-        background: none;
+        background: rgba(255, 255, 255, 0.03);
         border: none;
         border-radius: 8px;
         cursor: pointer;
@@ -532,11 +609,11 @@
     }
 
     .mp-setting-row:hover {
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(255, 255, 255, 0.07);
     }
 
     .mp-setting-row:active {
-        background: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.1);
     }
 
     .mp-setting-icon {
@@ -551,19 +628,42 @@
     }
 
     .mp-setting-divider {
-        height: 1px;
-        background: var(--color-border-dark);
-        margin: 4px 0;
+        flex: 1;
+        min-height: 4px;
     }
 
-    .mp-setting-arrow {
-        flex-shrink: 0;
-        color: var(--color-text-muted);
-    }
-
-    .mp-share-row:hover .mp-setting-icon,
-    .mp-share-row:hover .mp-setting-arrow {
+    .mp-share-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px;
+        border: 1px solid rgba(255, 215, 0, 0.3);
+        border-radius: 8px;
+        background: rgba(255, 215, 0, 0.08);
         color: var(--color-primary);
+        font-family: inherit;
+        font-size: 0.8em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .mp-share-btn:hover {
+        background: rgba(255, 215, 0, 0.15);
+        border-color: rgba(255, 215, 0, 0.5);
+    }
+
+    .mp-share-btn:active {
+        transform: scale(0.98);
+    }
+
+    .mp-share-btn.copied {
+        background: rgba(74, 222, 128, 0.12);
+        border-color: rgba(74, 222, 128, 0.4);
+        color: #4ade80;
     }
 
     /* --- Toggle switch --- */
@@ -599,16 +699,11 @@
 
     /* --- Desktop: floating panel instead of full-width sheet --- */
     @media (min-width: 641px) {
-        .mp-backdrop {
-            background: transparent;
-            pointer-events: none;
-        }
-
         .mp-sheet {
             left: auto;
             right: 16px;
             bottom: 76px;
-            max-width: 340px;
+            width: 240px;
             border-radius: 12px;
             border: 1px solid var(--color-border-medium);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -619,7 +714,49 @@
         }
 
         .mp-sheet-content {
-            max-height: 300px;
+            height: 160px;
+            padding: 8px;
+        }
+
+        .mp-grid {
+            gap: 4px;
+        }
+
+        .mp-grid-btn {
+            height: 48px;
+            padding: 6px 4px;
+        }
+
+        .mp-grid-emoji {
+            font-size: 18px;
+        }
+
+        .mp-tab {
+            padding: 6px 4px;
+            font-size: 0.75em;
+        }
+
+        .mp-setting-row {
+            padding: 6px 8px;
+            gap: 8px;
+        }
+
+        .mp-setting-label {
+            font-size: 0.75em;
+        }
+
+        .mp-toggle-switch {
+            width: 36px;
+            height: 20px;
+        }
+
+        .mp-toggle-knob {
+            width: 14px;
+            height: 14px;
+        }
+
+        .mp-toggle-switch.on .mp-toggle-knob {
+            left: 19px;
         }
     }
 
@@ -631,7 +768,7 @@
         }
 
         .mp-grid-btn {
-            min-height: 60px;
+            height: 60px;
             padding: 12px 4px;
         }
 
@@ -641,6 +778,16 @@
 
         .mp-setting-row {
             padding: 12px 10px;
+        }
+
+        .mp-tab-player-count {
+            display: block;
+            position: absolute;
+            top: -14px;
+            right: 10px;
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--color-text-muted);
         }
     }
 </style>
