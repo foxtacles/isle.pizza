@@ -51,12 +51,28 @@
         { emoji: '\u{1F9F1}', label: 'Disassemble' }
     ];
 
-    const svgIcons = {
-        camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
-        bubble: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
-        wand: '<path d="M3 21l10-10"/><path d="M13 11l2.5-2.5a1.5 1.5 0 0 1 2 0l.5.5a1.5 1.5 0 0 1 0 2L15.5 13.5"/><path d="M7 3l.5 1.5L9 5l-1.5.5L7 7l-.5-1.5L5 5l1.5-.5z" fill="currentColor" stroke="none"/><path d="M17 2l.4 1.1L18.5 3.5l-1.1.4L17 5l-.4-1.1L15.5 3.5l1.1-.4z" fill="currentColor" stroke="none"/><path d="M21 8l.4 1.1L22.5 9.5l-1.1.4L21 11l-.4-1.1L19.5 9.5l1.1-.4z" fill="currentColor" stroke="none"/>',
-        share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>',
-    };
+    const settingsItems = [
+        {
+            icon: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+            label: 'Third-person camera',
+            key: 'thirdPersonCam',
+            toggle: () => { thirdPersonCam = !thirdPersonCam; window.Module?._mp_toggle_third_person(); },
+        },
+        {
+            icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+            label: 'Name bubbles',
+            key: 'showNameBubbles',
+            toggle: () => { showNameBubbles = !showNameBubbles; window.Module?._mp_toggle_name_bubbles(); },
+        },
+        {
+            icon: '<path d="M3 21l10-10"/><path d="M13 11l2.5-2.5a1.5 1.5 0 0 1 2 0l.5.5a1.5 1.5 0 0 1 0 2L15.5 13.5"/><path d="M7 3l.5 1.5L9 5l-1.5.5L7 7l-.5-1.5L5 5l1.5-.5z" fill="currentColor" stroke="none"/><path d="M17 2l.4 1.1L18.5 3.5l-1.1.4L17 5l-.4-1.1L15.5 3.5l1.1-.4z" fill="currentColor" stroke="none"/><path d="M21 8l.4 1.1L22.5 9.5l-1.1.4L21 11l-.4-1.1L19.5 9.5l1.1-.4z" fill="currentColor" stroke="none"/>',
+            label: 'Allow customization',
+            key: 'allowCustomize',
+            toggle: () => { allowCustomize = !allowCustomize; window.Module?._mp_toggle_allow_customize(); },
+        },
+    ];
+
+    const shareIcon = '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>';
 
     const tabs = [
         { id: 'walk', label: 'Walk' },
@@ -64,6 +80,8 @@
         { id: 'emotes', label: 'Emotes' },
         { id: 'settings', label: 'Settings' },
     ];
+
+    $: settingsState = { thirdPersonCam, showNameBubbles, allowCustomize };
 
     function refocusCanvas() {
         document.getElementById('canvas')?.focus();
@@ -102,21 +120,6 @@
         setTimeout(() => { activeEmote = -1; }, 300);
     }
 
-    function toggleThirdPersonCam() {
-        thirdPersonCam = !thirdPersonCam;
-        window.Module?._mp_toggle_third_person();
-    }
-
-    function toggleNameBubbles() {
-        showNameBubbles = !showNameBubbles;
-        window.Module?._mp_toggle_name_bubbles();
-    }
-
-    function toggleAllowCustomize() {
-        allowCustomize = !allowCustomize;
-        window.Module?._mp_toggle_allow_customize();
-    }
-
     async function handleCopyLink() {
         const url = `${window.location.origin}${window.location.pathname}#r/${$multiplayerRoom}`;
         try {
@@ -129,6 +132,12 @@
 
     function handleWindowKeydown(e) {
         if (sheetOpen && e.key === 'Escape') closeSheet();
+    }
+
+    function handleWindowClick(e) {
+        if (sheetOpen && !e.target.closest('.mp-sheet') && !e.target.closest('.mp-fab')) {
+            closeSheet();
+        }
     }
 
     // Swipe-to-dismiss
@@ -158,7 +167,7 @@
     }
 </script>
 
-<svelte:window onkeydown={handleWindowKeydown} />
+<svelte:window onkeydown={handleWindowKeydown} onclick={handleWindowClick} />
 
 {#if $gameRunning && $multiplayerRoom}
     <!-- FAB (bottom-right) -->
@@ -181,12 +190,13 @@
         <div class="mp-backdrop" role="presentation" onclick={closeSheet} onkeydown={() => {}}></div>
         <div class="mp-sheet"
             style={touchDeltaY > 0 ? `transform: translateY(${touchDeltaY}px)` : ''}
-            ontouchstart={handleSheetTouchStart}
-            ontouchmove={handleSheetTouchMove}
-            ontouchend={handleSheetTouchEnd}
         >
             <!-- Drag handle -->
-            <div class="mp-sheet-handle"><div class="mp-sheet-handle-bar"></div></div>
+            <div class="mp-sheet-handle"
+                ontouchstart={handleSheetTouchStart}
+                ontouchmove={handleSheetTouchMove}
+                ontouchend={handleSheetTouchEnd}
+            ><div class="mp-sheet-handle-bar"></div></div>
 
             <!-- Tab bar -->
             <div class="mp-tabs" role="tablist">
@@ -201,31 +211,18 @@
 
             <!-- Tab content -->
             <div class="mp-sheet-content">
-                {#if activeTab === 'walk'}
+                {#if activeTab === 'walk' || activeTab === 'idle' || activeTab === 'emotes'}
+                    {@const options = activeTab === 'walk' ? walkOptions : activeTab === 'idle' ? idleOptions : emoteOptions}
+                    {@const selected = activeTab === 'walk' ? selectedWalk : activeTab === 'idle' ? selectedIdle : -1}
+                    {@const onSelect = activeTab === 'walk' ? selectWalk : activeTab === 'idle' ? selectIdle : triggerEmote}
+                    {@const isEmote = activeTab === 'emotes'}
                     <div class="mp-grid">
-                        {#each walkOptions as opt, i}
-                            <button class="mp-grid-btn" class:selected={selectedWalk === i}
-                                onclick={() => selectWalk(i)}>
-                                <span class="mp-grid-emoji">{opt.emoji}</span>
-                                <span class="mp-grid-label">{opt.label}</span>
-                            </button>
-                        {/each}
-                    </div>
-                {:else if activeTab === 'idle'}
-                    <div class="mp-grid">
-                        {#each idleOptions as opt, i}
-                            <button class="mp-grid-btn" class:selected={selectedIdle === i}
-                                onclick={() => selectIdle(i)}>
-                                <span class="mp-grid-emoji">{opt.emoji}</span>
-                                <span class="mp-grid-label">{opt.label}</span>
-                            </button>
-                        {/each}
-                    </div>
-                {:else if activeTab === 'emotes'}
-                    <div class="mp-grid">
-                        {#each emoteOptions as opt, i}
-                            <button class="mp-grid-btn mp-emote-btn" class:emote-active={activeEmote === i}
-                                onclick={() => triggerEmote(i)}>
+                        {#each options as opt, i}
+                            <button class="mp-grid-btn"
+                                class:selected={selected === i}
+                                class:mp-emote-btn={isEmote}
+                                class:emote-active={isEmote && activeEmote === i}
+                                onclick={() => onSelect(i)}>
                                 <span class="mp-grid-emoji">{opt.emoji}</span>
                                 <span class="mp-grid-label">{opt.label}</span>
                             </button>
@@ -233,37 +230,21 @@
                     </div>
                 {:else if activeTab === 'settings'}
                     <div class="mp-settings">
-                        <button class="mp-setting-row" onclick={toggleThirdPersonCam}>
-                            <svg class="mp-setting-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                {@html svgIcons.camera}
-                            </svg>
-                            <span class="mp-setting-label">Third-person camera</span>
-                            <span class="mp-toggle-switch" class:on={thirdPersonCam}>
-                                <span class="mp-toggle-knob"></span>
-                            </span>
-                        </button>
-                        <button class="mp-setting-row" onclick={toggleNameBubbles}>
-                            <svg class="mp-setting-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                {@html svgIcons.bubble}
-                            </svg>
-                            <span class="mp-setting-label">Name bubbles</span>
-                            <span class="mp-toggle-switch" class:on={showNameBubbles}>
-                                <span class="mp-toggle-knob"></span>
-                            </span>
-                        </button>
-                        <button class="mp-setting-row" onclick={toggleAllowCustomize}>
-                            <svg class="mp-setting-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                {@html svgIcons.wand}
-                            </svg>
-                            <span class="mp-setting-label">Allow customization</span>
-                            <span class="mp-toggle-switch" class:on={allowCustomize}>
-                                <span class="mp-toggle-knob"></span>
-                            </span>
-                        </button>
+                        {#each settingsItems as item}
+                            <button class="mp-setting-row" onclick={item.toggle}>
+                                <svg class="mp-setting-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    {@html item.icon}
+                                </svg>
+                                <span class="mp-setting-label">{item.label}</span>
+                                <span class="mp-toggle-switch" class:on={settingsState[item.key]}>
+                                    <span class="mp-toggle-knob"></span>
+                                </span>
+                            </button>
+                        {/each}
                         <div class="mp-setting-divider"></div>
                         <button class="mp-setting-row mp-share-row" onclick={handleCopyLink}>
                             <svg class="mp-setting-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                {@html svgIcons.share}
+                                {@html shareIcon}
                             </svg>
                             <span class="mp-setting-label">Copy room link</span>
                             <svg class="mp-setting-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -391,7 +372,6 @@
         user-select: none;
         -webkit-user-select: none;
         -webkit-touch-callout: none;
-        font-family: Arial, sans-serif;
         display: flex;
         flex-direction: column;
     }
@@ -422,7 +402,6 @@
         display: flex;
         border-bottom: 1px solid var(--color-border-dark);
         padding: 0 8px;
-        gap: 0;
     }
 
     .mp-tab {
@@ -622,6 +601,7 @@
     @media (min-width: 641px) {
         .mp-backdrop {
             background: transparent;
+            pointer-events: none;
         }
 
         .mp-sheet {
@@ -631,7 +611,6 @@
             max-width: 340px;
             border-radius: 12px;
             border: 1px solid var(--color-border-medium);
-            border-top: 1px solid var(--color-border-medium);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
         }
 
