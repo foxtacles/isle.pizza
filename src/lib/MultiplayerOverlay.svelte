@@ -16,11 +16,13 @@
     let linkCopied = false;
     let linkCopiedTimer = null;
     let badgeBumpTimer = null;
+    let emoteTimer = null;
     let prevPlayerCount = null;
 
     onDestroy(() => {
         clearTimeout(linkCopiedTimer);
         clearTimeout(badgeBumpTimer);
+        clearTimeout(emoteTimer);
     });
 
     // Close sheet when leaving Isle world
@@ -85,20 +87,11 @@
     const shareIcon = '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>';
 
     const tabs = [
-        { id: 'walk', label: 'Walk' },
-        { id: 'idle', label: 'Idle' },
-        { id: 'emotes', label: 'Emotes' },
-        { id: 'settings', label: 'Settings' },
+        { id: 'walk', emoji: '\u{1F6B6}', label: 'Walk' },
+        { id: 'idle', emoji: '\u{1F343}', label: 'Idle' },
+        { id: 'emotes', emoji: '\u{1F604}', label: 'Emotes' },
+        { id: 'settings', emoji: '\u{2699}\u{FE0F}', label: 'Settings' },
     ];
-
-    let tabElements = [];
-    let indicatorStyle = '';
-
-    $: activeTabIndex = tabs.findIndex(t => t.id === activeTab);
-    $: if (activeTabIndex >= 0 && tabElements[activeTabIndex]) {
-        const el = tabElements[activeTabIndex];
-        indicatorStyle = `left: ${el.offsetLeft}px; width: ${el.offsetWidth}px`;
-    }
     $: settingsState = { thirdPersonCam, showNameBubbles, allowCustomize };
 
     function refocusCanvas() {
@@ -135,7 +128,8 @@
             window.Module._mp_trigger_emote(index);
         }
         activeEmote = index;
-        setTimeout(() => { activeEmote = -1; }, 300);
+        clearTimeout(emoteTimer);
+        emoteTimer = setTimeout(() => { activeEmote = -1; }, 300);
     }
 
     const canNativeShare = !!navigator.share && matchMedia('(pointer: coarse)').matches;
@@ -226,17 +220,16 @@
 
             <!-- Tab bar -->
             <div class="mp-tabs" role="tablist">
-                {#each tabs as tab, i}
+                {#each tabs as tab}
                     <button class="mp-tab" class:active={activeTab === tab.id}
                         role="tab" aria-selected={activeTab === tab.id}
-                        bind:this={tabElements[i]}
                         onclick={() => activeTab = tab.id}>
+                        <span class="mp-tab-emoji">{tab.emoji}</span>
                         {tab.label}
                     </button>
                 {/each}
                 <button class="mp-pin" class:pinned={pinned} onclick={() => pinned = !pinned}
                     title={pinned ? 'Unpin menu' : 'Pin menu open'}>&#x1F4CC;</button>
-                <div class="mp-tab-indicator" style={indicatorStyle}></div>
                 {#if $multiplayerPlayerCount != null}
                     <span class="mp-tab-player-count">{$multiplayerPlayerCount} player{$multiplayerPlayerCount === 1 ? '' : 's'}</span>
                 {/if}
@@ -379,9 +372,10 @@
     /* --- Bottom Sheet --- */
     .mp-sheet {
         position: fixed;
-        bottom: 0;
+        bottom: -1px;
         left: 0;
         right: 0;
+        padding-bottom: 1px;
         z-index: 1002;
         background: rgba(24, 24, 24, 0.98);
         border-top: 1px solid var(--color-border-medium);
@@ -421,6 +415,7 @@
 
     /* --- Pin button --- */
     .mp-pin {
+        flex-shrink: 0;
         border: none;
         border-radius: 50%;
         background: transparent;
@@ -429,8 +424,6 @@
         align-items: center;
         justify-content: center;
         padding: 4px;
-        margin-right: 4px;
-        flex-shrink: 0;
         font-size: 12px;
         line-height: 1;
         opacity: 0.4;
@@ -447,41 +440,43 @@
 
     /* --- Tab bar --- */
     .mp-tabs {
-        position: relative;
         display: flex;
-        justify-content: space-evenly;
-        border-bottom: 1px solid var(--color-border-dark);
-        padding: 0;
+        gap: 2px;
+        padding: 6px;
     }
 
     .mp-tab {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
         background: none;
         border: none;
+        border-radius: 8px;
         color: var(--color-text-muted);
         font-family: inherit;
-        font-size: 0.8em;
+        font-size: 0.75em;
         font-weight: 600;
-        padding: 8px 4px;
+        padding: 5px 2px;
         cursor: pointer;
-        transition: color 0.15s ease;
-        text-align: center;
+        transition: color 0.15s ease, background 0.15s ease;
+        white-space: nowrap;
     }
 
     .mp-tab:hover {
         color: var(--color-text-light);
+        background: rgba(255, 255, 255, 0.05);
     }
 
     .mp-tab.active {
         color: var(--color-primary);
+        background: rgba(255, 215, 0, 0.1);
     }
 
-    .mp-tab-indicator {
-        position: absolute;
-        bottom: -1px;
-        height: 2px;
-        background: var(--color-primary);
-        transition: left 0.25s ease, width 0.25s ease;
-        border-radius: 1px;
+    .mp-tab-emoji {
+        font-size: 13px;
+        line-height: 1;
     }
 
     .mp-tab-player-count {
@@ -703,7 +698,7 @@
             left: auto;
             right: 16px;
             bottom: 76px;
-            width: 240px;
+            width: 300px;
             border-radius: 12px;
             border: 1px solid var(--color-border-medium);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -729,11 +724,6 @@
 
         .mp-grid-emoji {
             font-size: 18px;
-        }
-
-        .mp-tab {
-            padding: 6px 4px;
-            font-size: 0.75em;
         }
 
         .mp-setting-row {
