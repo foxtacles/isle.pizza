@@ -48,7 +48,7 @@
     const emoteOptions = [
         { emoji: '\u{1F44B}', label: 'Wave' },
         { emoji: '\u{1F3A9}', label: 'Hat Tip' },
-        { emoji: '\u{1F9F1}', label: 'Disassemble' }
+        { emoji: '\u{1F9E9}', label: 'Disassemble' }
     ];
 
     const settingsItems = [
