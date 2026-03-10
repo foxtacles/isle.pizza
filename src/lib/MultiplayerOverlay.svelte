@@ -587,7 +587,7 @@
         color: var(--color-primary);
     }
 
-    /* --- Toggle switch (matches app's existing toggle-slider pattern) --- */
+    /* --- Toggle switch --- */
     .mp-toggle-switch {
         position: relative;
         width: 44px;
