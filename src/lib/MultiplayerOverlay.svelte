@@ -279,7 +279,7 @@
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     {@html shareIcon}
                                 </svg>
-                                {canNativeShare ? 'Share room' : 'Copy link'}
+                                {canNativeShare ? 'Share' : 'Copy link'}
                             {/if}
                         </button>
                     </div>
@@ -698,7 +698,7 @@
             left: auto;
             right: 16px;
             bottom: 76px;
-            width: 300px;
+            width: 240px;
             border-radius: 12px;
             border: 1px solid var(--color-border-medium);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -706,6 +706,20 @@
 
         .mp-sheet-handle {
             display: none;
+        }
+
+        .mp-tab-emoji {
+            display: none;
+        }
+
+        .mp-tab {
+            flex: 0 1 auto;
+            font-size: 0.7em;
+            padding: 5px 6px;
+        }
+
+        .mp-tabs {
+            justify-content: space-evenly;
         }
 
         .mp-sheet-content {
