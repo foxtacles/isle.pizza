@@ -13,7 +13,7 @@
     let allowCustomize = true;
     let badgeBump = false;
     let pinned = false;
-    let linkCopied = false;
+    let shareFeedback = '';
     let linkCopiedTimer = null;
     let badgeBumpTimer = null;
     let emoteTimer = null;
@@ -132,20 +132,23 @@
         emoteTimer = setTimeout(() => { activeEmote = -1; }, 300);
     }
 
-    const canNativeShare = !!navigator.share && matchMedia('(pointer: coarse)').matches;
+    function showShareFeedback(msg) {
+        shareFeedback = msg;
+        clearTimeout(linkCopiedTimer);
+        linkCopiedTimer = setTimeout(() => { shareFeedback = ''; }, 2000);
+    }
 
     async function handleShare() {
         const url = `${window.location.origin}${window.location.pathname}#r/${$multiplayerRoom}`;
-        if (canNativeShare) {
+        if (navigator.share && matchMedia('(pointer: coarse)').matches) {
             try {
                 await navigator.share({ text: "Let's play LEGO Island together!", url });
+                showShareFeedback('Shared!');
             } catch { /* user cancelled */ }
         } else {
             try {
                 await navigator.clipboard.writeText(url);
-                linkCopied = true;
-                clearTimeout(linkCopiedTimer);
-                linkCopiedTimer = setTimeout(() => { linkCopied = false; }, 2000);
+                showShareFeedback('Link copied!');
             } catch { /* ignore */ }
         }
     }
@@ -269,17 +272,17 @@
                             </button>
                         {/each}
                         <div class="mp-setting-divider"></div>
-                        <button class="mp-share-btn" class:copied={linkCopied} onclick={handleShare}>
-                            {#if linkCopied}
+                        <button class="mp-share-btn" class:copied={shareFeedback} onclick={handleShare}>
+                            {#if shareFeedback}
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="20 6 9 17 4 12"/>
                                 </svg>
-                                Copied!
+                                {shareFeedback}
                             {:else}
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     {@html shareIcon}
                                 </svg>
-                                {canNativeShare ? 'Share' : 'Copy link'}
+                                Share
                             {/if}
                         </button>
                     </div>
