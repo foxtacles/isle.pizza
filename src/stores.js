@@ -69,6 +69,9 @@ export const multiplayerPlayerCount = writable(null);
 // Service worker registration
 export const swRegistration = writable(null);
 
+// OPFS availability
+export const opfsDisabled = writable(false);
+
 // Save editor state
 export const saveEditorState = writable({
     slots: [],           // Array of SaveSlot objects

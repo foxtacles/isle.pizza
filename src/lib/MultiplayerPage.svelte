@@ -1,13 +1,14 @@
 <script>
-    import { onDestroy } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import BackButton from './BackButton.svelte';
+    import OpfsDisabledBanner from './OpfsDisabledBanner.svelte';
     import PanningImage from './PanningImage.svelte';
     import ActorPicker from './ActorPicker.svelte';
-    import { multiplayerRoom, currentPage, gameRunning } from '../stores.js';
+    import { multiplayerRoom, currentPage, gameRunning, opfsDisabled } from '../stores.js';
     import { navigateToRoom } from '../core/navigation.js';
     import { generateRoomName } from '../core/room-names.js';
     import { launchGame } from '../core/emscripten.js';
-    import { saveConfigFromDOM } from '../core/opfs.js';
+    import { saveConfigFromDOM, getOpfsRoot } from '../core/opfs.js';
     import { showToast } from '../core/toast.js';
     import { ActorInfoInit } from '../core/savegame/actorConstants.js';
 
@@ -43,6 +44,13 @@
             }
         }
     }
+
+    onMount(async () => {
+        const root = await getOpfsRoot();
+        if (!root) {
+            opfsDisabled.set(true);
+        }
+    });
 
     $: roomName = $multiplayerRoom;
     $: hasRoom = roomName !== null && roomName !== '';
@@ -138,6 +146,7 @@
 
 <div id="multiplayer-page" class="page-content">
     <BackButton />
+    <OpfsDisabledBanner />
     <div class="page-inner-content config-layout">
         <div class="config-art-panel">
             <PanningImage src="images/multi.webp" alt="LEGO Island Multiplayer" duration={45} />
@@ -164,7 +173,7 @@
                                     <span class="tooltip-content">Maximum number of players that can join this room at the same time.</span>
                                 </span>
                             </label>
-                            <input type="range" id="max-players-slider" min="2" max="20" bind:value={maxPlayers}>
+                            <input type="range" id="max-players-slider" min="2" max="20" bind:value={maxPlayers} disabled={$opfsDisabled}>
                         </div>
 
                         <div class="mp-slider-field">
@@ -174,11 +183,11 @@
                                     <span class="tooltip-content">Maximum number of LEGO actors to exist in the world at a time. The game will gradually increase the number of actors until this maximum is reached and while performance is acceptable.</span>
                                 </span>
                             </label>
-                            <input type="range" id="max-actors-slider" min="5" max="40" bind:value={maxActors}>
+                            <input type="range" id="max-actors-slider" min="5" max="40" bind:value={maxActors} disabled={$opfsDisabled}>
                         </div>
                     </div>
 
-                    <button class="preset-btn mp-create-btn" onclick={handleCreateRoom} disabled={creating}>
+                    <button class="preset-btn mp-create-btn" onclick={handleCreateRoom} disabled={creating || $opfsDisabled}>
                         {#if creating}
                             Creating...
                         {:else}
@@ -279,7 +288,7 @@
                     {#if roomFull}
                         <p class="mp-full-msg">Room is full. Wait for a player to leave or create a new room.</p>
                     {:else}
-                        <button class="preset-btn mp-run-btn" onclick={handleRunGame}>Run Game</button>
+                        <button class="preset-btn mp-run-btn" onclick={handleRunGame} disabled={$opfsDisabled}>Run Game</button>
                     {/if}
                 </div>
             {/if}

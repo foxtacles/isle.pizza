@@ -1,6 +1,7 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
     import BackButton from './BackButton.svelte';
+    import OpfsDisabledBanner from './OpfsDisabledBanner.svelte';
     import Carousel from './Carousel.svelte';
     import MissionScoresEditor from './save-editor/MissionScoresEditor.svelte';
     import SkyColorEditor from './save-editor/SkyColorEditor.svelte';
@@ -10,7 +11,8 @@
     import PlantEditor from './save-editor/PlantEditor.svelte';
     import BuildingEditor from './save-editor/BuildingEditor.svelte';
     import { fetchBitmapAsURL } from '../core/assetLoader.js';
-    import { saveEditorState, currentPage } from '../stores.js';
+    import { saveEditorState, currentPage, opfsDisabled } from '../stores.js';
+    import { getOpfsRoot } from '../core/opfs.js';
     import { listSaveSlots, updateSaveSlot, updatePlayerName } from '../core/savegame/index.js';
     import { Actor, ActorNames } from '../core/savegame/constants.js';
 
@@ -97,6 +99,13 @@
     }
 
     onMount(async () => {
+        const root = await getOpfsRoot();
+        if (!root) {
+            opfsDisabled.set(true);
+            loading = false;
+            return;
+        }
+
         await loadSlots();
 
         // Load character icons from SI file in background
@@ -314,6 +323,7 @@
 
 <div id="save-editor" class="page-content">
     <BackButton />
+    <OpfsDisabledBanner />
     <div class="page-inner-content config-layout">
         <div class="config-art-panel">
             <img src="images/save.webp" alt="LEGO Island Save Editor">
