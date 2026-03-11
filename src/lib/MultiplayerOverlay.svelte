@@ -14,16 +14,15 @@
     let badgeBump = false;
     let pinned = false;
     let shareFeedback = '';
-    let linkCopiedTimer = null;
-    let badgeBumpTimer = null;
-    let emoteTimer = null;
     let prevPlayerCount = null;
 
-    onDestroy(() => {
-        clearTimeout(linkCopiedTimer);
-        clearTimeout(badgeBumpTimer);
-        clearTimeout(emoteTimer);
-    });
+    const timers = {};
+    onDestroy(() => Object.values(timers).forEach(clearTimeout));
+
+    function flash(key, duration, onExpire) {
+        clearTimeout(timers[key]);
+        timers[key] = setTimeout(onExpire, duration);
+    }
 
     // Close sheet when leaving Isle world
     $: if ($multiplayerPlayerCount == null) {
@@ -36,8 +35,7 @@
     $: {
         if (prevPlayerCount !== null && $multiplayerPlayerCount !== null && $multiplayerPlayerCount !== prevPlayerCount) {
             badgeBump = true;
-            clearTimeout(badgeBumpTimer);
-            badgeBumpTimer = setTimeout(() => { badgeBump = false; }, 400);
+            flash('badge', 400, () => { badgeBump = false; });
         }
         prevPlayerCount = $multiplayerPlayerCount;
     }
@@ -52,9 +50,9 @@
     ];
 
     const idleOptions = [
-        { emoji: '\u{1F343}', label: 'Sway' },
-        { emoji: '\u{1FAA9}', label: 'Groove' },
-        { emoji: '\u{1F64C}', label: 'Excited' }
+        { emoji: '\u{1F343}', label: 'Sway', id: 0 },
+        { emoji: '\u{1FAA9}', label: 'Groove', id: 1 },
+        { emoji: '\u{1F64C}', label: 'Excited', id: 2 }
     ];
 
     const emoteOptions = [
@@ -84,8 +82,6 @@
         },
     ];
 
-    const shareIcon = '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>';
-
     const tabs = [
         { id: 'walk', emoji: '\u{1F6B6}', label: 'Walk' },
         { id: 'idle', emoji: '\u{1F343}', label: 'Idle' },
@@ -111,31 +107,23 @@
 
     function selectWalk(index) {
         selectedWalk = index;
-        if (window.Module?._mp_set_walk_animation) {
-            window.Module._mp_set_walk_animation(walkOptions[index].id);
-        }
+        window.Module?._mp_set_walk_animation?.(walkOptions[index].id);
     }
 
     function selectIdle(index) {
         selectedIdle = index;
-        if (window.Module?._mp_set_idle_animation) {
-            window.Module._mp_set_idle_animation(index);
-        }
+        window.Module?._mp_set_idle_animation?.(idleOptions[index].id);
     }
 
     function triggerEmote(index) {
-        if (window.Module?._mp_trigger_emote) {
-            window.Module._mp_trigger_emote(index);
-        }
+        window.Module?._mp_trigger_emote?.(index);
         activeEmote = index;
-        clearTimeout(emoteTimer);
-        emoteTimer = setTimeout(() => { activeEmote = -1; }, 300);
+        flash('emote', 300, () => { activeEmote = -1; });
     }
 
     function showShareFeedback(msg) {
         shareFeedback = msg;
-        clearTimeout(linkCopiedTimer);
-        linkCopiedTimer = setTimeout(() => { shareFeedback = ''; }, 2000);
+        flash('share', 2000, () => { shareFeedback = ''; });
     }
 
     async function handleShare() {
@@ -169,22 +157,18 @@
     let swiping = false;
 
     function handleSheetTouchStart(e) {
-        const touch = e.touches[0];
-        touchStartY = touch.clientY;
+        touchStartY = e.touches[0].clientY;
         touchDeltaY = 0;
         swiping = true;
     }
 
     function handleSheetTouchMove(e) {
         if (!swiping) return;
-        const touch = e.touches[0];
-        touchDeltaY = Math.max(0, touch.clientY - touchStartY);
+        touchDeltaY = Math.max(0, e.touches[0].clientY - touchStartY);
     }
 
     function handleSheetTouchEnd() {
-        if (touchDeltaY > 60 && !pinned) {
-            closeSheet();
-        }
+        if (touchDeltaY > 60 && !pinned) closeSheet();
         touchDeltaY = 0;
         swiping = false;
     }
@@ -280,7 +264,7 @@
                                 {shareFeedback}
                             {:else}
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    {@html shareIcon}
+                                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
                                 </svg>
                                 Share
                             {/if}
@@ -313,10 +297,6 @@
         transition: background 0.2s ease, border-color 0.2s ease;
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
-        touch-action: none;
-        user-select: none;
-        -webkit-user-select: none;
-        -webkit-touch-callout: none;
         font-family: Arial, sans-serif;
     }
 
@@ -367,9 +347,21 @@
         100% { transform: scale(1); }
     }
 
-    /* --- No focus outlines on any interactive element --- */
+    /* --- Shared resets --- */
     .mp-sheet button, .mp-fab {
         outline: none;
+    }
+
+    .mp-fab, .mp-sheet {
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+    }
+
+    .mp-sheet button {
+        font-family: inherit;
+        box-sizing: border-box;
     }
 
     /* --- Bottom Sheet --- */
@@ -387,10 +379,6 @@
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
         animation: mp-sheet-in 0.2s ease-out;
-        touch-action: none;
-        user-select: none;
-        -webkit-user-select: none;
-        -webkit-touch-callout: none;
         display: flex;
         flex-direction: column;
     }
@@ -458,7 +446,6 @@
         border: none;
         border-radius: 8px;
         color: var(--color-text-muted);
-        font-family: inherit;
         font-size: 0.75em;
         font-weight: 600;
         padding: 5px 2px;
@@ -518,7 +505,6 @@
         border-radius: 10px;
         cursor: pointer;
         transition: all 0.15s ease;
-        box-sizing: border-box;
     }
 
     .mp-grid-btn:hover {
@@ -543,7 +529,6 @@
     .mp-grid-label {
         font-size: 0.7em;
         color: var(--color-text-muted);
-        font-family: inherit;
         line-height: 1;
     }
 
@@ -601,8 +586,6 @@
         cursor: pointer;
         transition: background 0.15s ease;
         width: 100%;
-        box-sizing: border-box;
-        font-family: inherit;
         text-align: left;
     }
 
@@ -640,13 +623,11 @@
         border-radius: 8px;
         background: rgba(255, 215, 0, 0.08);
         color: var(--color-primary);
-        font-family: inherit;
         font-size: 0.8em;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
         width: 100%;
-        box-sizing: border-box;
     }
 
     .mp-share-btn:hover {
@@ -696,7 +677,7 @@
     }
 
     /* --- Desktop: floating panel instead of full-width sheet --- */
-    @media (min-width: 641px) {
+    @media (min-width: 481px) {
         .mp-sheet {
             left: auto;
             right: 16px;
@@ -768,7 +749,7 @@
     }
 
     /* --- Mobile: larger FAB, ensure touch targets --- */
-    @media (max-width: 640px) {
+    @media (max-width: 480px) {
         .mp-fab {
             width: 52px;
             height: 52px;
