@@ -300,9 +300,21 @@
         font-family: Arial, sans-serif;
     }
 
-    .mp-fab:hover, .mp-fab.active {
+    .mp-fab.active {
         background: rgba(255, 215, 0, 0.12);
         border-color: var(--color-primary);
+    }
+
+    @media (hover: hover) {
+        .mp-fab:hover {
+            background: rgba(255, 215, 0, 0.12);
+            border-color: var(--color-primary);
+        }
+
+        .mp-fab.disabled:hover {
+            background: rgba(24, 24, 24, 0.85);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
     }
 
     .mp-fab.disabled {
@@ -310,11 +322,6 @@
         color: var(--color-text-muted);
         opacity: 0.5;
         cursor: default;
-    }
-
-    .mp-fab.disabled:hover {
-        background: rgba(24, 24, 24, 0.85);
-        border-color: rgba(255, 255, 255, 0.15);
     }
 
     /* --- Badge --- */
@@ -421,8 +428,10 @@
         transition: opacity 0.15s ease;
     }
 
-    .mp-pin:hover {
-        opacity: 0.7;
+    @media (hover: hover) {
+        .mp-pin:hover {
+            opacity: 0.7;
+        }
     }
 
     .mp-pin.pinned {
@@ -454,9 +463,11 @@
         white-space: nowrap;
     }
 
-    .mp-tab:hover {
-        color: var(--color-text-light);
-        background: rgba(255, 255, 255, 0.05);
+    @media (hover: hover) {
+        .mp-tab:hover {
+            color: var(--color-text-light);
+            background: rgba(255, 255, 255, 0.05);
+        }
     }
 
     .mp-tab.active {
@@ -507,8 +518,10 @@
         transition: all 0.15s ease;
     }
 
-    .mp-grid-btn:hover {
-        background: rgba(255, 255, 255, 0.08);
+    @media (hover: hover) {
+        .mp-grid-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
     }
 
     .mp-grid-btn:active {
@@ -584,17 +597,21 @@
         border: none;
         border-radius: 8px;
         cursor: pointer;
-        transition: background 0.15s ease;
         width: 100%;
         text-align: left;
+        -webkit-tap-highlight-color: transparent;
     }
 
-    .mp-setting-row:hover {
-        background: rgba(255, 255, 255, 0.07);
+    @media (hover: hover) {
+        .mp-setting-row:hover {
+            background: rgba(255, 255, 255, 0.07);
+        }
     }
 
-    .mp-setting-row:active {
-        background: rgba(255, 255, 255, 0.1);
+    @media (hover: hover) {
+        .mp-setting-row:active {
+            background: rgba(255, 255, 255, 0.1);
+        }
     }
 
     .mp-setting-icon {
@@ -630,9 +647,11 @@
         width: 100%;
     }
 
-    .mp-share-btn:hover {
-        background: rgba(255, 215, 0, 0.15);
-        border-color: rgba(255, 215, 0, 0.5);
+    @media (hover: hover) {
+        .mp-share-btn:hover {
+            background: rgba(255, 215, 0, 0.15);
+            border-color: rgba(255, 215, 0, 0.5);
+        }
     }
 
     .mp-share-btn:active {
