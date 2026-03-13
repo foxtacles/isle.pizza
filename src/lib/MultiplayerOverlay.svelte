@@ -49,13 +49,19 @@
     const idleOptions = [
         { emoji: '\u{1F343}', label: 'Sway', id: 0 },
         { emoji: '\u{1FAA9}', label: 'Groove', id: 1 },
-        { emoji: '\u{1F64C}', label: 'Excited', id: 2 }
+        { emoji: '\u{1F64C}', label: 'Excited', id: 2 },
+        { emoji: '\u{1F974}', label: 'Wobbly', id: 3 },
+        { emoji: '\u{1F929}', label: 'Peppy', id: 4 },
+        { emoji: '\u{1F9B9}', label: 'Brickster', id: 5 }
     ];
 
     const emoteOptions = [
         { emoji: '\u{1F44B}', label: 'Wave' },
         { emoji: '\u{1F3A9}', label: 'Hat Tip' },
-        { emoji: '\u{1F9E9}', label: 'Transform', twoPhase: true }
+        { emoji: '\u{1F9E9}', label: 'Transform', twoPhase: true },
+        { emoji: '\u{1F440}', label: 'Look Around' },
+        { emoji: '\u{1F939}', label: 'Headless' },
+        { emoji: '\u{1F355}', label: 'Toss' }
     ];
 
     const settingsItems = [
