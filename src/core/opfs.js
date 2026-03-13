@@ -269,6 +269,8 @@ export async function saveConfig(form, getSiFiles, silent = false, multiplayer =
         const value = hdTextures.checked ? 'YES' : 'NO';
         iniContent += `${hdTextures.name}=${value}\n`;
         iniContent += `Multiplayer=${multiplayer ? 'YES' : 'NO'}\n`;
+        const thirdPersonCamera = elements["Third Person Camera"];
+        iniContent += `Third Person Camera=${thirdPersonCamera && thirdPersonCamera.checked ? 'YES' : 'NO'}\n`;
     }
 
     const siFiles = getSiFiles();
