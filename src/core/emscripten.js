@@ -33,6 +33,21 @@ export function startGame(rendererValue) {
     window.Module["removeRunDependency"]("isle");
     canvas.focus();
     gameRunning.set(true);
+
+    // Prevent browser zoom on trackpad pinch-to-zoom (browsers send wheel events
+    // with ctrlKey: true). Registered on document so overlays are also covered.
+    // Emscripten's handler still receives the event since we don't stop propagation.
+    document.addEventListener('wheel', function (event) {
+        event.preventDefault();
+    }, { passive: false });
+
+    // Safari fires proprietary gesture events for trackpad pinch separately
+    document.addEventListener('gesturestart', function (event) {
+        event.preventDefault();
+    });
+    document.addEventListener('gesturechange', function (event) {
+        event.preventDefault();
+    });
 }
 
 export function setupCanvasEvents() {
