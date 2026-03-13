@@ -143,7 +143,7 @@
     }
 
     function handleWindowClick(e) {
-        if (sheetOpen && !pinned && !e.target.closest('.mp-sheet') && !e.target.closest('.mp-fab')) {
+        if (sheetOpen && !pinned && e.button === 0 && !e.target.closest('.mp-sheet') && !e.target.closest('.mp-fab')) {
             closeSheet();
         }
     }
