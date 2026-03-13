@@ -1,6 +1,6 @@
 <script>
     import { onDestroy } from 'svelte';
-    import { gameRunning, multiplayerRoom, multiplayerPlayerCount } from '../stores.js';
+    import { gameRunning, multiplayerRoom, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize } from '../stores.js';
     import { keepVisible } from '../core/keep-visible.js';
 
     let sheetOpen = false;
@@ -8,9 +8,6 @@
     let selectedWalk = 0;
     let selectedIdle = 0;
     let activeEmote = -1;
-    let thirdPersonCam = true;
-    let showNameBubbles = true;
-    let allowCustomize = true;
     let badgeBump = false;
     let pinned = false;
     let shareFeedback = '';
@@ -66,19 +63,19 @@
             icon: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
             label: 'Third-person camera',
             key: 'thirdPersonCam',
-            toggle: () => { thirdPersonCam = !thirdPersonCam; window.Module?._mp_toggle_third_person(); },
+            toggle: () => { window.Module?._mp_toggle_third_person(); },
         },
         {
             icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
             label: 'Name bubbles',
             key: 'showNameBubbles',
-            toggle: () => { showNameBubbles = !showNameBubbles; window.Module?._mp_toggle_name_bubbles(); },
+            toggle: () => { window.Module?._mp_toggle_name_bubbles(); },
         },
         {
             icon: '<path d="M3 21l10-10"/><path d="M13 11l2.5-2.5a1.5 1.5 0 0 1 2 0l.5.5a1.5 1.5 0 0 1 0 2L15.5 13.5"/><path d="M7 3l.5 1.5L9 5l-1.5.5L7 7l-.5-1.5L5 5l1.5-.5z" fill="currentColor" stroke="none"/><path d="M17 2l.4 1.1L18.5 3.5l-1.1.4L17 5l-.4-1.1L15.5 3.5l1.1-.4z" fill="currentColor" stroke="none"/><path d="M21 8l.4 1.1L22.5 9.5l-1.1.4L21 11l-.4-1.1L19.5 9.5l1.1-.4z" fill="currentColor" stroke="none"/>',
             label: 'Allow customization',
             key: 'allowCustomize',
-            toggle: () => { allowCustomize = !allowCustomize; window.Module?._mp_toggle_allow_customize(); },
+            toggle: () => { window.Module?._mp_toggle_allow_customize(); },
         },
     ];
 
@@ -88,7 +85,7 @@
         { id: 'emotes', emoji: '\u{1F604}', label: 'Emotes' },
         { id: 'settings', emoji: '\u{2699}\u{FE0F}', label: 'Settings' },
     ];
-    $: settingsState = { thirdPersonCam, showNameBubbles, allowCustomize };
+    $: settingsState = { thirdPersonCam: $thirdPersonEnabled, showNameBubbles: $showNameBubbles, allowCustomize: $allowCustomize };
 
     function refocusCanvas() {
         document.getElementById('canvas')?.focus();

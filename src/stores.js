@@ -66,6 +66,15 @@ export const gameRunning = writable(false);
 // Multiplayer player count (push-based from C++ via CustomEvent)
 export const multiplayerPlayerCount = writable(null);
 
+// Third-person camera state (push-based from C++ via CustomEvent)
+export const thirdPersonEnabled = writable(true);
+
+// Name bubbles visibility (push-based from C++ via CustomEvent)
+export const showNameBubbles = writable(true);
+
+// Allow customization setting (push-based from C++ via CustomEvent)
+export const allowCustomize = writable(true);
+
 // Service worker registration
 export const swRegistration = writable(null);
 
