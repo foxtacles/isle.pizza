@@ -38,15 +38,18 @@
     let lastPolledRoom = null;
 
     const EXIT_ROOM_FULL = 10;
+    const EXIT_CONNECTION_LOST = 11;
 
-    // Check if we were reloaded after a room-full exit
+    // Check if we were reloaded after a connection exit
     {
         const exitCode = sessionStorage.getItem('exit-code');
         if (exitCode) {
             sessionStorage.removeItem('exit-code');
-            if (Number(exitCode) === EXIT_ROOM_FULL) {
-                // Defer so toast renders after mount
+            const code = Number(exitCode);
+            if (code === EXIT_ROOM_FULL) {
                 setTimeout(() => showToast('Room is full', { error: true, duration: 3000 }), 0);
+            } else if (code === EXIT_CONNECTION_LOST) {
+                setTimeout(() => showToast('Connection lost', { error: true, duration: 3000 }), 0);
             }
         }
     }
