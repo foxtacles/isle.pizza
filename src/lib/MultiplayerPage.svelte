@@ -191,7 +191,7 @@
                                 <span class="tooltip-trigger">?
                                     <span class="tooltip-content">Spawn environment actors up to the chosen maximum. Disabling also skips NPC camera animations. NPCs are not shared between players.</span>
                                 </span>
-                                <button type="button" class="mp-toggle-switch" class:on={actorsEnabled} onclick={handleToggleActors} aria-label="Toggle NPCs">
+                                <button type="button" class="mp-toggle-switch" class:on={actorsEnabled} onclick={handleToggleActors} disabled={$opfsDisabled} aria-label="Toggle NPCs">
                                     <span class="mp-toggle-knob"></span>
                                 </button>
                             </label>
@@ -387,6 +387,11 @@
         transition: background-color 0.2s ease;
         flex-shrink: 0;
         cursor: pointer;
+    }
+
+    .mp-toggle-switch:disabled {
+        opacity: 0.3;
+        cursor: default;
     }
 
     .mp-toggle-switch.on {
