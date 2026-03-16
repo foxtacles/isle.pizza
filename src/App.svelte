@@ -16,7 +16,7 @@
     import GoodbyePopup from './lib/GoodbyePopup.svelte';
     import ConfigToast from './lib/ConfigToast.svelte';
     import DebugPanel from './lib/DebugPanel.svelte';
-    import MultiplayerOverlay from './lib/MultiplayerOverlay.svelte';
+    import MultiplayerOverlay from './lib/multiplayer/MultiplayerOverlay.svelte';
     import WhatsNewBanner from './lib/WhatsNewBanner.svelte';
     import CanvasWrapper from './lib/CanvasWrapper.svelte';
 
