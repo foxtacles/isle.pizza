@@ -120,16 +120,10 @@
         }
     }
 
-    // Mobile: emote from fan
-    function handleFanEmote(index) {
-        triggerEmote(index);
-    }
-
     // Mobile: gear button in fan → toggle settings mode
     function handleFanGear() {
         drawerOpen = !drawerOpen;
     }
-
 
 </script>
 
@@ -169,7 +163,7 @@
                     {selectedWalk} {selectedIdle} {shareFeedback}
                     onSelectWalk={selectWalk} onSelectIdle={selectIdle}
                     onShare={handleShare}
-                    onEmote={handleFanEmote}
+                    onEmote={triggerEmote}
                     onGear={handleFanGear} />
             {/if}
         {/if}
