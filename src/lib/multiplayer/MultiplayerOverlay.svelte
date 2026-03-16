@@ -124,8 +124,6 @@
     // Mobile: emote from fan
     function handleFanEmote(index) {
         triggerEmote(index);
-        // Brief delay so the flash is visible, then close
-        flash('fan-close', 200, () => { fanOpen = false; });
     }
 
     // Mobile: gear button in fan → open drawer
@@ -140,11 +138,6 @@
         refocusCanvas();
     }
 
-    // Mobile: close fan
-    function handleCloseFan() {
-        fanOpen = false;
-        refocusCanvas();
-    }
 </script>
 
 {#if $gameRunning && $multiplayerRoom}
@@ -179,8 +172,7 @@
                 <EmoteFan
                     {emoteOptions} {activeEmote}
                     onEmote={handleFanEmote}
-                    onGear={handleFanGear}
-                    onClose={handleCloseFan} />
+                    onGear={handleFanGear} />
             {/if}
 
             {#if drawerOpen && !disabled}

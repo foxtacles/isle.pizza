@@ -1,80 +1,53 @@
 <script>
-    import { onMount, onDestroy } from 'svelte';
+    import { onMount } from 'svelte';
 
     export let emoteOptions;
     export let activeEmote;
     export let onEmote;
     export let onGear;
-    export let onClose;
 
     let visible = false;
-    let stripEl;
 
     onMount(() => {
         requestAnimationFrame(() => { visible = true; });
-        window.addEventListener('keydown', handleKeydown);
     });
-
-    onDestroy(() => {
-        window.removeEventListener('keydown', handleKeydown);
-    });
-
-    function handleKeydown(e) {
-        if (e.key === 'Escape') onClose();
-    }
-
-    function handleBackdropClick(e) {
-        if (stripEl && !stripEl.contains(e.target)) {
-            onClose();
-        }
-    }
 
     function handleEmote(index) {
         onEmote(index);
     }
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<div class="strip-backdrop" onclick={handleBackdropClick}>
-    <div class="strip" class:visible bind:this={stripEl}>
-        <!-- Gear button first (leftmost) -->
-        <button class="strip-btn strip-gear"
-            style="--delay: {emoteOptions.length * 30}ms"
-            onclick={onGear}
-            title="Settings">
-            <span class="strip-emoji">&#x2699;&#xFE0F;</span>
-            <span class="strip-label">More</span>
+<div class="strip" class:visible>
+    <!-- Gear button first (leftmost) -->
+    <button class="strip-btn strip-gear"
+
+        onclick={onGear}
+        title="Settings">
+        <span class="strip-emoji">&#x2699;&#xFE0F;</span>
+        <span class="strip-label">More</span>
+    </button>
+
+    <div class="strip-divider"></div>
+
+    {#each emoteOptions as opt, i}
+        <button class="strip-btn"
+            class:active={activeEmote === i}
+
+            onclick={() => handleEmote(i)}
+            title={opt.label}>
+            <span class="strip-emoji">{opt.emoji}</span>
+            <span class="strip-label">{opt.label}</span>
         </button>
-
-        <div class="strip-divider"></div>
-
-        {#each emoteOptions as opt, i}
-            <button class="strip-btn"
-                class:active={activeEmote === i}
-                style="--delay: {i * 30}ms"
-                onclick={() => handleEmote(i)}
-                title={opt.label}>
-                <span class="strip-emoji">{opt.emoji}</span>
-                <span class="strip-label">{opt.label}</span>
-            </button>
-        {/each}
-    </div>
+    {/each}
 </div>
 
 <style>
-    .strip-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 1001;
-    }
-
     .strip {
         position: fixed;
         bottom: 14px;
         left: 8px;
         right: 72px;
-        z-index: 1002;
+        z-index: 1001;
         display: flex;
         align-items: stretch;
         gap: 2px;
