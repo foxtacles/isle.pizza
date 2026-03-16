@@ -4,15 +4,28 @@
     export let playerCount;
     export let badgeBump;
     export let disabled;
+    export let reconnecting = false;
+    export let connectionFailed = false;
     export let active;
     export let onclick;
+
+    $: title = reconnecting ? 'Reconnecting...'
+             : connectionFailed ? 'Disconnected'
+             : disabled ? 'Multiplayer (enter Isle world to use)'
+             : 'Multiplayer';
 </script>
 
-<button class="fab" class:active class:disabled
+<button class="fab" class:active class:disabled class:reconnecting class:failed={connectionFailed}
     onclick={onclick}
-    title={disabled ? 'Multiplayer (enter Isle world to use)' : 'Multiplayer'}>
-    <PeopleIcon size={20} />
-    {#if playerCount != null}
+    {title}>
+    {#if reconnecting}
+        <span class="fab-status-dot pulse"></span>
+    {:else if connectionFailed}
+        <span class="fab-status-dot failed"></span>
+    {:else}
+        <PeopleIcon size={20} />
+    {/if}
+    {#if playerCount != null && !reconnecting && !connectionFailed}
         <span class="badge" class:bump={badgeBump}>{playerCount}</span>
     {/if}
 </button>
@@ -60,10 +73,15 @@
             border-color: var(--color-primary);
         }
 
-        .fab.disabled:hover {
+        .fab.disabled:hover,
+        .fab.reconnecting:hover,
+        .fab.failed:hover {
             background: rgba(24, 24, 24, 0.85);
-            border-color: rgba(255, 255, 255, 0.15);
         }
+
+        .fab.disabled:hover { border-color: rgba(255, 255, 255, 0.15); }
+        .fab.reconnecting:hover { border-color: rgba(255, 165, 0, 0.6); }
+        .fab.failed:hover { border-color: rgba(255, 107, 107, 0.6); }
     }
 
     .fab.disabled {
@@ -71,6 +89,36 @@
         color: var(--color-text-muted);
         opacity: 0.5;
         cursor: default;
+    }
+
+    .fab.reconnecting {
+        border-color: rgba(255, 165, 0, 0.6);
+        opacity: 1;
+    }
+
+    .fab.failed {
+        border-color: rgba(255, 107, 107, 0.6);
+        opacity: 1;
+    }
+
+    .fab-status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+
+    .fab-status-dot.pulse {
+        background: #ffa500;
+        animation: status-pulse 1.5s ease-in-out infinite;
+    }
+
+    .fab-status-dot.failed {
+        background: #ff6b6b;
+    }
+
+    @keyframes status-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
     }
 
     .badge {

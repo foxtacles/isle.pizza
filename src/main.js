@@ -12,9 +12,6 @@ window.Module = {
     },
     canvas: null, // Will be set after mount
     onExit: function () {
-        if (Module._exitCode) {
-            sessionStorage.setItem('exit-code', String(Module._exitCode));
-        }
         window.location.reload();
     }
 };

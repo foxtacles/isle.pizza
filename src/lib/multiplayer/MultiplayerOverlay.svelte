@@ -1,6 +1,6 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
-    import { gameRunning, multiplayerRoom, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize } from '../../stores.js';
+    import { gameRunning, multiplayerRoom, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus } from '../../stores.js';
     import { keepVisible } from '../../core/keep-visible.js';
     import { emoteOptions, walkOptions, idleOptions, settingsItems } from './constants.js';
     import MultiplayerHotbar from './MultiplayerHotbar.svelte';
@@ -49,10 +49,12 @@
         mql?.removeEventListener('change', handleMediaChange);
     });
 
-    $: disabled = $multiplayerPlayerCount == null;
+    $: reconnecting = $connectionStatus === 'reconnecting';
+    $: connectionFailed = $connectionStatus === 'failed';
+    $: disabled = $multiplayerPlayerCount == null || reconnecting || connectionFailed;
 
-    // Close mobile UI when leaving Isle world
-    $: if ($multiplayerPlayerCount == null) {
+    // Close mobile UI when toolbar becomes disabled
+    $: if (disabled) {
         fanOpen = false;
         drawerOpen = false;
     }
@@ -141,10 +143,18 @@
 
             <!-- Minimal badge when hotbar is disabled -->
             {#if disabled}
-                <div class="desktop-badge" class:bump={badgeBump}>
-                    <PeopleIcon />
-                    {#if $multiplayerPlayerCount != null}
-                        {$multiplayerPlayerCount}
+                <div class="desktop-badge" class:bump={badgeBump} class:reconnecting class:failed={connectionFailed}>
+                    {#if reconnecting}
+                        <span class="status-dot pulse"></span>
+                        <span class="status-text">Reconnecting</span>
+                    {:else if connectionFailed}
+                        <span class="status-dot failed"></span>
+                        <span class="status-text">Disconnected</span>
+                    {:else}
+                        <PeopleIcon />
+                        {#if $multiplayerPlayerCount != null}
+                            {$multiplayerPlayerCount}
+                        {/if}
                     {/if}
                 </div>
             {/if}
@@ -152,6 +162,7 @@
             <!-- Mobile: FAB stays visible; highlights when fan or drawer is open -->
             <MultiplayerFab
                 playerCount={$multiplayerPlayerCount} {badgeBump} {disabled}
+                {reconnecting} {connectionFailed}
                 active={drawerOpen || fanOpen}
                 onclick={handleFabClick} />
 
@@ -198,9 +209,53 @@
         animation: badge-bump 0.4s ease;
     }
 
+    .desktop-badge.reconnecting {
+        border-color: rgba(255, 165, 0, 0.5);
+        opacity: 1;
+    }
+
+    .desktop-badge.failed {
+        border-color: rgba(255, 107, 107, 0.5);
+        opacity: 1;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .status-dot.pulse {
+        background: #ffa500;
+        animation: status-pulse 1.5s ease-in-out infinite;
+    }
+
+    .status-dot.failed {
+        background: #ff6b6b;
+    }
+
+    .status-text {
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .desktop-badge.reconnecting .status-text {
+        color: #ffa500;
+    }
+
+    .desktop-badge.failed .status-text {
+        color: #ff6b6b;
+    }
+
     @keyframes badge-bump {
         0% { transform: translateX(-50%) scale(1); }
         40% { transform: translateX(-50%) scale(1.2); }
         100% { transform: translateX(-50%) scale(1); }
+    }
+
+    @keyframes status-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
     }
 </style>

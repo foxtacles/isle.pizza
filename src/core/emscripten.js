@@ -1,5 +1,5 @@
 // Emscripten-related functions for game launching and canvas events
-import { gameRunning, debugUIVisible, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize } from '../stores.js';
+import { gameRunning, debugUIVisible, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus } from '../stores.js';
 import { pauseInstallAudio } from './audio.js';
 
 const DEFAULT_RENDERER = "0 0x682656f3 0x0 0x0 0x4000000"; // WebGL default
@@ -83,6 +83,15 @@ export function setupCanvasEvents() {
 
     canvas.addEventListener('allowCustomizeChanged', function (event) {
         allowCustomize.set(event.detail.enabled);
+    });
+
+    const STATUS_MAP = { 0: 'connected', 1: 'reconnecting', 2: 'failed', 3: 'rejected' };
+    canvas.addEventListener('connectionStatusChanged', function (event) {
+        const status = STATUS_MAP[event.detail.status] || null;
+        connectionStatus.set(status);
+        if (status === 'rejected') {
+            sessionStorage.setItem('mp-rejected', '1');
+        }
     });
 
     canvas.addEventListener('extensionProgress', function (event) {

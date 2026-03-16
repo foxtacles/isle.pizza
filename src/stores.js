@@ -75,6 +75,10 @@ export const showNameBubbles = writable(true);
 // Allow customization setting (push-based from C++ via CustomEvent)
 export const allowCustomize = writable(true);
 
+// Connection status (push-based from C++ via CustomEvent)
+// Values: null (no session), 'connected', 'reconnecting', 'failed'
+export const connectionStatus = writable(null);
+
 // Service worker registration
 export const swRegistration = writable(null);
 

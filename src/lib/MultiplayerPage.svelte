@@ -37,20 +37,11 @@
     let fetching = false;
     let lastPolledRoom = null;
 
-    const EXIT_ROOM_FULL = 10;
-    const EXIT_CONNECTION_LOST = 11;
-
-    // Check if we were reloaded after a connection exit
+    // Check if we were reloaded after a room-full rejection
     {
-        const exitCode = sessionStorage.getItem('exit-code');
-        if (exitCode) {
-            sessionStorage.removeItem('exit-code');
-            const code = Number(exitCode);
-            if (code === EXIT_ROOM_FULL) {
-                setTimeout(() => showToast('Room is full', { error: true, duration: 3000 }), 0);
-            } else if (code === EXIT_CONNECTION_LOST) {
-                setTimeout(() => showToast('Connection lost', { error: true, duration: 3000 }), 0);
-            }
+        if (sessionStorage.getItem('mp-rejected')) {
+            sessionStorage.removeItem('mp-rejected');
+            setTimeout(() => showToast('Room is full', { error: true, duration: 3000 }), 0);
         }
     }
 
