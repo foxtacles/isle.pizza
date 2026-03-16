@@ -4,6 +4,7 @@
     export let open = false;
     export let triggerEl = null;
     export let onClose;
+    export let align = 'center';
 
     let popoverEl;
 
@@ -37,7 +38,7 @@
 </script>
 
 {#if open}
-    <div class="popover" bind:this={popoverEl}>
+    <div class="popover" class:align-start={align === 'start'} bind:this={popoverEl}>
         <slot />
     </div>
 {/if}
@@ -59,6 +60,12 @@
         animation: popover-in 0.15s ease-out;
     }
 
+    .popover.align-start {
+        left: 0;
+        transform: none;
+        animation: popover-in-start 0.15s ease-out;
+    }
+
     @keyframes popover-in {
         from {
             opacity: 0;
@@ -67,6 +74,17 @@
         to {
             opacity: 1;
             transform: translateX(-50%) translateY(0);
+        }
+    }
+
+    @keyframes popover-in-start {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
         }
     }
 </style>

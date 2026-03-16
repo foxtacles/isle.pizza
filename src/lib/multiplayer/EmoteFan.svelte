@@ -1,5 +1,7 @@
 <script>
     import { onMount } from 'svelte';
+    import HotbarPopover from './HotbarPopover.svelte';
+    import StyleGrid from './StyleGrid.svelte';
 
     export let emoteOptions;
     export let activeEmote;
@@ -20,11 +22,34 @@
     export let onShare = () => {};
 
     let visible = false;
-    let activeTab = 'walk';
+    let activePopover = null;
+    let walkTrigger;
+    let idleTrigger;
+    let settingsTrigger;
 
     onMount(() => {
         requestAnimationFrame(() => { visible = true; });
     });
+
+    $: if (!configOpen) activePopover = null;
+
+    function togglePopover(name) {
+        activePopover = activePopover === name ? null : name;
+    }
+
+    function closePopover() {
+        activePopover = null;
+    }
+
+    function handleSelectWalk(index) {
+        onSelectWalk(index);
+        closePopover();
+    }
+
+    function handleSelectIdle(index) {
+        onSelectIdle(index);
+        closePopover();
+    }
 </script>
 
 <div class="strip" class:visible class:config-mode={configOpen}>
@@ -49,81 +74,84 @@
             </button>
         {/each}
     {:else}
-        <!-- SETTINGS MODE -->
-        <div class="tab-row">
-            <button class="strip-btn strip-gear" onclick={onGear} title="Back to emotes">
-                <span class="back-arrow">&#x2190;</span>
-            </button>
+        <!-- CONFIG MODE (single row, matching emote layout) -->
+        <button class="strip-btn strip-gear"
+            onclick={onGear}
+            title="Back to emotes">
+            <span class="strip-emoji">&#x2699;&#xFE0F;</span>
+            <span class="strip-label">More</span>
+        </button>
 
-            <div class="strip-divider"></div>
+        <div class="strip-divider"></div>
 
-            <button class="tab-btn" class:active={activeTab === 'walk'}
-                onclick={() => activeTab = 'walk'}>
-                <span class="tab-emoji">&#x1F6B6;</span>
-                <span class="tab-label">Walk</span>
+        <!-- Walk indicator -->
+        <div class="indicator-wrapper" bind:this={walkTrigger}>
+            <button class="strip-btn" class:active={activePopover === 'walk'}
+                onclick={() => togglePopover('walk')} title="Walk style">
+                <span class="strip-emoji">{walkOptions[selectedWalk].emoji}</span>
+                <span class="strip-label">Walk</span>
             </button>
-            <button class="tab-btn" class:active={activeTab === 'idle'}
-                onclick={() => activeTab = 'idle'}>
-                <span class="tab-emoji">&#x1F343;</span>
-                <span class="tab-label">Idle</span>
-            </button>
-            <button class="tab-btn" class:active={activeTab === 'settings'}
-                onclick={() => activeTab = 'settings'}>
-                <span class="tab-emoji">&#x2699;&#xFE0F;</span>
-                <span class="tab-label">More</span>
-            </button>
+            <HotbarPopover open={activePopover === 'walk'} triggerEl={walkTrigger} onClose={closePopover} align="start">
+                <div class="popover-content">
+                    <StyleGrid options={walkOptions} selected={selectedWalk} onSelect={handleSelectWalk} />
+                </div>
+            </HotbarPopover>
         </div>
 
-        <div class="content-row">
-            {#if activeTab === 'walk'}
-                <div class="scroll-strip">
-                    {#each walkOptions as opt, i}
-                        <button class="strip-btn option-btn" class:selected={selectedWalk === i}
-                            onclick={() => onSelectWalk(i)}>
-                            <span class="strip-emoji">{opt.emoji}</span>
-                            <span class="strip-label">{opt.label}</span>
-                        </button>
-                    {/each}
+        <!-- Idle indicator -->
+        <div class="indicator-wrapper" bind:this={idleTrigger}>
+            <button class="strip-btn" class:active={activePopover === 'idle'}
+                onclick={() => togglePopover('idle')} title="Idle style">
+                <span class="strip-emoji">{idleOptions[selectedIdle].emoji}</span>
+                <span class="strip-label">Idle</span>
+            </button>
+            <HotbarPopover open={activePopover === 'idle'} triggerEl={idleTrigger} onClose={closePopover}>
+                <div class="popover-content">
+                    <StyleGrid options={idleOptions} selected={selectedIdle} onSelect={handleSelectIdle} />
                 </div>
-            {:else if activeTab === 'idle'}
-                <div class="scroll-strip">
-                    {#each idleOptions as opt, i}
-                        <button class="strip-btn option-btn" class:selected={selectedIdle === i}
-                            onclick={() => onSelectIdle(i)}>
-                            <span class="strip-emoji">{opt.emoji}</span>
-                            <span class="strip-label">{opt.label}</span>
-                        </button>
-                    {/each}
-                </div>
-            {:else if activeTab === 'settings'}
-                <div class="scroll-strip">
+            </HotbarPopover>
+        </div>
+
+        <!-- Settings (consolidated into popover) -->
+        <div class="indicator-wrapper" bind:this={settingsTrigger}>
+            <button class="strip-btn" class:active={activePopover === 'settings'}
+                onclick={() => togglePopover('settings')} title="Options">
+                <span class="strip-emoji">&#x1F527;</span>
+                <span class="strip-label">Options</span>
+            </button>
+            <HotbarPopover open={activePopover === 'settings'} triggerEl={settingsTrigger} onClose={closePopover}>
+                <div class="popover-content popover-settings">
                     {#each settingsItems as item}
-                        <button class="strip-btn option-btn" class:selected={settingsState[item.key]}
-                            onclick={item.toggle}>
-                            <svg class="setting-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <button class="settings-row" onclick={item.toggle}>
+                            <svg class="settings-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 {@html item.icon}
                             </svg>
-                            <span class="strip-label">{item.label}</span>
+                            <span class="settings-label">{item.label}</span>
+                            <span class="toggle-switch" class:on={settingsState[item.key]}>
+                                <span class="toggle-knob"></span>
+                            </span>
                         </button>
                     {/each}
-                    <div class="strip-divider"></div>
-                    <button class="strip-btn option-btn share-btn" class:copied={shareFeedback}
-                        onclick={onShare}>
-                        {#if shareFeedback}
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                            <span class="strip-label">{shareFeedback}</span>
-                        {:else}
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                            </svg>
-                            <span class="strip-label">Share</span>
-                        {/if}
-                    </button>
                 </div>
-            {/if}
+            </HotbarPopover>
         </div>
+
+        <div class="strip-divider"></div>
+
+        <!-- Share button -->
+        <button class="strip-btn share-btn" class:copied={shareFeedback}
+            onclick={onShare} title={shareFeedback || 'Share'}>
+            {#if shareFeedback}
+                <svg class="share-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+            {:else}
+                <svg class="share-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                </svg>
+            {/if}
+            <span class="strip-label">{shareFeedback || 'Share'}</span>
+        </button>
     {/if}
 </div>
 
@@ -159,11 +187,6 @@
         opacity: 1;
     }
 
-    .strip.config-mode {
-        flex-direction: column;
-        gap: 0;
-    }
-
     /* === Shared button base === */
     .strip-btn {
         display: flex;
@@ -172,7 +195,7 @@
         justify-content: center;
         gap: 2px;
         flex: 1;
-        max-width: 44px;
+        max-width: 48px;
         min-width: 0;
         padding: 6px 2px;
         background: rgba(255, 255, 255, 0.04);
@@ -186,21 +209,15 @@
         -webkit-tap-highlight-color: transparent;
     }
 
-    .strip-btn:active, .strip-btn.active {
+    .strip-btn:active {
         background: rgba(255, 215, 0, 0.25);
         border-color: var(--color-primary);
         transform: scale(0.95);
     }
 
-    .strip-btn.selected {
+    .strip-btn.active {
         background: rgba(255, 215, 0, 0.12);
-        border-color: var(--color-primary);
-        box-shadow: 0 0 8px rgba(255, 215, 0, 0.1);
-    }
-
-    .strip-btn.selected .strip-label,
-    .strip-btn.selected .setting-icon {
-        color: var(--color-primary);
+        border-color: rgba(255, 215, 0, 0.4);
     }
 
     .strip-emoji {
@@ -225,21 +242,100 @@
 
     .strip-gear {
         border-color: rgba(255, 215, 0, 0.2);
+        flex: 0 0 44px;
+        max-width: 44px;
     }
 
-    /* === Option buttons in scroll strips === */
-    .option-btn {
-        flex-shrink: 0;
-        flex: 0 0 auto;
-        min-width: 52px;
+    /* Config mode: let buttons fill available width */
+    .strip.config-mode .strip-btn {
         max-width: none;
-        padding: 6px;
-        gap: 3px;
     }
 
-    .setting-icon {
-        color: var(--color-text-muted);
+    .strip.config-mode .strip-gear {
+        flex: 0 0 44px;
+        max-width: 44px;
+    }
+
+    /* === Indicator wrapper (walk/idle/settings popover anchors) === */
+    .indicator-wrapper {
+        position: relative;
+        flex: 1;
+        min-width: 0;
+        display: flex;
+    }
+
+    .popover-content {
+        width: 200px;
+    }
+
+    .popover-settings {
+        width: 220px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    /* === Settings popover rows === */
+    .settings-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        width: 100%;
+        text-align: left;
+        -webkit-tap-highlight-color: transparent;
+        font-family: inherit;
+        box-sizing: border-box;
+        outline: none;
+    }
+
+    .settings-row:active {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .settings-icon {
         flex-shrink: 0;
+        color: var(--color-text-muted);
+    }
+
+    .settings-label {
+        flex: 1;
+        color: var(--color-text-light);
+        font-size: 0.8em;
+    }
+
+    .toggle-switch {
+        position: relative;
+        width: 44px;
+        height: 24px;
+        border-radius: 24px;
+        background: var(--color-border-dark);
+        transition: background-color 0.2s ease;
+        flex-shrink: 0;
+    }
+
+    .toggle-switch.on {
+        background-color: #3a5f3a;
+    }
+
+    .toggle-knob {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--color-text-muted);
+        transition: all 0.2s ease;
+    }
+
+    .toggle-switch.on .toggle-knob {
+        left: 23px;
+        background: var(--color-primary);
     }
 
     /* === Share button === */
@@ -248,7 +344,7 @@
     }
 
     .share-btn .strip-label,
-    .share-btn svg {
+    .share-icon {
         color: var(--color-primary);
     }
 
@@ -258,84 +354,7 @@
     }
 
     .share-btn.copied .strip-label,
-    .share-btn.copied svg {
+    .share-btn.copied .share-icon {
         color: #4ade80;
-    }
-
-    /* === Back arrow === */
-    .back-arrow {
-        font-size: 18px;
-        color: var(--color-text-light);
-        line-height: 1;
-    }
-
-    /* === Tab row === */
-    .tab-row {
-        display: flex;
-        align-items: stretch;
-        gap: 2px;
-        padding: 2px 2px 0;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .tab-btn {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        padding: 6px 8px;
-        background: none;
-        border: none;
-        border-bottom: 2px solid transparent;
-        border-radius: 8px 8px 0 0;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        outline: none;
-        font-family: inherit;
-        box-sizing: border-box;
-        -webkit-tap-highlight-color: transparent;
-    }
-
-    .tab-btn.active {
-        background: rgba(255, 215, 0, 0.08);
-        border-bottom-color: var(--color-primary);
-    }
-
-    .tab-btn.active .tab-label {
-        color: var(--color-primary);
-    }
-
-    .tab-emoji {
-        font-size: 16px;
-        line-height: 1;
-    }
-
-    .tab-label {
-        font-size: 0.75em;
-        font-weight: 600;
-        color: var(--color-text-muted);
-        line-height: 1;
-        white-space: nowrap;
-    }
-
-    /* === Content row === */
-    .content-row {
-        width: 100%;
-        padding: 2px;
-        box-sizing: border-box;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .scroll-strip {
-        display: flex;
-        gap: 2px;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        padding: 2px;
-    }
-
-    .scroll-strip::-webkit-scrollbar {
-        display: none;
     }
 </style>
