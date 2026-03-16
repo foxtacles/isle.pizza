@@ -6,7 +6,6 @@
     import MultiplayerHotbar from './MultiplayerHotbar.svelte';
     import MultiplayerFab from './MultiplayerFab.svelte';
     import EmoteFan from './EmoteFan.svelte';
-    import ConfigDrawer from './ConfigDrawer.svelte';
     import PeopleIcon from './PeopleIcon.svelte';
 
     let selectedWalk = 0;
@@ -112,12 +111,12 @@
     // Mobile: FAB tap
     function handleFabClick() {
         if (disabled) return;
-        if (drawerOpen) {
+        if (drawerOpen || fanOpen) {
             drawerOpen = false;
+            fanOpen = false;
             refocusCanvas();
         } else {
-            fanOpen = !fanOpen;
-            if (!fanOpen) refocusCanvas();
+            fanOpen = true;
         }
     }
 
@@ -126,17 +125,11 @@
         triggerEmote(index);
     }
 
-    // Mobile: gear button in fan → open drawer
+    // Mobile: gear button in fan → toggle settings mode
     function handleFanGear() {
-        fanOpen = false;
-        drawerOpen = true;
+        drawerOpen = !drawerOpen;
     }
 
-    // Mobile: close drawer
-    function handleCloseDrawer() {
-        drawerOpen = false;
-        refocusCanvas();
-    }
 
 </script>
 
@@ -171,16 +164,13 @@
             {#if fanOpen && !disabled}
                 <EmoteFan
                     {emoteOptions} {activeEmote}
-                    onEmote={handleFanEmote}
-                    onGear={handleFanGear} />
-            {/if}
-
-            {#if drawerOpen && !disabled}
-                <ConfigDrawer
+                    configOpen={drawerOpen}
                     {walkOptions} {idleOptions} {settingsItems} {settingsState}
                     {selectedWalk} {selectedIdle} {shareFeedback}
                     onSelectWalk={selectWalk} onSelectIdle={selectIdle}
-                    onShare={handleShare} onClose={handleCloseDrawer} />
+                    onShare={handleShare}
+                    onEmote={handleFanEmote}
+                    onGear={handleFanGear} />
             {/if}
         {/if}
     </div>
