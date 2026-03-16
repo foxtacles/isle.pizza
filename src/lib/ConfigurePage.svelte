@@ -142,11 +142,7 @@
             document.getElementById('tex-high').checked = true;
             document.getElementById('max-lod').value = '3.6';
             document.getElementById('max-allowed-extras').value = '20';
-            document.getElementById('check-hd-textures').checked = false;
-            document.getElementById('check-hd-music').checked = false;
-            document.getElementById('check-widescreen-bgs').checked = false;
-            document.getElementById('check-outro').checked = false;
-            document.getElementById('check-ending').checked = false;
+            document.querySelectorAll('#config-tab-extras .toggle-group input[type="checkbox"]').forEach(cb => cb.checked = false);
         } else if (preset === 'modern') {
             document.getElementById('aspect-wide').checked = true;
             document.getElementById('resolution-wide').checked = true;
