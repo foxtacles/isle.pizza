@@ -37,6 +37,10 @@
     display: none !important;
 }
 
+button, a, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+}
+
 html {
     height: 100%;
 }

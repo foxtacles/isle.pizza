@@ -147,7 +147,6 @@
         outline: none;
         font-family: inherit;
         box-sizing: border-box;
-        -webkit-tap-highlight-color: transparent;
     }
 
     .strip-btn:active {
@@ -204,7 +203,6 @@
         cursor: pointer;
         width: 100%;
         text-align: left;
-        -webkit-tap-highlight-color: transparent;
         font-family: inherit;
         box-sizing: border-box;
         outline: none;

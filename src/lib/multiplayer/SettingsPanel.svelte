@@ -41,7 +41,6 @@
         cursor: pointer;
         width: 100%;
         text-align: left;
-        -webkit-tap-highlight-color: transparent;
         font-family: inherit;
         box-sizing: border-box;
         outline: none;
