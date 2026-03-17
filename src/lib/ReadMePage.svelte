@@ -21,16 +21,15 @@
     ];
 
     const faqItems = [
-        { id: 'faq1', question: 'Is this the full, original game?', answer: `<p>This is a complete port of the original 1997 PC game. You can select from multiple languages, including both the 1.0 and 1.1 versions of English, from the "Configure" menu before starting.</p>` },
-        { id: 'faq2', question: 'How does this differ from the original 1997 CD-ROM game?', answer: `<p>The core gameplay is identical, but this version has some great advantages! It runs in your browser with no installation needed and works on modern devices. It also includes enhancements like widescreen support, improved controls, many bug fixes from the decompilation project, and the ability to run at your display's maximum resolution (even 4K!).</p><p>Check out the "Configure" page to see what's possible.</p>` },
-        { id: 'faq3', question: 'Can I save my progress?', answer: `<p>Yes! The game automatically saves your progress. To ensure your game is saved, return to the Infocenter and use the exit door. This will bring you back to the main menu and lock in your save state. A "best effort" save is also attempted if you close the tab directly, but this method isn't always guaranteed.</p>` },
-        { id: 'faq4', question: 'Does this run on mobile?', answer: `<p>Yes! The game is designed to work on a wide range of devices, including desktops, laptops, tablets, and phones. It has even been seen running on <a href="https://github.com/isledecomp/isle-portable/issues/418#issuecomment-3003572219" target="_blank" rel="noopener noreferrer">Tesla in-car browsers</a>!</p>` },
-        { id: 'faq5', question: 'Which browsers are supported?', answer: `<p>This port runs best on recent versions of modern browsers, including Chrome, Firefox, and Safari. For an optimal experience on iOS devices, please ensure you are running iOS 18 or newer.</p>` },
-        { id: 'faq6', question: 'What are the controls?', answer: `<p>You can play using a keyboard and mouse, a gamepad, or a touch screen. Gamepad support can vary depending on your browser. On mobile, you can select your preferred touch control scheme in the "Configure" menu.</p>` },
-        { id: 'faq7', question: 'Can I play offline?', answer: `<p>You bet! In the "Configure" menu, scroll to the "Offline Play" section. You'll find an option there to install all necessary game files (about 550MB) for offline access.</p>` },
-        { id: 'faq8', question: "I don't hear any sound or music. How do I fix it?", answer: `<p>Most modern browsers block audio until you interact with the page. Click the mute icon on the animated intro to enable sound.</p>` },
-        { id: 'faq9', question: 'I think I found a bug! Where do I report it?', answer: `<p>As an active development project, some bugs are expected. If you find one, we'd be grateful if you'd report it on the isle-portable <a href="https://github.com/isledecomp/isle-portable/issues" target="_blank" rel="noopener noreferrer">GitHub Issues page</a>. Please include details about your browser, device, and what you were doing when the bug occurred.</p>` },
-        { id: 'faq10', question: 'Is this project open-source?', answer: `<p>Yes, absolutely! This web port is built upon the incredible open-source <a href="https://github.com/isledecomp/isle-portable" target="_blank" rel="noopener noreferrer">LEGO Island (portable)</a> project, and the code for this website is also <a href="https://github.com/isledecomp/isle.pizza" target="_blank" rel="noopener noreferrer">available here</a>.</p>` }
+        { id: 'faq1', question: 'Is this the same game as the original?', answer: `<p>This is a complete port of the original 1997 PC game — the core gameplay is identical. You can select from multiple languages, including both the 1.0 and 1.1 versions of English, from the Configure page before starting.</p><p>On top of that, this version includes enhancements like widescreen support, improved controls, many bug fixes from the decompilation project, and the ability to run at your display's maximum resolution (even 4K!). Check out the <a href="#configure">Configure</a> page to see what's possible.</p>` },
+        { id: 'faq2', question: 'Can I save my progress?', answer: `<p>Yes! The game automatically saves your progress. To ensure your game is saved, return to the Infocenter and use the exit door. This will bring you back to the main menu and lock in your save state. A "best effort" save is also attempted if you close the tab directly, but this method isn't always guaranteed.</p>` },
+        { id: 'faq3', question: 'Does this run on mobile?', answer: `<p>Yes! The game is designed to work on a wide range of devices, including desktops, laptops, tablets, and phones. It has even been seen running on <a href="https://github.com/isledecomp/isle-portable/issues/418#issuecomment-3003572219" target="_blank" rel="noopener noreferrer">Tesla in-car browsers</a>!</p>` },
+        { id: 'faq4', question: 'Which browsers are supported?', answer: `<p>See the System tab for a full list of supported browsers and minimum versions. For the best experience on iOS, make sure you're running iOS 18 or newer.</p>` },
+        { id: 'faq5', question: 'What are the controls?', answer: `<p>You can play using a keyboard and mouse, a gamepad, or a touch screen. Gamepad support can vary depending on your browser. On mobile, you can select your preferred touch control scheme in the <a href="#configure">Configure</a> menu.</p>` },
+        { id: 'faq6', question: 'Can I play offline?', answer: `<p>You bet! On the <a href="#configure">Configure</a> page, open the "Extras" tab and expand the "Offline Play" section. From there you can install all necessary game files (about 550MB) for offline access.</p>` },
+        { id: 'faq7', question: "I don't hear any sound or music. How do I fix it?", answer: `<p>Most modern browsers block audio until you interact with the page. Click the mute icon on the animated intro to enable sound.</p>` },
+        { id: 'faq8', question: 'I think I found a bug! Where do I report it?', answer: `<p>As an active development project, some bugs are expected. If you find one, we'd be grateful if you'd report it on the isle-portable <a href="https://github.com/isledecomp/isle-portable/issues" target="_blank" rel="noopener noreferrer">GitHub Issues page</a>. Please include details about your browser, device, and what you were doing when the bug occurred.</p>` },
+        { id: 'faq9', question: 'Is this project open-source?', answer: `<p>Yes, absolutely! This web port is built upon the incredible open-source <a href="https://github.com/isledecomp/isle-portable" target="_blank" rel="noopener noreferrer">LEGO Island (portable)</a> project, and the code for this website is also <a href="https://github.com/isledecomp/isle.pizza" target="_blank" rel="noopener noreferrer">available here</a>.</p>` }
     ];
 
     const changelogItems = [
@@ -161,26 +160,21 @@
             </div>
 
             <div class="tab-panel" class:active={activeTab === 'about'} id="tab-about">
-                <p>Welcome to the LEGO Island web port project! This is a recreation of the classic 1997 PC game,
-                    rebuilt to run in modern web browsers using Emscripten and WebAssembly.</p>
-                <p>This incredible project stands on the shoulders of giants. It was made possible by the original <a
-                        href="https://github.com/isledecomp/isle" target="_blank"
-                        rel="noopener noreferrer">decompilation project</a>, which achieved 100% decompilation of the
-                    original game. This was then adapted into a <a
-                        href="https://github.com/isledecomp/isle-portable" target="_blank"
-                        rel="noopener noreferrer">portable version</a> that eliminated all Windows dependencies and
-                    replaced them with modern, cross-platform alternatives.</p>
-                <p>The technical work involved replacing Windows-specific systems with SDL for window management and input,
-                    migrating audio from DirectSound to the miniaudio library, converting Windows Registry configuration
-                    to INI files, and creating a modular graphics layer supporting multiple rendering backends including
-                    WebGL. This represents years of effort from many awesome contributors dedicated to preserving this
-                    piece of gaming history.</p>
-                <p>Thanks to this work, LEGO Island now runs on over 10 platforms including Windows, Linux, macOS, iOS,
-                    Android, Nintendo Switch, PlayStation Vita, and of course, web browsers. The web version uses the
-                    original, unmodified Interleaf streaming code, enabling progressive content loading just like the
-                    original CD-ROM.</p>
-                <p>Our goal is to make this classic accessible to everyone. The project is still in development, so you
-                    may encounter bugs. Your patience and feedback are greatly appreciated!</p>
+                <p>Play the classic 1997 LEGO Island — right in your browser. This is a faithful recreation of the
+                    original PC game, rebuilt with Emscripten and WebAssembly to run on modern devices without any
+                    installation.</p>
+                <p>This project was made possible by the <a href="https://github.com/isledecomp/isle" target="_blank"
+                        rel="noopener noreferrer">LEGO Island decompilation</a>, which achieved a complete,
+                    byte-accurate reconstruction of the original source code. That work was then transformed into a
+                    <a href="https://github.com/isledecomp/isle-portable" target="_blank"
+                        rel="noopener noreferrer">portable version</a> that replaced every Windows dependency with
+                    modern, cross-platform alternatives — from graphics and audio to input and configuration.</p>
+                <p>Thanks to years of effort from many dedicated contributors, LEGO Island now runs on over 10 platforms
+                    including Windows, Linux, macOS, iOS, Android, Nintendo Switch, PlayStation Vita, and the web. The
+                    browser version even uses the original Interleaf streaming code, progressively loading content just
+                    like the 1997 CD-ROM.</p>
+                <p>Our goal is to make this classic accessible to everyone. The project is still in active development,
+                    so you may encounter the occasional bug — your patience and feedback are greatly appreciated!</p>
             </div>
 
             <div class="tab-panel" class:active={activeTab === 'system'} id="tab-system">
@@ -198,7 +192,7 @@
 
                 <div class="requirements-section">
                     <h3>Input Methods</h3>
-                    <p>The game supports multiple ways to play. Visit the Configure page to adjust your control preferences.</p>
+                    <p>The game supports multiple ways to play. Visit the <a href="#configure">Configure</a> page to adjust your control preferences.</p>
                     <ul class="requirements-list">
                         <li><strong>Keyboard &amp; Mouse</strong> — Traditional desktop controls using arrow keys or WASD</li>
                         <li><strong>Gamepad</strong> — Controller support with analog sticks and D-pad</li>
@@ -208,14 +202,14 @@
 
                 <div class="requirements-section">
                     <h3>Audio</h3>
-                    <p>Audio hardware is recommended for the full experience. If the game is silent, click the mute icon
-                        on the animated intro to enable sound. Modern browsers require user interaction before playing audio.</p>
+                    <p>If the game is silent, click the mute icon on the animated intro to enable sound —
+                        browsers require a user interaction before playing audio.</p>
                 </div>
 
                 <div class="requirements-section">
                     <h3>Storage &amp; Network</h3>
                     <p>The game streams approximately <strong>25MB</strong> of data on first load (more with extensions enabled).
-                        For offline play, you can install the full game (about <strong>550MB</strong>) via the Configure menu.
+                        For offline play, you can install the full game (about <strong>550MB</strong>) via the <a href="#configure">Configure</a> menu.
                         A stable internet connection is recommended for initial loading.</p>
                 </div>
 
@@ -225,7 +219,7 @@
                         <li>Close other browser tabs to free up memory</li>
                         <li>Use hardware acceleration (enabled by default in most browsers)</li>
                         <li>On mobile, ensure your device isn't in low-power mode</li>
-                        <li>If experiencing lag, try reducing the resolution in Configure</li>
+                        <li>If experiencing lag, try reducing the resolution in <a href="#configure">Configure</a></li>
                     </ul>
                 </div>
             </div>
@@ -252,7 +246,7 @@
 
             <div class="tab-panel" class:active={activeTab === 'manual'} id="tab-manual">
                 <div class="manual-container">
-                    <p class="manual-description">The original 15-page instruction manual from the 1997 CD-ROM release.</p>
+                    <p class="manual-description">The original comic-style instruction manual from the 1997 CD-ROM release.</p>
                     <a href="pdf/comic.pdf" target="_blank" rel="noopener" class="manual-open-btn">Open Manual in New Tab</a>
                 </div>
             </div>
