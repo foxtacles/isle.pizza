@@ -76,18 +76,8 @@
         resetHideTimer();
     }
 
-    function handleSelectWalk(index) {
-        onSelectWalk(index);
-        closePopover();
-    }
-
-    function handleSelectIdle(index) {
-        onSelectIdle(index);
-        closePopover();
-    }
-
-    function handleEmote(index) {
-        onEmote(index);
+    function handleSelect(callback, index) {
+        callback(index);
         resetHideTimer();
     }
 
@@ -114,7 +104,7 @@
             {#each emoteOptions as opt, i}
                 <EmoteButton emoji={opt.emoji} label={opt.label}
                     active={activeEmote === i}
-                    onclick={() => handleEmote(i)} />
+                    onclick={() => handleSelect(onEmote, i)} />
             {/each}
 
             <div class="divider"></div>
@@ -129,7 +119,7 @@
                 </button>
                 <HotbarPopover open={activePopover === 'walk'} triggerEl={walkTrigger} onClose={closePopover}>
                     <div class="popover-content">
-                        <StyleGrid options={walkOptions} selected={selectedWalk} onSelect={handleSelectWalk} />
+                        <StyleGrid options={walkOptions} selected={selectedWalk} onSelect={(i) => handleSelect(onSelectWalk, i)} />
                     </div>
                 </HotbarPopover>
             </div>
@@ -144,7 +134,7 @@
                 </button>
                 <HotbarPopover open={activePopover === 'idle'} triggerEl={idleTrigger} onClose={closePopover}>
                     <div class="popover-content">
-                        <StyleGrid options={idleOptions} selected={selectedIdle} onSelect={handleSelectIdle} />
+                        <StyleGrid options={idleOptions} selected={selectedIdle} onSelect={(i) => handleSelect(onSelectIdle, i)} />
                     </div>
                 </HotbarPopover>
             </div>
@@ -195,7 +185,6 @@
     .hotbar-zone.active {
         pointer-events: auto;
     }
-
 
     .hotbar {
         display: flex;

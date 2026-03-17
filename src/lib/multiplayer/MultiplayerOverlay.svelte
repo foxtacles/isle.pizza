@@ -18,7 +18,6 @@
 
     // Mobile state
     let fanOpen = false;
-    let drawerOpen = false;
 
     const timers = {};
     onDestroy(() => Object.values(timers).forEach(clearTimeout));
@@ -35,7 +34,6 @@
         // Close mobile UI when switching to desktop
         if (isDesktop) {
             fanOpen = false;
-            drawerOpen = false;
         }
     }
 
@@ -56,7 +54,6 @@
     // Close mobile UI when toolbar becomes disabled
     $: if (disabled) {
         fanOpen = false;
-        drawerOpen = false;
     }
 
     // Badge pulse when player count changes
@@ -110,21 +107,10 @@
         }
     }
 
-    // Mobile: FAB tap
     function handleFabClick() {
         if (disabled) return;
-        if (drawerOpen || fanOpen) {
-            drawerOpen = false;
-            fanOpen = false;
-            refocusCanvas();
-        } else {
-            fanOpen = true;
-        }
-    }
-
-    // Mobile: gear button in fan → toggle settings mode
-    function handleFanGear() {
-        drawerOpen = !drawerOpen;
+        fanOpen = !fanOpen;
+        if (!fanOpen) refocusCanvas();
     }
 
 </script>
@@ -159,23 +145,21 @@
                 </div>
             {/if}
         {:else}
-            <!-- Mobile: FAB stays visible; highlights when fan or drawer is open -->
+            <!-- Mobile: FAB stays visible; highlights when fan is open -->
             <MultiplayerFab
                 playerCount={$multiplayerPlayerCount} {badgeBump} {disabled}
                 {reconnecting} {connectionFailed}
-                active={drawerOpen || fanOpen}
+                active={fanOpen}
                 onclick={handleFabClick} />
 
             {#if fanOpen && !disabled}
                 <EmoteFan
                     {emoteOptions} {activeEmote}
-                    configOpen={drawerOpen}
                     {walkOptions} {idleOptions} {settingsItems} {settingsState}
                     {selectedWalk} {selectedIdle} {shareFeedback}
                     onSelectWalk={selectWalk} onSelectIdle={selectIdle}
                     onShare={handleShare}
-                    onEmote={triggerEmote}
-                    onGear={handleFanGear} />
+                    onEmote={triggerEmote} />
             {/if}
         {/if}
     </div>

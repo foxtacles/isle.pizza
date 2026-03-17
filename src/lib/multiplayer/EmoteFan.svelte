@@ -6,10 +6,6 @@
     export let emoteOptions;
     export let activeEmote;
     export let onEmote;
-    export let onGear;
-
-    // Config mode props
-    export let configOpen = false;
     export let walkOptions = [];
     export let idleOptions = [];
     export let settingsItems = [];
@@ -23,15 +19,18 @@
 
     let visible = false;
     let activePopover = null;
-    let walkTrigger;
-    let idleTrigger;
+    let triggers = [];
     let settingsTrigger;
+
+    $: stylePopovers = [
+        { name: 'emote', label: 'Emote', emoji: emoteOptions[0].emoji, options: emoteOptions, selected: activeEmote, onSelect: onEmote, align: 'start' },
+        { name: 'walk', label: 'Walk', emoji: walkOptions[selectedWalk].emoji, options: walkOptions, selected: selectedWalk, onSelect: onSelectWalk, align: 'start' },
+        { name: 'idle', label: 'Idle', emoji: idleOptions[selectedIdle].emoji, options: idleOptions, selected: selectedIdle, onSelect: onSelectIdle },
+    ];
 
     onMount(() => {
         requestAnimationFrame(() => { visible = true; });
     });
-
-    $: if (!configOpen) activePopover = null;
 
     function togglePopover(name) {
         activePopover = activePopover === name ? null : name;
@@ -40,119 +39,62 @@
     function closePopover() {
         activePopover = null;
     }
-
-    function handleSelectWalk(index) {
-        onSelectWalk(index);
-        closePopover();
-    }
-
-    function handleSelectIdle(index) {
-        onSelectIdle(index);
-        closePopover();
-    }
 </script>
 
-<div class="strip" class:visible class:config-mode={configOpen}>
-    {#if !configOpen}
-        <!-- EMOTE MODE -->
-        <button class="strip-btn strip-gear"
-            onclick={onGear}
-            title="Settings">
-            <span class="strip-emoji">&#x2699;&#xFE0F;</span>
-            <span class="strip-label">More</span>
-        </button>
-
-        <div class="strip-divider"></div>
-
-        {#each emoteOptions as opt, i}
-            <button class="strip-btn"
-                class:active={activeEmote === i}
-                onclick={() => onEmote(i)}
-                title={opt.label}>
-                <span class="strip-emoji">{opt.emoji}</span>
-                <span class="strip-label">{opt.label}</span>
+<div class="strip" class:visible>
+    {#each stylePopovers as pop, i}
+        <div class="indicator-wrapper" bind:this={triggers[i]}>
+            <button class="strip-btn" class:active={activePopover === pop.name}
+                onclick={() => togglePopover(pop.name)} title={pop.label}>
+                <span class="strip-emoji">{pop.emoji}</span>
+                <span class="strip-label">{pop.label}</span>
             </button>
-        {/each}
-    {:else}
-        <!-- CONFIG MODE (single row, matching emote layout) -->
-        <button class="strip-btn strip-gear"
-            onclick={onGear}
-            title="Back to emotes">
-            <span class="strip-emoji">&#x2699;&#xFE0F;</span>
-            <span class="strip-label">More</span>
-        </button>
-
-        <div class="strip-divider"></div>
-
-        <!-- Walk indicator -->
-        <div class="indicator-wrapper" bind:this={walkTrigger}>
-            <button class="strip-btn" class:active={activePopover === 'walk'}
-                onclick={() => togglePopover('walk')} title="Walk style">
-                <span class="strip-emoji">{walkOptions[selectedWalk].emoji}</span>
-                <span class="strip-label">Walk</span>
-            </button>
-            <HotbarPopover open={activePopover === 'walk'} triggerEl={walkTrigger} onClose={closePopover} align="start">
+            <HotbarPopover open={activePopover === pop.name} triggerEl={triggers[i]} onClose={closePopover} align={pop.align}>
                 <div class="popover-content">
-                    <StyleGrid options={walkOptions} selected={selectedWalk} onSelect={handleSelectWalk} />
+                    <StyleGrid options={pop.options} selected={pop.selected} onSelect={pop.onSelect} />
                 </div>
             </HotbarPopover>
         </div>
+    {/each}
 
-        <!-- Idle indicator -->
-        <div class="indicator-wrapper" bind:this={idleTrigger}>
-            <button class="strip-btn" class:active={activePopover === 'idle'}
-                onclick={() => togglePopover('idle')} title="Idle style">
-                <span class="strip-emoji">{idleOptions[selectedIdle].emoji}</span>
-                <span class="strip-label">Idle</span>
-            </button>
-            <HotbarPopover open={activePopover === 'idle'} triggerEl={idleTrigger} onClose={closePopover}>
-                <div class="popover-content">
-                    <StyleGrid options={idleOptions} selected={selectedIdle} onSelect={handleSelectIdle} />
-                </div>
-            </HotbarPopover>
-        </div>
-
-        <!-- Settings (consolidated into popover) -->
-        <div class="indicator-wrapper" bind:this={settingsTrigger}>
-            <button class="strip-btn" class:active={activePopover === 'settings'}
-                onclick={() => togglePopover('settings')} title="Options">
-                <span class="strip-emoji">&#x1F527;</span>
-                <span class="strip-label">Options</span>
-            </button>
-            <HotbarPopover open={activePopover === 'settings'} triggerEl={settingsTrigger} onClose={closePopover}>
-                <div class="popover-content popover-settings">
-                    {#each settingsItems as item}
-                        <button class="settings-row" onclick={item.toggle}>
-                            <svg class="settings-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                {@html item.icon}
-                            </svg>
-                            <span class="settings-label">{item.label}</span>
-                            <span class="toggle-switch" class:on={settingsState[item.key]}>
-                                <span class="toggle-knob"></span>
-                            </span>
-                        </button>
-                    {/each}
-                </div>
-            </HotbarPopover>
-        </div>
-
-        <div class="strip-divider"></div>
-
-        <!-- Share button -->
-        <button class="strip-btn share-btn" class:copied={shareFeedback}
-            onclick={onShare} title={shareFeedback || 'Share'}>
-            {#if shareFeedback}
-                <svg class="share-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"/>
-                </svg>
-            {:else}
-                <svg class="share-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                </svg>
-            {/if}
-            <span class="strip-label">{shareFeedback || 'Share'}</span>
+    <!-- Settings popover -->
+    <div class="indicator-wrapper" bind:this={settingsTrigger}>
+        <button class="strip-btn" class:active={activePopover === 'settings'}
+            onclick={() => togglePopover('settings')} title="Settings">
+            <span class="strip-emoji">&#x2699;&#xFE0F;</span>
+            <span class="strip-label">Settings</span>
         </button>
-    {/if}
+        <HotbarPopover open={activePopover === 'settings'} triggerEl={settingsTrigger} onClose={closePopover}>
+            <div class="popover-content popover-settings">
+                {#each settingsItems as item}
+                    <button class="settings-row" onclick={item.toggle}>
+                        <svg class="settings-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            {@html item.icon}
+                        </svg>
+                        <span class="settings-label">{item.label}</span>
+                        <span class="toggle-switch" class:on={settingsState[item.key]}>
+                            <span class="toggle-knob"></span>
+                        </span>
+                    </button>
+                {/each}
+            </div>
+        </HotbarPopover>
+    </div>
+
+    <!-- Share button -->
+    <button class="strip-btn share-btn" class:copied={shareFeedback}
+        onclick={onShare} title={shareFeedback || 'Share'}>
+        {#if shareFeedback}
+            <svg class="share-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        {:else}
+            <svg class="share-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+        {/if}
+        <span class="strip-label">{shareFeedback || 'Share'}</span>
+    </button>
 </div>
 
 <style>
@@ -195,7 +137,6 @@
         justify-content: center;
         gap: 2px;
         flex: 1;
-        max-width: 48px;
         min-width: 0;
         padding: 6px 2px;
         background: rgba(255, 255, 255, 0.04);
@@ -232,31 +173,7 @@
         white-space: nowrap;
     }
 
-    .strip-divider {
-        width: 1px;
-        background: var(--color-border-light);
-        opacity: 0.4;
-        margin: 4px 1px;
-        flex-shrink: 0;
-    }
-
-    .strip-gear {
-        border-color: rgba(255, 215, 0, 0.2);
-        flex: 0 0 44px;
-        max-width: 44px;
-    }
-
-    /* Config mode: let buttons fill available width */
-    .strip.config-mode .strip-btn {
-        max-width: none;
-    }
-
-    .strip.config-mode .strip-gear {
-        flex: 0 0 44px;
-        max-width: 44px;
-    }
-
-    /* === Indicator wrapper (walk/idle/settings popover anchors) === */
+    /* === Indicator wrapper (popover anchors) === */
     .indicator-wrapper {
         position: relative;
         flex: 1;
