@@ -85,6 +85,10 @@ export const swRegistration = writable(null);
 // OPFS availability
 export const opfsDisabled = writable(false);
 
+// Animation state pushed from C++ backend (reactive, always current)
+// { location, state, currentAnimIndex, animations[] }
+export const animationState = writable(null);
+
 // Save editor state
 export const saveEditorState = writable({
     slots: [],           // Array of SaveSlot objects

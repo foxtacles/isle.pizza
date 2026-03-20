@@ -1,6 +1,6 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
-    import { gameRunning, multiplayerRoom, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus } from '../../stores.js';
+    import { gameRunning, multiplayerRoom, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus, animationState } from '../../stores.js';
     import { keepVisible } from '../../core/keep-visible.js';
     import { emoteOptions, walkOptions, idleOptions, settingsItems } from './constants.js';
     import MultiplayerHotbar from './MultiplayerHotbar.svelte';
@@ -67,6 +67,11 @@
 
     $: settingsState = { thirdPersonCam: $thirdPersonEnabled, showNameBubbles: $showNameBubbles, allowCustomize: $allowCustomize };
 
+    // Animation state derived from store
+    $: anims = $animationState?.animations ?? [];
+    $: animCurrentInterest = $animationState?.currentAnimIndex === 65535
+        ? null : $animationState?.currentAnimIndex ?? null;
+
     function refocusCanvas() {
         document.getElementById('canvas')?.focus();
     }
@@ -85,6 +90,14 @@
         window.Module?._mp_trigger_emote?.(index);
         activeEmote = index;
         flash('emote', 300, () => { activeEmote = -1; });
+    }
+
+    function handleToggleInterest(animIndex) {
+        if (animCurrentInterest === animIndex) {
+            window.Module?._mp_cancel_anim_interest?.();
+        } else {
+            window.Module?._mp_set_anim_interest?.(animIndex);
+        }
     }
 
     function showShareFeedback(msg) {
@@ -125,7 +138,9 @@
                 {selectedWalk} {selectedIdle} {activeEmote}
                 playerCount={$multiplayerPlayerCount} {badgeBump} {shareFeedback}
                 onEmote={triggerEmote} onSelectWalk={selectWalk} onSelectIdle={selectIdle}
-                onShare={handleShare} />
+                onShare={handleShare}
+                animations={anims} {animCurrentInterest}
+                onToggleInterest={handleToggleInterest} />
 
             <!-- Minimal badge when hotbar is disabled -->
             {#if disabled}
