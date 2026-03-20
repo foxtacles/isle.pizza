@@ -7,6 +7,7 @@
     import MultiplayerFab from './MultiplayerFab.svelte';
     import EmoteFan from './EmoteFan.svelte';
     import PeopleIcon from './PeopleIcon.svelte';
+    import CountdownOverlay from './CountdownOverlay.svelte';
 
     let selectedWalk = 0;
     let selectedIdle = 0;
@@ -71,6 +72,7 @@
     $: anims = $animationState?.animations ?? [];
     $: animCurrentInterest = $animationState?.currentAnimIndex === 65535
         ? null : $animationState?.currentAnimIndex ?? null;
+    $: animPendingInterest = $animationState?.pendingInterest ?? -1;
 
     function refocusCanvas() {
         document.getElementById('canvas')?.focus();
@@ -139,7 +141,7 @@
                 playerCount={$multiplayerPlayerCount} {badgeBump} {shareFeedback}
                 onEmote={triggerEmote} onSelectWalk={selectWalk} onSelectIdle={selectIdle}
                 onShare={handleShare}
-                animations={anims} {animCurrentInterest}
+                animations={anims} {animCurrentInterest} {animPendingInterest}
                 onToggleInterest={handleToggleInterest} />
 
             <!-- Minimal badge when hotbar is disabled -->
@@ -177,6 +179,7 @@
                     onEmote={triggerEmote} />
             {/if}
         {/if}
+        <CountdownOverlay animations={anims} />
     </div>
 {/if}
 

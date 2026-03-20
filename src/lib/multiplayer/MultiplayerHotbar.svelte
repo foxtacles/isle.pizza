@@ -25,10 +25,15 @@
     export let onShare;
     export let animations = [];
     export let animCurrentInterest = null;
+    export let animPendingInterest = -1;
     export let onToggleInterest = () => {};
 
     $: camAnims = animations.filter(a => a.category === 1);
     $: npcAnims = animations.filter(a => a.category === 0);
+
+    // Disable hotbar interactions during countdown and playback
+    $: animLocked = animations.some(a => (a.sessionState === 2 || a.sessionState === 3) && a.localInSession);
+    $: if (animLocked) { activePopover = null; }
 
     $: styleDropdowns = [
         { key: 'emote', label: 'Emote', emoji: emoteOptions[0].emoji, title: 'Emotes',
@@ -60,6 +65,7 @@
     function closePopover() { activePopover = null; resetHideTimer(); }
 
     function togglePopover(name) {
+        if (animLocked) return;
         if (activePopover === name) { activePopover = null; resetHideTimer(); }
         else { activePopover = name; keepAlive(); }
     }
@@ -80,7 +86,7 @@
 <div class="hotbar-zone" class:active={visible}
     onmouseenter={keepAlive} onmouseleave={handleZoneLeave}>
     {#if shown}
-        <div class="hotbar" transition:fly={{ y: 48, duration: 200 }}>
+        <div class="hotbar" class:countdown-lock={animLocked} transition:fly={{ y: 48, duration: 200 }}>
             {#each styleDropdowns as dd (dd.key)}
                 <div class="indicator-wrapper" bind:this={triggerEls[dd.key]}>
                     <button class="indicator-btn" class:active={activePopover === dd.key}
@@ -107,7 +113,7 @@
                     </button>
                     <HotbarPopover open={activePopover === dd.key} triggerEl={triggerEls[dd.key]}
                         onClose={closePopover} align="start">
-                        <AnimationPanel animations={dd.anims} currentInterest={animCurrentInterest} {onToggleInterest} />
+                        <AnimationPanel animations={dd.anims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} />
                     </HotbarPopover>
                 </div>
             {/each}
@@ -150,6 +156,9 @@
         user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
         font-family: Arial, sans-serif;
     }
+
+    .hotbar.countdown-lock .indicator-btn { opacity: 0.3; pointer-events: none; }
+    .hotbar.countdown-lock .divider { opacity: 0.2; }
 
     .divider {
         width: 1px; height: 28px; background: var(--color-border-light);

@@ -4,6 +4,7 @@
 
     export let animations = [];
     export let currentInterest = null;
+    export let pendingInterest = -1;
     export let onToggleInterest = () => {};
 
     // Build sort order from CharacterNameMap keys (same order as g_characters[])
@@ -25,7 +26,14 @@
         return best;
     }
 
+    function hasActiveSession(anim) {
+        return anim.sessionState > 0; // gathering, countdown, or playing
+    }
+
     $: sorted = [...animations].sort((a, b) => {
+        // Active sessions (gathering/countdown/playing) always on top
+        const aActive = hasActiveSession(a), bActive = hasActiveSession(b);
+        if (aActive !== bActive) return aActive ? -1 : 1;
         if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
         const ma = missingCount(a), mb = missingCount(b);
         if (ma !== mb) return ma - mb;
@@ -47,19 +55,51 @@
         if (anyCount) named.push(anyCount === 1 ? '+1 player' : `+${anyCount} players`);
         return named.join(', ');
     }
+
+    function isInterested(anim) {
+        return currentInterest === anim.animIndex || pendingInterest === anim.animIndex;
+    }
+
+    function isClickDisabled(anim) {
+        if (anim.sessionState === 3) return true; // playing
+        if (anim.localInSession) return false; // can always cancel own interest
+        if (anim.sessionState >= 1 && !anim.canJoin) return true; // no available slot
+        return false;
+    }
+
+    function handleClick(animIndex) {
+        onToggleInterest(animIndex);
+        // Refocus the game canvas so arrow keys don't scroll the list
+        document.getElementById('canvas')?.focus();
+    }
 </script>
 
-<div class="anim-panel">
-    <div class="anim-list">
+<div class="anim-panel" onfocusin={() => document.getElementById('canvas')?.focus()}>
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div class="anim-list" tabindex="-1">
         {#each sorted as anim (anim.animIndex)}
-            <button class="anim-row"
-                class:eligible={anim.eligible}
-                class:interested={currentInterest === anim.animIndex}
-                class:dimmed={!anim.eligible && !anim.atLocation}
-                onclick={() => onToggleInterest(anim.animIndex)}>
+            <button class="anim-row" tabindex="-1"
+                class:eligible={anim.eligible && anim.sessionState === 0}
+                class:interested={isInterested(anim)}
+                class:dimmed={!anim.eligible && !anim.atLocation && anim.sessionState === 0}
+                class:gathering={anim.sessionState === 1}
+                class:countdown={anim.sessionState === 2}
+                class:playing={anim.sessionState === 3}
+                disabled={isClickDisabled(anim)}
+                onclick={() => handleClick(anim.animIndex)}>
                 <div class="row-left">
                     <span class="anim-name">{AnimationTitles[anim.objectId] || anim.name}</span>
-                    {#if anim.eligible}
+                    {#if anim.sessionState === 3 && anim.localInSession}
+                        <span class="anim-sub playing-text">Playing...</span>
+                    {:else if anim.sessionState === 2 && anim.localInSession}
+                        <span class="anim-sub countdown-text">Starting...</span>
+                    {:else if anim.sessionState === 1 && anim.localInSession}
+                        <span class="anim-sub gathering-text">Waiting for others...</span>
+                    {:else if anim.sessionState >= 1 && !anim.canJoin}
+                        <span class="anim-sub full-text">Roles filled</span>
+                    {:else if anim.sessionState >= 1 && anim.canJoin}
+                        <span class="anim-sub join-text">Join!</span>
+                    {:else if anim.eligible}
                         <span class="anim-sub ready-text">Ready</span>
                     {:else if anim.atLocation}
                         <span class="anim-sub needs-text">{formatNeeds(anim.slots)}</span>
@@ -127,7 +167,7 @@
     }
 
     @media (hover: hover) {
-        .anim-row:hover {
+        .anim-row:hover:not(:disabled) {
             background: rgba(255, 255, 255, 0.06);
         }
     }
@@ -143,6 +183,24 @@
 
     .anim-row.dimmed {
         opacity: 0.4;
+    }
+
+    .anim-row.gathering {
+        border-left-color: rgba(255, 193, 7, 0.6);
+    }
+
+    .anim-row.countdown {
+        border-left-color: rgba(255, 152, 0, 0.7);
+    }
+
+    .anim-row.playing {
+        border-left-color: rgba(76, 175, 80, 0.7);
+        opacity: 0.7;
+        cursor: default;
+    }
+
+    .anim-row:disabled {
+        cursor: default;
     }
 
     .row-left {
@@ -174,6 +232,33 @@
     .needs-text {
         color: var(--color-text-muted);
         opacity: 0.55;
+    }
+
+    .gathering-text {
+        color: rgba(255, 193, 7, 0.85);
+    }
+
+    .countdown-text {
+        color: rgba(255, 152, 0, 0.9);
+        animation: pulse 1s ease-in-out infinite;
+    }
+
+    .join-text {
+        color: rgba(100, 181, 246, 0.95);
+        font-weight: 700;
+    }
+
+    .full-text {
+        color: rgba(255, 107, 107, 0.6);
+    }
+
+    .playing-text {
+        color: rgba(76, 175, 80, 0.85);
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
     }
 
     .slot-dots {
