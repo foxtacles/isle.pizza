@@ -85,10 +85,14 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="hotbar-zone" class:active={visible}
-    onmouseenter={keepAlive} onmouseleave={handleZoneLeave}>
+<div class="hotbar-zone">
+    {#if visible && hidden}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class="hotbar-trigger" onmouseenter={keepAlive}></div>
+    {/if}
     {#if shown}
-        <div class="hotbar" class:countdown-lock={animLocked} transition:fly={{ y: 48, duration: 200 }}>
+        <div class="hotbar" class:countdown-lock={animLocked} transition:fly={{ y: 48, duration: 200 }}
+            onmouseenter={keepAlive} onmouseleave={handleZoneLeave}>
             {#each styleDropdowns as dd (dd.key)}
                 <div class="indicator-wrapper" bind:this={triggerEls[dd.key]}>
                     <button class="indicator-btn" class:active={activePopover === dd.key}
@@ -154,10 +158,14 @@
         z-index: 1000; display: flex; justify-content: center; align-items: flex-end;
         padding-bottom: 16px; pointer-events: none;
     }
-    .hotbar-zone.active { pointer-events: auto; }
-
+    .hotbar-trigger {
+        position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+        width: 500px; max-width: 80%; height: 64px;
+        pointer-events: auto;
+    }
     .hotbar {
         display: flex; align-items: center; gap: 4px; padding: 4px 8px;
+        pointer-events: auto;
         background: rgba(24, 24, 24, 0.85); border: 1px solid var(--color-border-medium);
         border-radius: 12px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
         box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4); touch-action: none;
