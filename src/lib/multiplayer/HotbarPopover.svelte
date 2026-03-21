@@ -17,6 +17,7 @@
 
     function handleClick(e) {
         if (e.button !== 0) return; // Only close on left-click
+        if (e.buttons & 2) return;  // Don't close while right mouse button is held
         if (!popoverEl || !triggerEl) return;
         if (!popoverEl.contains(e.target) && !triggerEl.contains(e.target)) {
             onClose();

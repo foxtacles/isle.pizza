@@ -3,6 +3,7 @@
     import StyleGrid from './StyleGrid.svelte';
     import SettingsPanel from './SettingsPanel.svelte';
     import AnimationPanel from './AnimationPanel.svelte';
+    import { bestAnimTab } from './constants.js';
 
     export let emoteOptions;
     export let activeEmote;
@@ -53,7 +54,11 @@
     $: if (!visible) { activePopover = null; }
 
     function togglePopover(name) {
-        activePopover = activePopover === name ? null : name;
+        if (activePopover === name) { activePopover = null; }
+        else {
+            if (name === 'acts') animTab = bestAnimTab(sceneAnims, npcAnims, animTab);
+            activePopover = name;
+        }
     }
 
     function closePopover() {

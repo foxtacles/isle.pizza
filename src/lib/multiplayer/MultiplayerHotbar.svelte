@@ -6,6 +6,7 @@
     import SettingsPanel from './SettingsPanel.svelte';
     import AnimationPanel from './AnimationPanel.svelte';
     import PeopleIcon from './PeopleIcon.svelte';
+    import { bestAnimTab } from './constants.js';
 
     export let visible = false;
     export let emoteOptions;
@@ -83,7 +84,10 @@
     function togglePopover(name) {
         if (animLocked) return;
         if (activePopover === name) { activePopover = null; resetHideTimer(); }
-        else { activePopover = name; keepAlive(); }
+        else {
+            if (name === 'anims') animTab = bestAnimTab(sceneAnims, npcAnims, animTab);
+            activePopover = name; keepAlive();
+        }
     }
 
     function handleEmoteSelect(index) { onEmote(index); closePopover(); }
