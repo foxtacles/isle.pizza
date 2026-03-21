@@ -57,6 +57,14 @@
         fanOpen = false;
     }
 
+    // Derive animation activity for the mobile Acts button indicator
+    $: animActivity = (() => {
+        const active = anims.find(a => a.localInSession && a.sessionState >= 1);
+        if (active) return active.sessionState === 3 ? 'playing' : active.sessionState === 2 ? 'countdown' : 'gathering';
+        const joinable = anims.find(a => a.sessionState >= 1 && a.canJoin);
+        return joinable ? 'gathering' : null;
+    })();
+
     // Badge pulse when player count changes
     $: {
         if (prevPlayerCount !== null && $multiplayerPlayerCount !== null && $multiplayerPlayerCount !== prevPlayerCount) {
@@ -176,7 +184,10 @@
                     {selectedWalk} {selectedIdle} {shareFeedback}
                     onSelectWalk={selectWalk} onSelectIdle={selectIdle}
                     onShare={handleShare}
-                    onEmote={triggerEmote} />
+                    onEmote={triggerEmote}
+                    {animActivity}
+                    animations={anims} {animCurrentInterest} {animPendingInterest}
+                    onToggleInterest={handleToggleInterest} />
             {/if}
         {/if}
         <CountdownOverlay animations={anims} />

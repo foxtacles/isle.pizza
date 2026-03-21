@@ -39,7 +39,7 @@
 </script>
 
 {#if open}
-    <div class="popover" class:align-start={align === 'start'} bind:this={popoverEl}>
+    <div class="popover" class:align-start={align === 'start'} class:align-end={align === 'end'} bind:this={popoverEl}>
         <slot />
     </div>
 {/if}
@@ -63,6 +63,13 @@
 
     .popover.align-start {
         left: 0;
+        transform: none;
+        animation: popover-in-start 0.15s ease-out;
+    }
+
+    .popover.align-end {
+        left: auto;
+        right: 0;
         transform: none;
         animation: popover-in-start 0.15s ease-out;
     }

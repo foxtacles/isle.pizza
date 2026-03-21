@@ -2,6 +2,8 @@
     import { onMount } from 'svelte';
     import HotbarPopover from './HotbarPopover.svelte';
     import StyleGrid from './StyleGrid.svelte';
+    import SettingsPanel from './SettingsPanel.svelte';
+    import AnimationPanel from './AnimationPanel.svelte';
 
     export let emoteOptions;
     export let activeEmote;
@@ -16,11 +18,23 @@
     export let onSelectIdle = () => {};
     export let shareFeedback = '';
     export let onShare = () => {};
+    export let animations = [];
+    export let animCurrentInterest = null;
+    export let animPendingInterest = -1;
+    export let onToggleInterest = () => {};
+    export let animActivity = null;
 
     let visible = false;
     let activePopover = null;
     let triggers = [];
     let settingsTrigger;
+    let actsTrigger;
+    let animTab = 'scene';
+    let actsListEl;
+
+    $: sceneAnims = animations.filter(a => a.category === 1);
+    $: npcAnims = animations.filter(a => a.category === 0);
+    $: filteredAnims = animTab === 'scene' ? sceneAnims : npcAnims;
 
     $: stylePopovers = [
         { name: 'emote', label: 'Emote', emoji: emoteOptions[0].emoji, options: emoteOptions, selected: activeEmote, onSelect: onEmote, align: 'start' },
@@ -38,6 +52,22 @@
 
     function closePopover() {
         activePopover = null;
+    }
+
+    // JS-based touch scrolling for acts list (bypasses touch-action: none on .strip ancestor)
+    let touchStartY = 0;
+    let touchStartScroll = 0;
+
+    function handleActsTouch(e) {
+        touchStartY = e.touches[0].clientY;
+        touchStartScroll = actsListEl.scrollTop;
+    }
+
+    function handleActsMove(e) {
+        if (!actsListEl) return;
+        const dy = touchStartY - e.touches[0].clientY;
+        actsListEl.scrollTop = touchStartScroll + dy;
+        e.preventDefault();
     }
 </script>
 
@@ -57,7 +87,7 @@
         </div>
     {/each}
 
-    <!-- Settings popover -->
+    <!-- Settings popover (includes Share, matching desktop) -->
     <div class="indicator-wrapper" bind:this={settingsTrigger}>
         <button class="strip-btn" class:active={activePopover === 'settings'}
             onclick={() => togglePopover('settings')} title="Settings">
@@ -65,36 +95,49 @@
             <span class="strip-label">Settings</span>
         </button>
         <HotbarPopover open={activePopover === 'settings'} triggerEl={settingsTrigger} onClose={closePopover}>
-            <div class="popover-content popover-settings">
-                {#each settingsItems as item}
-                    <button class="settings-row" onclick={item.toggle}>
-                        <svg class="settings-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            {@html item.icon}
-                        </svg>
-                        <span class="settings-label">{item.label}</span>
-                        <span class="toggle-switch" class:on={settingsState[item.key]}>
-                            <span class="toggle-knob"></span>
-                        </span>
-                    </button>
-                {/each}
+            <div class="popover-settings">
+                <SettingsPanel {settingsItems} {settingsState} {shareFeedback} {onShare} />
             </div>
         </HotbarPopover>
     </div>
 
-    <!-- Share button -->
-    <button class="strip-btn share-btn" class:copied={shareFeedback}
-        onclick={onShare} title={shareFeedback || 'Share'}>
-        {#if shareFeedback}
-            <svg class="share-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"/>
-            </svg>
-        {:else}
-            <svg class="share-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
-        {/if}
-        <span class="strip-label">{shareFeedback || 'Share'}</span>
-    </button>
+    <!-- Acts popover (animation discovery) -->
+    <div class="indicator-wrapper" bind:this={actsTrigger}>
+        <button class="strip-btn" class:active={activePopover === 'acts'}
+            onclick={() => togglePopover('acts')} title="Animations">
+            <span class="acts-btn-wrapper">
+                <span class="strip-emoji">&#x1F3AD;</span>
+                {#if animActivity}
+                    <span class="activity-dot"
+                        class:gathering={animActivity === 'gathering'}
+                        class:countdown={animActivity === 'countdown'}
+                        class:playing={animActivity === 'playing'}></span>
+                {/if}
+            </span>
+            <span class="strip-label">Acts</span>
+        </button>
+        <HotbarPopover open={activePopover === 'acts'} triggerEl={actsTrigger} onClose={closePopover} align="end">
+            <div class="popover-acts">
+                <div class="acts-tabs">
+                    <button class="acts-tab" class:active={animTab === 'scene'}
+                        onclick={() => { animTab = 'scene'; }}>
+                        Scene{#if sceneAnims.length}&nbsp;({sceneAnims.length}){/if}
+                    </button>
+                    <button class="acts-tab" class:active={animTab === 'act'}
+                        onclick={() => { animTab = 'act'; }}>
+                        Act{#if npcAnims.length}&nbsp;({npcAnims.length}){/if}
+                    </button>
+                </div>
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div class="acts-list" bind:this={actsListEl}
+                    ontouchstart={handleActsTouch} ontouchmove={handleActsMove}>
+                    {#key animTab}
+                        <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} />
+                    {/key}
+                </div>
+            </div>
+        </HotbarPopover>
+    </div>
 </div>
 
 <style>
@@ -186,90 +229,97 @@
 
     .popover-settings {
         width: 220px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
     }
 
-    /* === Settings popover rows === */
-    .settings-row {
+    /* === Acts popover === */
+    .popover-acts {
+        width: 260px;
         display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px;
-        background: rgba(255, 255, 255, 0.03);
+        flex-direction: column;
+        height: 220px;
+    }
+
+    .acts-tabs {
+        display: flex;
+        gap: 2px;
+        margin-bottom: 6px;
+        flex-shrink: 0;
+    }
+
+    .acts-tab {
+        flex: 1;
+        padding: 7px 0;
         border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        width: 100%;
-        text-align: left;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--color-text-muted);
+        font-size: 12px;
+        font-weight: 600;
         font-family: inherit;
-        box-sizing: border-box;
+        cursor: pointer;
+        transition: all 0.15s ease;
         outline: none;
     }
 
-    .settings-row:active {
-        background: rgba(255, 255, 255, 0.1);
+    .acts-tab:active {
+        transform: scale(0.97);
     }
 
-    .settings-icon {
-        flex-shrink: 0;
-        color: var(--color-text-muted);
-    }
-
-    .settings-label {
-        flex: 1;
-        color: var(--color-text-light);
-        font-size: 0.8em;
-    }
-
-    .toggle-switch {
-        position: relative;
-        width: 44px;
-        height: 24px;
-        border-radius: 24px;
-        background: var(--color-border-dark);
-        transition: background-color 0.2s ease;
-        flex-shrink: 0;
-    }
-
-    .toggle-switch.on {
-        background-color: #3a5f3a;
-    }
-
-    .toggle-knob {
-        position: absolute;
-        top: 3px;
-        left: 3px;
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: var(--color-text-muted);
-        transition: all 0.2s ease;
-    }
-
-    .toggle-switch.on .toggle-knob {
-        left: 23px;
-        background: var(--color-primary);
-    }
-
-    /* === Share button === */
-    .share-btn {
-        border-color: rgba(255, 215, 0, 0.2);
-    }
-
-    .share-btn .strip-label,
-    .share-icon {
+    .acts-tab.active {
+        background: rgba(255, 215, 0, 0.12);
         color: var(--color-primary);
     }
 
-    .share-btn.copied {
-        background: rgba(74, 222, 128, 0.12);
-        border-color: rgba(74, 222, 128, 0.4);
+    .acts-list {
+        flex: 1;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        touch-action: pan-y;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
     }
 
-    .share-btn.copied .strip-label,
-    .share-btn.copied .share-icon {
-        color: #4ade80;
+    .acts-list::-webkit-scrollbar { width: 4px; }
+    .acts-list::-webkit-scrollbar-track { background: transparent; }
+    .acts-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 2px; }
+
+    /* Mobile overrides for AnimationPanel inside popover */
+    .acts-list :global(.anim-panel) { width: 100%; }
+    .acts-list :global(.anim-list) { max-height: none; overflow-y: visible; overscroll-behavior: auto; touch-action: auto; }
+    .acts-list :global(.anim-row) { padding: 8px 6px; }
+    .acts-list :global(.anim-name) { font-size: 12px; }
+    .acts-list :global(.anim-sub) { font-size: 10px; }
+
+    .acts-btn-wrapper {
+        position: relative;
+        display: inline-flex;
+    }
+
+    .activity-dot {
+        position: absolute;
+        top: -2px;
+        right: -4px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        border: 1.5px solid rgba(24, 24, 24, 0.95);
+    }
+
+    .activity-dot.gathering {
+        background: rgba(255, 193, 7, 0.85);
+    }
+
+    .activity-dot.countdown {
+        background: rgba(255, 152, 0, 0.9);
+        animation: activity-pulse 1s ease-in-out infinite;
+    }
+
+    .activity-dot.playing {
+        background: rgba(76, 175, 80, 0.7);
+    }
+
+    @keyframes activity-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
     }
 </style>
