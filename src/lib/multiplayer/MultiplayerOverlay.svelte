@@ -57,8 +57,8 @@
         fanOpen = false;
     }
 
-    // Derive animation activity indicator for a set of animations.
-    // Priority: playing > countdown > gathering/joinable > available (ready).
+    // Derive aggregate animation activity indicator.
+    // Priority: playing > countdown > gathering > joinable > available.
     function computeActivity(list) {
         const active = list.find(a => a.localInSession && a.sessionState >= 1);
         if (active) return active.sessionState === 3 ? 'playing' : active.sessionState === 2 ? 'countdown' : 'gathering';
@@ -68,8 +68,6 @@
     }
 
     $: animActivity = computeActivity(anims);
-    $: sceneActivity = computeActivity(anims.filter(a => a.category === 1));
-    $: actActivity = computeActivity(anims.filter(a => a.category === 0));
 
     // Badge pulse when player count changes
     $: {
@@ -157,7 +155,7 @@
                 onShare={handleShare}
                 animations={anims} {animCurrentInterest} {animPendingInterest}
                 onToggleInterest={handleToggleInterest}
-                {sceneActivity} {actActivity} />
+                {animActivity} />
 
             <!-- Minimal badge when hotbar is disabled -->
             {#if disabled}
@@ -184,8 +182,9 @@
                 active={fanOpen}
                 onclick={handleFabClick} />
 
-            {#if fanOpen && !disabled}
+            {#if !disabled}
                 <EmoteFan
+                    visible={fanOpen}
                     {emoteOptions} {activeEmote}
                     {walkOptions} {idleOptions} {settingsItems} {settingsState}
                     {selectedWalk} {selectedIdle} {shareFeedback}

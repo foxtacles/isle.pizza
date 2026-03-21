@@ -1,4 +1,5 @@
 <script>
+    import { flip } from 'svelte/animate';
     import { CharacterNameMap } from '../../core/savegame/actorConstants.js';
     import { AnimationTitles } from './animationTitles.js';
 
@@ -6,6 +7,8 @@
     export let currentInterest = null;
     export let pendingInterest = -1;
     export let onToggleInterest = () => {};
+    export let isMobile = false;
+    export let scrollContainer = null;
 
     // Build sort order from CharacterNameMap keys (same order as g_characters[])
     const charSortOrder = Object.fromEntries(Object.keys(CharacterNameMap).map((name, i) => [name, i]));
@@ -67,8 +70,16 @@
         return false;
     }
 
-    function handleClick(animIndex) {
-        onToggleInterest(animIndex);
+    let listEl;
+
+    function handleClick(anim) {
+        const joining = !isInterested(anim);
+        onToggleInterest(anim.animIndex);
+        // Scroll to top when joining so the user follows the item as it moves up
+        const el = scrollContainer || listEl;
+        if (joining && el) {
+            el.scrollTo({ top: 0, behavior: 'smooth' });
+        }
         // Refocus the game canvas so arrow keys don't scroll the list
         document.getElementById('canvas')?.focus();
     }
@@ -76,17 +87,18 @@
 
 <div class="anim-panel" onfocusin={() => document.getElementById('canvas')?.focus()}>
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-    <div class="anim-list" tabindex="-1">
+    <div class="anim-list" tabindex="-1" bind:this={listEl}>
         {#each sorted as anim (anim.animIndex)}
-            <button class="anim-row" tabindex="-1"
+            <button class="anim-row" tabindex="-1" animate:flip={{ duration: 250 }}
                 class:eligible={anim.eligible && anim.sessionState === 0}
                 class:interested={isInterested(anim)}
                 class:dimmed={!anim.eligible && !anim.atLocation && anim.sessionState === 0}
                 class:gathering={anim.sessionState === 1}
                 class:countdown={anim.sessionState === 2}
                 class:playing={anim.sessionState === 3}
+                class:joinable={anim.sessionState >= 1 && anim.canJoin && !anim.localInSession}
                 disabled={isClickDisabled(anim)}
-                onclick={() => handleClick(anim.animIndex)}>
+                onclick={() => handleClick(anim)}>
                 <div class="row-left">
                     <span class="anim-name">{AnimationTitles[anim.objectId] || anim.name}</span>
                     {#if anim.sessionState === 3 && anim.localInSession}
@@ -94,13 +106,14 @@
                     {:else if anim.sessionState === 2 && anim.localInSession}
                         <span class="anim-sub countdown-text">Starting...</span>
                     {:else if anim.sessionState === 1 && anim.localInSession}
-                        <span class="anim-sub gathering-text">Waiting for others...</span>
+                        {@const needed = missingCount(anim)}
+                        <span class="anim-sub gathering-text">Waiting for {needed} more...</span>
                     {:else if anim.sessionState >= 1 && !anim.canJoin}
                         <span class="anim-sub full-text">Roles filled</span>
                     {:else if anim.sessionState >= 1 && anim.canJoin}
                         <span class="anim-sub join-text">Join!</span>
                     {:else if anim.eligible}
-                        <span class="anim-sub ready-text">Ready</span>
+                        <span class="anim-sub ready-text">{isMobile ? 'Tap to start' : 'Click to start'}</span>
                     {:else if anim.atLocation}
                         <span class="anim-sub needs-text">{formatNeeds(anim.slots)}</span>
                     {/if}
@@ -150,12 +163,12 @@
         align-items: center;
         justify-content: space-between;
         width: 100%;
-        padding: 5px 6px;
+        padding: 7px 8px;
         background: none;
         border: none;
         border-left: 3px solid transparent;
         cursor: pointer;
-        transition: background 0.12s ease;
+        transition: background 0.12s ease, border-left-color 0.2s ease, opacity 0.2s ease;
         text-align: left;
         font-family: inherit;
         outline: none;
@@ -194,9 +207,15 @@
     }
 
     .anim-row.playing {
-        border-left-color: rgba(76, 175, 80, 0.7);
+        border-left-color: rgba(0, 188, 212, 0.7);
         opacity: 0.7;
         cursor: default;
+    }
+
+    .anim-row.joinable {
+        border-left-color: rgba(100, 181, 246, 0.7);
+        background: rgba(100, 181, 246, 0.06);
+        animation: joinable-pulse 2s ease-in-out infinite;
     }
 
     .anim-row:disabled {
@@ -206,13 +225,13 @@
     .row-left {
         display: flex;
         flex-direction: column;
-        gap: 1px;
+        gap: 2px;
         min-width: 0;
         flex: 1;
     }
 
     .anim-name {
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
         color: var(--color-text-muted);
         overflow: hidden;
@@ -253,12 +272,17 @@
     }
 
     .playing-text {
-        color: rgba(76, 175, 80, 0.85);
+        color: rgba(0, 188, 212, 0.85);
     }
 
     @keyframes pulse {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.5; }
+    }
+
+    @keyframes joinable-pulse {
+        0%, 100% { background: rgba(100, 181, 246, 0.04); }
+        50% { background: rgba(100, 181, 246, 0.1); }
     }
 
     .slot-dots {
@@ -270,8 +294,8 @@
     }
 
     .dot {
-        width: 7px;
-        height: 7px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         background: rgba(255, 255, 255, 0.1);
         border: 1px solid rgba(255, 255, 255, 0.18);

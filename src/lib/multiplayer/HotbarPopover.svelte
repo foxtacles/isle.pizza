@@ -1,5 +1,6 @@
 <script>
     import { onDestroy } from 'svelte';
+    import { fade } from 'svelte/transition';
 
     export let open = false;
     export let triggerEl = null;
@@ -39,7 +40,8 @@
 </script>
 
 {#if open}
-    <div class="popover" class:align-start={align === 'start'} class:align-end={align === 'end'} bind:this={popoverEl}>
+    <div class="popover" class:align-start={align === 'start'} class:align-end={align === 'end'} bind:this={popoverEl}
+        out:fade={{ duration: 120 }}>
         <slot />
     </div>
 {/if}

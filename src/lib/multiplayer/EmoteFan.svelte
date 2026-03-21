@@ -1,5 +1,4 @@
 <script>
-    import { onMount } from 'svelte';
     import HotbarPopover from './HotbarPopover.svelte';
     import StyleGrid from './StyleGrid.svelte';
     import SettingsPanel from './SettingsPanel.svelte';
@@ -23,8 +22,8 @@
     export let animPendingInterest = -1;
     export let onToggleInterest = () => {};
     export let animActivity = null;
+    export let visible = false;
 
-    let visible = false;
     let activePopover = null;
     let triggers = [];
     let settingsTrigger;
@@ -46,9 +45,8 @@
         { name: 'idle', label: 'Idle', emoji: idleOptions[selectedIdle].emoji, options: idleOptions, selected: selectedIdle, onSelect: onSelectIdle },
     ];
 
-    onMount(() => {
-        requestAnimationFrame(() => { visible = true; });
-    });
+    // Close popovers when strip hides
+    $: if (!visible) { activePopover = null; }
 
     function togglePopover(name) {
         activePopover = activePopover === name ? null : name;
@@ -105,7 +103,7 @@
         </HotbarPopover>
     </div>
 
-    <!-- Acts popover (animation discovery) -->
+    <!-- Anims popover (animation discovery) -->
     <div class="indicator-wrapper" bind:this={actsTrigger}>
         <button class="strip-btn" class:active={activePopover === 'acts'}
             onclick={() => togglePopover('acts')} title="Animations">
@@ -120,7 +118,7 @@
                         class:playing={animActivity === 'playing'}></span>
                 {/if}
             </span>
-            <span class="strip-label">Acts</span>
+            <span class="strip-label">Anims</span>
         </button>
         <HotbarPopover open={activePopover === 'acts'} triggerEl={actsTrigger} onClose={closePopover} align="end">
             <div class="popover-acts">
@@ -138,7 +136,7 @@
                 <div class="acts-list" bind:this={actsListEl}
                     ontouchstart={handleActsTouch} ontouchmove={handleActsMove}>
                     {#key animTab}
-                        <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} />
+                        <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} isMobile={true} scrollContainer={actsListEl} />
                     {/key}
                 </div>
             </div>
@@ -165,6 +163,7 @@
         box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
         transform: translateX(100%);
         opacity: 0;
+        pointer-events: none;
         transition: transform 0.2s cubic-bezier(0.34, 1.2, 0.64, 1), opacity 0.15s ease;
         touch-action: none;
         user-select: none;
@@ -176,6 +175,7 @@
     .strip.visible {
         transform: translateX(0);
         opacity: 1;
+        pointer-events: auto;
     }
 
     .strip.countdown-lock .strip-btn { opacity: 0.3; pointer-events: none; }
@@ -294,9 +294,7 @@
     /* Mobile overrides for AnimationPanel inside popover */
     .acts-list :global(.anim-panel) { width: 100%; }
     .acts-list :global(.anim-list) { max-height: none; overflow-y: visible; overscroll-behavior: auto; touch-action: auto; }
-    .acts-list :global(.anim-row) { padding: 8px 6px; }
-    .acts-list :global(.anim-name) { font-size: 12px; }
-    .acts-list :global(.anim-sub) { font-size: 10px; }
+    .acts-list :global(.anim-row) { padding: 9px 8px; }
 
     .acts-btn-wrapper {
         position: relative;
@@ -311,6 +309,12 @@
         height: 7px;
         border-radius: 50%;
         border: 1.5px solid rgba(24, 24, 24, 0.95);
+        animation: dot-appear 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+
+    @keyframes dot-appear {
+        from { transform: scale(0); }
+        to { transform: scale(1); }
     }
 
     .activity-dot.available {
@@ -331,7 +335,7 @@
     }
 
     .activity-dot.playing {
-        background: rgba(76, 175, 80, 0.7);
+        background: rgba(0, 188, 212, 0.7);
     }
 
     @keyframes activity-pulse {

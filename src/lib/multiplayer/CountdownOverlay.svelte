@@ -1,5 +1,6 @@
 <script>
     import { onDestroy } from 'svelte';
+    import { fade } from 'svelte/transition';
     import { AnimationTitles } from './animationTitles.js';
 
     export let animations = [];
@@ -42,12 +43,12 @@
 </script>
 
 {#if countdownAnim && displayNumber > 0}
-    <div class="countdown-overlay">
+    <div class="countdown-overlay" out:fade={{ duration: 200 }}>
         {#key animKey}
             <span class="countdown-number">{displayNumber}</span>
         {/key}
         {#if animName}
-            <span class="countdown-label">{animName}</span>
+            <span class="countdown-label" in:fade={{ duration: 300 }}>{animName}</span>
         {/if}
     </div>
 {/if}

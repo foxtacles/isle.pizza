@@ -27,11 +27,13 @@
     export let animCurrentInterest = null;
     export let animPendingInterest = -1;
     export let onToggleInterest = () => {};
-    export let sceneActivity = null;
-    export let actActivity = null;
+    export let animActivity = null;
 
-    $: camAnims = animations.filter(a => a.category === 1);
+    $: sceneAnims = animations.filter(a => a.category === 1);
     $: npcAnims = animations.filter(a => a.category === 0);
+
+    let animTab = 'scene';
+    $: filteredAnims = animTab === 'scene' ? sceneAnims : npcAnims;
 
     // Disable hotbar interactions during countdown and playback
     $: animLocked = animations.some(a => (a.sessionState === 2 || a.sessionState === 3) && a.localInSession);
@@ -46,10 +48,18 @@
           options: idleOptions, selected: selectedIdle, onSelect: (i) => handleStyleSelect(onSelectIdle, i) },
     ];
 
-    $: animDropdowns = [
-        { key: 'cam-anims', label: 'Scene', emoji: '\u{1F3AC}', title: 'Location animations', anims: camAnims, activity: sceneActivity },
-        { key: 'npc-anims', label: 'Act', emoji: '\u{1F3AD}', title: 'NPC animations', anims: npcAnims, activity: actActivity },
-    ];
+    // One-time bounce when activity transitions to joinable
+    let animBounce = false;
+    let prevActivity = null;
+    let bounceTimer;
+    $: {
+        if (animActivity === 'joinable' && prevActivity !== 'joinable') {
+            animBounce = true;
+            clearTimeout(bounceTimer);
+            bounceTimer = setTimeout(() => { animBounce = false; }, 600);
+        }
+        prevActivity = animActivity;
+    }
 
     let activePopover = null;
     let triggerEls = {};
@@ -81,18 +91,14 @@
         else resetHideTimer();
     }
 
-    onDestroy(() => { clearTimeout(hideTimer); });
+    onDestroy(() => { clearTimeout(hideTimer); clearTimeout(bounceTimer); });
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="hotbar-zone">
-    {#if visible && hidden}
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="hotbar-trigger" onmouseenter={keepAlive}></div>
-    {/if}
+<div class="hotbar-zone" class:active={visible}
+    onmouseenter={keepAlive} onmouseleave={handleZoneLeave}>
     {#if shown}
-        <div class="hotbar" class:countdown-lock={animLocked} transition:fly={{ y: 48, duration: 200 }}
-            onmouseenter={keepAlive} onmouseleave={handleZoneLeave}>
+        <div class="hotbar" class:countdown-lock={animLocked} transition:fly={{ y: 48, duration: 200 }}>
             {#each styleDropdowns as dd (dd.key)}
                 <div class="indicator-wrapper" bind:this={triggerEls[dd.key]}>
                     <button class="indicator-btn" class:active={activePopover === dd.key}
@@ -109,26 +115,39 @@
 
             <div class="divider"></div>
 
-            {#each animDropdowns as dd (dd.key)}
-                <div class="indicator-wrapper" bind:this={triggerEls[dd.key]}>
-                    <button class="indicator-btn"
-                        class:active={activePopover === dd.key}
-                        class:activity-available={!activePopover && dd.activity === 'available'}
-                        class:activity-joinable={!activePopover && dd.activity === 'joinable'}
-                        class:activity-gathering={!activePopover && dd.activity === 'gathering'}
-                        class:activity-countdown={!activePopover && dd.activity === 'countdown'}
-                        class:activity-playing={!activePopover && dd.activity === 'playing'}
-                        onclick={() => togglePopover(dd.key)} title={dd.title}>
-                        <span class="indicator-label">{dd.label}</span>
-                        <span class="indicator-emoji">{dd.emoji}</span>
-                        <span class="indicator-caret">&#x25BE;</span>
-                    </button>
-                    <HotbarPopover open={activePopover === dd.key} triggerEl={triggerEls[dd.key]}
-                        onClose={closePopover} align="start">
-                        <AnimationPanel animations={dd.anims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} />
-                    </HotbarPopover>
-                </div>
-            {/each}
+            <div class="indicator-wrapper" bind:this={triggerEls.anims}>
+                <button class="indicator-btn"
+                    class:active={activePopover === 'anims'}
+                    class:activity-available={!activePopover && animActivity === 'available'}
+                    class:activity-joinable={!activePopover && animActivity === 'joinable'}
+                    class:activity-gathering={!activePopover && animActivity === 'gathering'}
+                    class:activity-countdown={!activePopover && animActivity === 'countdown'}
+                    class:activity-playing={!activePopover && animActivity === 'playing'}
+                    class:bounce={animBounce}
+                    onclick={() => togglePopover('anims')} title="Animations">
+                    <span class="indicator-label">Animations</span>
+                    <span class="indicator-emoji">&#x1F3AC;</span>
+                    <span class="indicator-caret">&#x25BE;</span>
+                </button>
+                <HotbarPopover open={activePopover === 'anims'} triggerEl={triggerEls.anims}
+                    onClose={closePopover} align="start">
+                    <div class="popover-anims">
+                        <div class="anims-tabs">
+                            <button class="anims-tab" class:active={animTab === 'scene'}
+                                onclick={() => { animTab = 'scene'; }}>
+                                Scene{#if sceneAnims.length}&nbsp;({sceneAnims.length}){/if}
+                            </button>
+                            <button class="anims-tab" class:active={animTab === 'act'}
+                                onclick={() => { animTab = 'act'; }}>
+                                Act{#if npcAnims.length}&nbsp;({npcAnims.length}){/if}
+                            </button>
+                        </div>
+                        {#key animTab}
+                            <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} />
+                        {/key}
+                    </div>
+                </HotbarPopover>
+            </div>
 
             <div class="divider"></div>
 
@@ -158,14 +177,10 @@
         z-index: 1000; display: flex; justify-content: center; align-items: flex-end;
         padding-bottom: 16px; pointer-events: none;
     }
-    .hotbar-trigger {
-        position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
-        width: 500px; max-width: 80%; height: 64px;
-        pointer-events: auto;
-    }
+    .hotbar-zone.active { pointer-events: auto; }
+
     .hotbar {
         display: flex; align-items: center; gap: 4px; padding: 4px 8px;
-        pointer-events: auto;
         background: rgba(24, 24, 24, 0.85); border: 1px solid var(--color-border-medium);
         border-radius: 12px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
         box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4); touch-action: none;
@@ -220,9 +235,9 @@
     .indicator-btn.activity-countdown .indicator-label { color: rgba(255, 152, 0, 0.95); }
 
     .indicator-btn.activity-playing {
-        background: rgba(76, 175, 80, 0.08); border-color: rgba(76, 175, 80, 0.35);
+        background: rgba(0, 188, 212, 0.08); border-color: rgba(0, 188, 212, 0.35);
     }
-    .indicator-btn.activity-playing .indicator-label { color: rgba(76, 175, 80, 0.9); }
+    .indicator-btn.activity-playing .indicator-label { color: rgba(0, 188, 212, 0.9); }
 
     @keyframes nudge-join {
         0%, 100% { background: rgba(100, 181, 246, 0.06); }
@@ -232,6 +247,15 @@
         0%, 100% { background: rgba(255, 152, 0, 0.06); }
         50% { background: rgba(255, 152, 0, 0.18); }
     }
+    .indicator-btn.bounce {
+        animation: activity-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes activity-bounce {
+        0% { transform: scale(1); }
+        40% { transform: scale(1.15); }
+        100% { transform: scale(1); }
+    }
+
     .indicator-caret { font-size: 10px; color: var(--color-text-muted); line-height: 1; }
 
     .pin-btn {
@@ -252,4 +276,40 @@
 
     .popover-grid { width: 200px; }
     .popover-settings { width: 220px; }
+
+    /* === Animations tabbed popover === */
+    .popover-anims {
+        width: 300px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .anims-tabs {
+        display: flex;
+        gap: 2px;
+        margin-bottom: 6px;
+        flex-shrink: 0;
+    }
+
+    .anims-tab {
+        flex: 1;
+        padding: 6px 0;
+        border: none;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--color-text-muted);
+        font-size: 12px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        outline: none;
+    }
+
+    @media (hover: hover) { .anims-tab:hover { background: rgba(255, 255, 255, 0.08); } }
+
+    .anims-tab.active {
+        background: rgba(255, 215, 0, 0.12);
+        color: var(--color-primary);
+    }
 </style>
