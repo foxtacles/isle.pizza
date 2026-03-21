@@ -57,13 +57,19 @@
         fanOpen = false;
     }
 
-    // Derive animation activity for the mobile Acts button indicator
-    $: animActivity = (() => {
-        const active = anims.find(a => a.localInSession && a.sessionState >= 1);
+    // Derive animation activity indicator for a set of animations.
+    // Priority: playing > countdown > gathering/joinable > available (ready).
+    function computeActivity(list) {
+        const active = list.find(a => a.localInSession && a.sessionState >= 1);
         if (active) return active.sessionState === 3 ? 'playing' : active.sessionState === 2 ? 'countdown' : 'gathering';
-        const joinable = anims.find(a => a.sessionState >= 1 && a.canJoin);
-        return joinable ? 'gathering' : null;
-    })();
+        if (list.find(a => a.sessionState >= 1 && a.canJoin)) return 'joinable';
+        if (list.find(a => a.eligible && a.sessionState === 0)) return 'available';
+        return null;
+    }
+
+    $: animActivity = computeActivity(anims);
+    $: sceneActivity = computeActivity(anims.filter(a => a.category === 1));
+    $: actActivity = computeActivity(anims.filter(a => a.category === 0));
 
     // Badge pulse when player count changes
     $: {
@@ -150,7 +156,8 @@
                 onEmote={triggerEmote} onSelectWalk={selectWalk} onSelectIdle={selectIdle}
                 onShare={handleShare}
                 animations={anims} {animCurrentInterest} {animPendingInterest}
-                onToggleInterest={handleToggleInterest} />
+                onToggleInterest={handleToggleInterest}
+                {sceneActivity} {actActivity} />
 
             <!-- Minimal badge when hotbar is disabled -->
             {#if disabled}

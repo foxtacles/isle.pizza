@@ -36,6 +36,10 @@
     $: npcAnims = animations.filter(a => a.category === 0);
     $: filteredAnims = animTab === 'scene' ? sceneAnims : npcAnims;
 
+    // Disable strip during countdown and playback
+    $: animLocked = animations.some(a => (a.sessionState === 2 || a.sessionState === 3) && a.localInSession);
+    $: if (animLocked) { activePopover = null; }
+
     $: stylePopovers = [
         { name: 'emote', label: 'Emote', emoji: emoteOptions[0].emoji, options: emoteOptions, selected: activeEmote, onSelect: onEmote, align: 'start' },
         { name: 'walk', label: 'Walk', emoji: walkOptions[selectedWalk].emoji, options: walkOptions, selected: selectedWalk, onSelect: onSelectWalk, align: 'start' },
@@ -71,7 +75,7 @@
     }
 </script>
 
-<div class="strip" class:visible>
+<div class="strip" class:visible class:countdown-lock={animLocked}>
     {#each stylePopovers as pop, i}
         <div class="indicator-wrapper" bind:this={triggers[i]}>
             <button class="strip-btn" class:active={activePopover === pop.name}
@@ -109,6 +113,8 @@
                 <span class="strip-emoji">&#x1F3AD;</span>
                 {#if animActivity}
                     <span class="activity-dot"
+                        class:available={animActivity === 'available'}
+                        class:joinable={animActivity === 'joinable'}
                         class:gathering={animActivity === 'gathering'}
                         class:countdown={animActivity === 'countdown'}
                         class:playing={animActivity === 'playing'}></span>
@@ -171,6 +177,8 @@
         transform: translateX(0);
         opacity: 1;
     }
+
+    .strip.countdown-lock .strip-btn { opacity: 0.3; pointer-events: none; }
 
     /* === Shared button base === */
     .strip-btn {
@@ -303,6 +311,14 @@
         height: 7px;
         border-radius: 50%;
         border: 1.5px solid rgba(24, 24, 24, 0.95);
+    }
+
+    .activity-dot.available {
+        background: rgba(76, 175, 80, 0.7);
+    }
+
+    .activity-dot.joinable {
+        background: rgba(100, 181, 246, 0.95);
     }
 
     .activity-dot.gathering {

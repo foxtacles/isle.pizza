@@ -27,6 +27,8 @@
     export let animCurrentInterest = null;
     export let animPendingInterest = -1;
     export let onToggleInterest = () => {};
+    export let sceneActivity = null;
+    export let actActivity = null;
 
     $: camAnims = animations.filter(a => a.category === 1);
     $: npcAnims = animations.filter(a => a.category === 0);
@@ -45,8 +47,8 @@
     ];
 
     $: animDropdowns = [
-        { key: 'cam-anims', label: 'Scene', emoji: '\u{1F3AC}', title: 'Location animations', anims: camAnims },
-        { key: 'npc-anims', label: 'Act', emoji: '\u{1F3AD}', title: 'NPC animations', anims: npcAnims },
+        { key: 'cam-anims', label: 'Scene', emoji: '\u{1F3AC}', title: 'Location animations', anims: camAnims, activity: sceneActivity },
+        { key: 'npc-anims', label: 'Act', emoji: '\u{1F3AD}', title: 'NPC animations', anims: npcAnims, activity: actActivity },
     ];
 
     let activePopover = null;
@@ -105,7 +107,13 @@
 
             {#each animDropdowns as dd (dd.key)}
                 <div class="indicator-wrapper" bind:this={triggerEls[dd.key]}>
-                    <button class="indicator-btn" class:active={activePopover === dd.key}
+                    <button class="indicator-btn"
+                        class:active={activePopover === dd.key}
+                        class:activity-available={!activePopover && dd.activity === 'available'}
+                        class:activity-joinable={!activePopover && dd.activity === 'joinable'}
+                        class:activity-gathering={!activePopover && dd.activity === 'gathering'}
+                        class:activity-countdown={!activePopover && dd.activity === 'countdown'}
+                        class:activity-playing={!activePopover && dd.activity === 'playing'}
                         onclick={() => togglePopover(dd.key)} title={dd.title}>
                         <span class="indicator-label">{dd.label}</span>
                         <span class="indicator-emoji">{dd.emoji}</span>
@@ -179,6 +187,43 @@
     .indicator-label { font-size: 0.7em; font-weight: 600; color: var(--color-text-muted); line-height: 1; }
     .indicator-btn.active .indicator-label { color: var(--color-primary); }
     .indicator-emoji { font-size: 20px; line-height: 1; }
+
+    /* Activity states: tinted background + colored label to signal actionable content */
+    .indicator-btn.activity-available {
+        background: rgba(76, 175, 80, 0.08); border-color: rgba(76, 175, 80, 0.3);
+    }
+    .indicator-btn.activity-available .indicator-label { color: rgba(76, 175, 80, 0.9); }
+
+    .indicator-btn.activity-joinable {
+        background: rgba(100, 181, 246, 0.1); border-color: rgba(100, 181, 246, 0.4);
+        animation: nudge-join 2s ease-in-out infinite;
+    }
+    .indicator-btn.activity-joinable .indicator-label { color: rgba(100, 181, 246, 0.95); }
+
+    .indicator-btn.activity-gathering {
+        background: rgba(255, 193, 7, 0.08); border-color: rgba(255, 193, 7, 0.35);
+    }
+    .indicator-btn.activity-gathering .indicator-label { color: rgba(255, 193, 7, 0.9); }
+
+    .indicator-btn.activity-countdown {
+        background: rgba(255, 152, 0, 0.1); border-color: rgba(255, 152, 0, 0.5);
+        animation: nudge-countdown 1s ease-in-out infinite;
+    }
+    .indicator-btn.activity-countdown .indicator-label { color: rgba(255, 152, 0, 0.95); }
+
+    .indicator-btn.activity-playing {
+        background: rgba(76, 175, 80, 0.08); border-color: rgba(76, 175, 80, 0.35);
+    }
+    .indicator-btn.activity-playing .indicator-label { color: rgba(76, 175, 80, 0.9); }
+
+    @keyframes nudge-join {
+        0%, 100% { background: rgba(100, 181, 246, 0.06); }
+        50% { background: rgba(100, 181, 246, 0.15); }
+    }
+    @keyframes nudge-countdown {
+        0%, 100% { background: rgba(255, 152, 0, 0.06); }
+        50% { background: rgba(255, 152, 0, 0.18); }
+    }
     .indicator-caret { font-size: 10px; color: var(--color-text-muted); line-height: 1; }
 
     .pin-btn {
