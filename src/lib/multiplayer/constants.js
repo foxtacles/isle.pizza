@@ -25,6 +25,21 @@ export const emoteOptions = [
     { emoji: '\u{1F355}', label: 'Toss' }
 ];
 
+// Pick the Scene/Act tab with the most relevant activity.
+// Priority: playing > countdown > gathering > joinable > eligible.
+export function bestAnimTab(sceneAnims, npcAnims, currentTab) {
+    function score(list) {
+        const active = list.find(x => x.localInSession && x.sessionState >= 1);
+        if (active) return active.sessionState + 2;
+        if (list.find(x => x.sessionState >= 1 && x.canJoin)) return 2;
+        if (list.find(x => x.eligible && x.sessionState === 0)) return 1;
+        return 0;
+    }
+    const s = score(sceneAnims), a = score(npcAnims);
+    if (s === a) return currentTab;
+    return s > a ? 'scene' : 'act';
+}
+
 export const settingsItems = [
     {
         icon: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',

@@ -713,3 +713,15 @@ export const CharacterFieldOffsets = Object.freeze({
 
 export const CHARACTER_RECORD_SIZE = 16;
 
+/**
+ * Map from internal character name (g_characters[].m_name / ActorInfoInit[].name)
+ * to display name (ActorDisplayNames[]). Used by animation UI to show human-readable
+ * character names for slot requirements.
+ */
+export const CharacterNameMap = Object.freeze(
+    ActorInfoInit.reduce((map, info, i) => {
+        map[info.name] = ActorDisplayNames[i];
+        return map;
+    }, {})
+);
+

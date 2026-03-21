@@ -1,11 +1,12 @@
 <script>
     import { onDestroy } from 'svelte';
     import { fly } from 'svelte/transition';
-    import EmoteButton from './EmoteButton.svelte';
     import HotbarPopover from './HotbarPopover.svelte';
     import StyleGrid from './StyleGrid.svelte';
     import SettingsPanel from './SettingsPanel.svelte';
+    import AnimationPanel from './AnimationPanel.svelte';
     import PeopleIcon from './PeopleIcon.svelte';
+    import { bestAnimTab } from './constants.js';
 
     export let visible = false;
     export let emoteOptions;
@@ -23,145 +24,158 @@
     export let onSelectWalk;
     export let onSelectIdle;
     export let onShare;
+    export let animations = [];
+    export let animCurrentInterest = null;
+    export let animPendingInterest = -1;
+    export let onToggleInterest = () => {};
+    export let animActivity = null;
+    export let animsDisabled = false;
+
+    $: sceneAnims = animations.filter(a => a.category === 1);
+    $: npcAnims = animations.filter(a => a.category === 0);
+
+    let animTab = 'scene';
+    $: filteredAnims = animTab === 'scene' ? sceneAnims : npcAnims;
+
+    // Disable hotbar interactions during countdown and playback
+    $: animLocked = animations.some(a => (a.sessionState === 2 || a.sessionState === 3) && a.localInSession);
+    $: if (animLocked) { activePopover = null; }
+
+    // Close anims popover when switching to 1st person
+    $: if (animsDisabled && activePopover === 'anims') { activePopover = null; }
+
+    $: styleDropdowns = [
+        { key: 'emote', label: 'Emote', emoji: emoteOptions[0].emoji, title: 'Emotes',
+          options: emoteOptions, selected: activeEmote, onSelect: handleEmoteSelect },
+        { key: 'walk', label: 'Walk', emoji: walkOptions[selectedWalk].emoji, title: 'Walk style',
+          options: walkOptions, selected: selectedWalk, onSelect: (i) => handleStyleSelect(onSelectWalk, i) },
+        { key: 'idle', label: 'Idle', emoji: idleOptions[selectedIdle].emoji, title: 'Idle style',
+          options: idleOptions, selected: selectedIdle, onSelect: (i) => handleStyleSelect(onSelectIdle, i) },
+    ];
+
+    // One-time bounce when activity transitions to joinable
+    let animBounce = false;
+    let prevActivity = null;
+    let bounceTimer;
+    $: {
+        if (animActivity === 'joinable' && prevActivity !== 'joinable') {
+            animBounce = true;
+            clearTimeout(bounceTimer);
+            bounceTimer = setTimeout(() => { animBounce = false; }, 600);
+        }
+        prevActivity = animActivity;
+    }
 
     let activePopover = null;
-    let walkTrigger;
-    let idleTrigger;
-    let settingsTrigger;
+    let triggerEls = {};
     let pinned = true;
     let hidden = false;
     let hideTimer;
 
     $: shown = visible && !hidden;
+    $: if (!visible) { activePopover = null; hidden = false; clearTimeout(hideTimer); }
 
-    function keepAlive() {
-        hidden = false;
-        clearTimeout(hideTimer);
-    }
-
-    function scheduleHide() {
-        clearTimeout(hideTimer);
-        hideTimer = setTimeout(() => { hidden = true; }, 1000);
-    }
-
-    function resetHideTimer() {
-        keepAlive();
-        if (!pinned) scheduleHide();
-    }
-
-    // Close popovers and reset when becoming invisible
-    $: if (!visible) {
-        activePopover = null;
-        hidden = false;
-        clearTimeout(hideTimer);
-    }
-
-    function handleZoneLeave() {
-        if (!pinned && activePopover === null) scheduleHide();
-    }
+    function keepAlive() { hidden = false; clearTimeout(hideTimer); }
+    function scheduleHide() { clearTimeout(hideTimer); hideTimer = setTimeout(() => { hidden = true; }, 1000); }
+    function resetHideTimer() { keepAlive(); if (!pinned) scheduleHide(); }
+    function handleZoneLeave() { if (!pinned && activePopover === null) scheduleHide(); }
+    function closePopover() { activePopover = null; resetHideTimer(); }
 
     function togglePopover(name) {
-        if (activePopover === name) {
-            activePopover = null;
-            resetHideTimer();
-        } else {
-            activePopover = name;
-            clearTimeout(hideTimer);
-            hidden = false;
+        if (animLocked) return;
+        if (activePopover === name) { activePopover = null; resetHideTimer(); }
+        else {
+            if (name === 'anims') animTab = bestAnimTab(sceneAnims, npcAnims, animTab);
+            activePopover = name; keepAlive();
         }
     }
 
-    function closePopover() {
-        activePopover = null;
-        resetHideTimer();
-    }
-
-    function handleSelect(callback, index) {
-        callback(index);
-        resetHideTimer();
-    }
+    function handleEmoteSelect(index) { onEmote(index); closePopover(); }
+    function handleStyleSelect(callback, index) { callback(index); resetHideTimer(); }
 
     function togglePin() {
         pinned = !pinned;
-        if (pinned) {
-            hidden = false;
-            clearTimeout(hideTimer);
-        } else {
-            resetHideTimer();
-        }
+        if (pinned) keepAlive();
+        else resetHideTimer();
     }
 
-    onDestroy(() => { clearTimeout(hideTimer); });
+    onDestroy(() => { clearTimeout(hideTimer); clearTimeout(bounceTimer); });
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="hotbar-zone" class:active={visible}
-    onmouseenter={keepAlive}
-    onmouseleave={handleZoneLeave}>
+    onmouseenter={keepAlive} onmouseleave={handleZoneLeave}>
     {#if shown}
-        <div class="hotbar" transition:fly={{ y: 48, duration: 200 }}>
-            <!-- Emote buttons -->
-            {#each emoteOptions as opt, i}
-                <EmoteButton emoji={opt.emoji} label={opt.label}
-                    active={activeEmote === i}
-                    onclick={() => handleSelect(onEmote, i)} />
+        <div class="hotbar" class:countdown-lock={animLocked} transition:fly={{ y: 48, duration: 200 }}>
+            {#each styleDropdowns as dd (dd.key)}
+                <div class="indicator-wrapper" bind:this={triggerEls[dd.key]}>
+                    <button class="indicator-btn" class:active={activePopover === dd.key}
+                        onclick={() => togglePopover(dd.key)} title={dd.title}>
+                        <span class="indicator-label">{dd.label}</span>
+                        <span class="indicator-emoji">{dd.emoji}</span>
+                        <span class="indicator-caret">&#x25BE;</span>
+                    </button>
+                    <HotbarPopover open={activePopover === dd.key} triggerEl={triggerEls[dd.key]} onClose={closePopover}>
+                        <div class="popover-grid"><StyleGrid options={dd.options} selected={dd.selected} onSelect={dd.onSelect} /></div>
+                    </HotbarPopover>
+                </div>
             {/each}
 
             <div class="divider"></div>
 
-            <!-- Walk indicator -->
-            <div class="indicator-wrapper" bind:this={walkTrigger}>
-                <button class="indicator-btn" class:active={activePopover === 'walk'}
-                    onclick={() => togglePopover('walk')} title="Walk style">
-                    <span class="indicator-label">Walk</span>
-                    <span class="indicator-emoji">{walkOptions[selectedWalk].emoji}</span>
+            <div class="indicator-wrapper" bind:this={triggerEls.anims}>
+                <button class="indicator-btn"
+                    class:active={activePopover === 'anims'}
+                    class:activity-available={!activePopover && !animsDisabled && animActivity === 'available'}
+                    class:activity-joinable={!activePopover && !animsDisabled && animActivity === 'joinable'}
+                    class:activity-gathering={!activePopover && !animsDisabled && animActivity === 'gathering'}
+                    class:activity-countdown={!activePopover && !animsDisabled && animActivity === 'countdown'}
+                    class:activity-playing={!activePopover && !animsDisabled && animActivity === 'playing'}
+                    class:bounce={animBounce}
+                    class:anims-disabled={animsDisabled}
+                    disabled={animsDisabled}
+                    onclick={() => togglePopover('anims')} title="Animations">
+                    <span class="indicator-label">Animations</span>
+                    <span class="indicator-emoji">&#x1F3AC;</span>
                     <span class="indicator-caret">&#x25BE;</span>
                 </button>
-                <HotbarPopover open={activePopover === 'walk'} triggerEl={walkTrigger} onClose={closePopover}>
-                    <div class="popover-content">
-                        <StyleGrid options={walkOptions} selected={selectedWalk} onSelect={(i) => handleSelect(onSelectWalk, i)} />
+                <HotbarPopover open={activePopover === 'anims'} triggerEl={triggerEls.anims}
+                    onClose={closePopover} align="start">
+                    <div class="popover-anims">
+                        <div class="anims-tabs">
+                            <button class="anims-tab" class:active={animTab === 'scene'}
+                                onclick={() => { animTab = 'scene'; }}>
+                                Scene{#if sceneAnims.length}&nbsp;({sceneAnims.length}){/if}
+                            </button>
+                            <button class="anims-tab" class:active={animTab === 'act'}
+                                onclick={() => { animTab = 'act'; }}>
+                                Act{#if npcAnims.length}&nbsp;({npcAnims.length}){/if}
+                            </button>
+                        </div>
+                        {#key animTab}
+                            <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} />
+                        {/key}
                     </div>
                 </HotbarPopover>
             </div>
 
-            <!-- Idle indicator -->
-            <div class="indicator-wrapper" bind:this={idleTrigger}>
-                <button class="indicator-btn" class:active={activePopover === 'idle'}
-                    onclick={() => togglePopover('idle')} title="Idle style">
-                    <span class="indicator-label">Idle</span>
-                    <span class="indicator-emoji">{idleOptions[selectedIdle].emoji}</span>
-                    <span class="indicator-caret">&#x25BE;</span>
-                </button>
-                <HotbarPopover open={activePopover === 'idle'} triggerEl={idleTrigger} onClose={closePopover}>
-                    <div class="popover-content">
-                        <StyleGrid options={idleOptions} selected={selectedIdle} onSelect={(i) => handleSelect(onSelectIdle, i)} />
-                    </div>
-                </HotbarPopover>
-            </div>
+            <div class="divider"></div>
 
-            <!-- Settings -->
-            <div class="indicator-wrapper" bind:this={settingsTrigger}>
+            <div class="indicator-wrapper" bind:this={triggerEls.settings}>
                 <button class="indicator-btn" class:active={activePopover === 'settings'}
                     onclick={() => togglePopover('settings')} title="Settings">
                     <span class="indicator-emoji">&#x2699;&#xFE0F;</span>
                 </button>
-                <HotbarPopover open={activePopover === 'settings'} triggerEl={settingsTrigger} onClose={closePopover}>
-                    <div class="popover-content popover-settings">
-                        <SettingsPanel {settingsItems} {settingsState} {shareFeedback} {onShare} />
-                    </div>
+                <HotbarPopover open={activePopover === 'settings'} triggerEl={triggerEls.settings} onClose={closePopover}>
+                    <div class="popover-settings"><SettingsPanel {settingsItems} {settingsState} {shareFeedback} {onShare} /></div>
                 </HotbarPopover>
             </div>
 
-            <!-- Pin button -->
             <button class="pin-btn" class:pinned onclick={togglePin}
                 title={pinned ? 'Unpin (auto-hide)' : 'Pin (stay visible)'}>&#x1F4CC;</button>
 
-            <!-- Player count -->
             {#if playerCount != null}
-                <span class="player-count" class:bump={badgeBump}>
-                    <PeopleIcon />
-                    {playerCount}
-                </span>
+                <span class="player-count" class:bump={badgeBump}><PeopleIcon />{playerCount}</span>
             {/if}
         </div>
     {/if}
@@ -169,169 +183,145 @@
 
 <style>
     .hotbar-zone {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 64px;
-        z-index: 1000;
-        display: flex;
-        justify-content: center;
-        align-items: flex-end;
-        padding-bottom: 16px;
-        pointer-events: none;
+        position: fixed; bottom: 0; left: 0; right: 0; height: 64px;
+        z-index: 1000; display: flex; justify-content: center; align-items: flex-end;
+        padding-bottom: 16px; pointer-events: none;
     }
-
-    .hotbar-zone.active {
-        pointer-events: auto;
-    }
+    .hotbar-zone.active { pointer-events: auto; }
 
     .hotbar {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        padding: 4px 8px;
-        background: rgba(24, 24, 24, 0.85);
-        border: 1px solid var(--color-border-medium);
-        border-radius: 12px;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-        touch-action: none;
-        user-select: none;
-        -webkit-user-select: none;
-        -webkit-touch-callout: none;
+        display: flex; align-items: center; gap: 4px; padding: 4px 8px;
+        background: rgba(24, 24, 24, 0.85); border: 1px solid var(--color-border-medium);
+        border-radius: 12px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4); touch-action: none;
+        user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
         font-family: Arial, sans-serif;
     }
 
+    .hotbar.countdown-lock .indicator-btn { opacity: 0.3; pointer-events: none; }
+    .hotbar.countdown-lock .divider { opacity: 0.2; }
+
     .divider {
-        width: 1px;
-        height: 28px;
-        background: var(--color-border-light);
-        opacity: 0.4;
-        margin: 0 2px;
-        flex-shrink: 0;
+        width: 1px; height: 28px; background: var(--color-border-light);
+        opacity: 0.4; margin: 0 2px; flex-shrink: 0;
     }
 
-    .indicator-wrapper {
-        position: relative;
-    }
+    .indicator-wrapper { position: relative; }
 
     .indicator-btn {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        padding: 4px 6px;
-        background: none;
-        border: 1.5px solid transparent;
-        border-radius: 10px;
-        cursor: pointer;
-        transition: background 0.15s ease, border-color 0.15s ease;
-        font-family: inherit;
-        outline: none;
+        display: flex; align-items: center; gap: 4px; padding: 4px 6px;
+        background: none; border: 1.5px solid transparent; border-radius: 10px;
+        cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease;
+        font-family: inherit; outline: none;
     }
+    @media (hover: hover) { .indicator-btn:hover { background: rgba(255, 255, 255, 0.08); } }
+    .indicator-btn.active { background: rgba(255, 215, 0, 0.12); border-color: rgba(255, 215, 0, 0.4); }
 
-    @media (hover: hover) {
-        .indicator-btn:hover {
-            background: rgba(255, 255, 255, 0.08);
-        }
+    .indicator-label { font-size: 0.7em; font-weight: 600; color: var(--color-text-muted); line-height: 1; }
+    .indicator-btn.active .indicator-label { color: var(--color-primary); }
+    .indicator-emoji { font-size: 20px; line-height: 1; }
+
+    /* Activity states: tinted background + colored label to signal actionable content */
+    .indicator-btn.activity-available {
+        background: rgba(76, 175, 80, 0.08); border-color: rgba(76, 175, 80, 0.3);
     }
+    .indicator-btn.activity-available .indicator-label { color: rgba(76, 175, 80, 0.9); }
 
-    .indicator-btn.active {
-        background: rgba(255, 215, 0, 0.12);
-        border-color: rgba(255, 215, 0, 0.4);
+    .indicator-btn.activity-joinable {
+        background: rgba(100, 181, 246, 0.1); border-color: rgba(100, 181, 246, 0.4);
+        animation: nudge-join 2s ease-in-out infinite;
     }
+    .indicator-btn.activity-joinable .indicator-label { color: rgba(100, 181, 246, 0.95); }
 
-    .indicator-label {
-        font-size: 0.7em;
-        font-weight: 600;
-        color: var(--color-text-muted);
-        line-height: 1;
+    .indicator-btn.activity-gathering {
+        background: rgba(255, 193, 7, 0.08); border-color: rgba(255, 193, 7, 0.35);
     }
+    .indicator-btn.activity-gathering .indicator-label { color: rgba(255, 193, 7, 0.9); }
 
-    .indicator-btn.active .indicator-label {
-        color: var(--color-primary);
+    .indicator-btn.activity-countdown {
+        background: rgba(255, 152, 0, 0.1); border-color: rgba(255, 152, 0, 0.5);
+        animation: nudge-countdown 1s ease-in-out infinite;
     }
+    .indicator-btn.activity-countdown .indicator-label { color: rgba(255, 152, 0, 0.95); }
 
-    .indicator-emoji {
-        font-size: 20px;
-        line-height: 1;
+    .indicator-btn.activity-playing {
+        background: rgba(0, 188, 212, 0.08); border-color: rgba(0, 188, 212, 0.35);
     }
+    .indicator-btn.activity-playing .indicator-label { color: rgba(0, 188, 212, 0.9); }
 
-    .indicator-caret {
-        font-size: 10px;
-        color: var(--color-text-muted);
-        line-height: 1;
+    @keyframes nudge-join {
+        0%, 100% { background: rgba(100, 181, 246, 0.06); }
+        50% { background: rgba(100, 181, 246, 0.15); }
     }
-
-    .pin-btn {
-        flex-shrink: 0;
-        border: none;
-        border-radius: 50%;
-        background: transparent;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 4px;
-        font-size: 12px;
-        line-height: 1;
-        opacity: 0.3;
-        transition: opacity 0.15s ease;
-        outline: none;
+    @keyframes nudge-countdown {
+        0%, 100% { background: rgba(255, 152, 0, 0.06); }
+        50% { background: rgba(255, 152, 0, 0.18); }
     }
-
-    @media (hover: hover) {
-        .pin-btn:hover {
-            opacity: 0.7;
-        }
+    .indicator-btn.bounce {
+        animation: activity-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-
-    .pin-btn.pinned {
-        opacity: 1;
-    }
-
-    .player-count {
-        display: flex;
-        align-items: center;
-        gap: 3px;
-        padding: 2px 6px;
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--color-primary);
-        white-space: nowrap;
-    }
-
-    .player-count.bump {
-        animation: badge-bump 0.4s ease;
-    }
-
-    @keyframes badge-bump {
+    @keyframes activity-bounce {
         0% { transform: scale(1); }
-        40% { transform: scale(1.2); }
+        40% { transform: scale(1.15); }
         100% { transform: scale(1); }
     }
 
-    .popover-content {
-        width: 200px;
+    .indicator-btn.anims-disabled { opacity: 0.3; cursor: default; }
+
+    .indicator-caret { font-size: 10px; color: var(--color-text-muted); line-height: 1; }
+
+    .pin-btn {
+        flex-shrink: 0; border: none; border-radius: 50%; background: transparent;
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+        padding: 4px; font-size: 12px; line-height: 1; opacity: 0.3;
+        transition: opacity 0.15s ease; outline: none;
+    }
+    @media (hover: hover) { .pin-btn:hover { opacity: 0.7; } }
+    .pin-btn.pinned { opacity: 1; }
+
+    .player-count {
+        display: flex; align-items: center; gap: 3px; padding: 2px 6px;
+        font-size: 12px; font-weight: 700; color: var(--color-primary); white-space: nowrap;
+    }
+    .player-count.bump { animation: badge-bump 0.4s ease; }
+    @keyframes badge-bump { 0% { transform: scale(1); } 40% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+    .popover-grid { width: 200px; }
+    .popover-settings { width: 220px; }
+
+    /* === Animations tabbed popover === */
+    .popover-anims {
+        width: 300px;
+        display: flex;
+        flex-direction: column;
     }
 
-    .popover-settings {
-        width: 220px;
+    .anims-tabs {
+        display: flex;
+        gap: 2px;
+        margin-bottom: 6px;
+        flex-shrink: 0;
     }
 
-    /* Emote buttons in hotbar need to be compact */
-    .hotbar :global(.emote-btn) {
-        width: 44px;
-        height: 40px;
-        padding: 4px 2px;
+    .anims-tab {
+        flex: 1;
+        padding: 6px 0;
+        border: none;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--color-text-muted);
+        font-size: 12px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        outline: none;
     }
 
-    .hotbar :global(.emote-emoji) {
-        font-size: 20px;
-    }
+    @media (hover: hover) { .anims-tab:hover { background: rgba(255, 255, 255, 0.08); } }
 
-    .hotbar :global(.emote-label) {
-        font-size: 0.6em;
+    .anims-tab.active {
+        background: rgba(255, 215, 0, 0.12);
+        color: var(--color-primary);
     }
 </style>

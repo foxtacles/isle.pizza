@@ -1,12 +1,13 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
-    import { gameRunning, multiplayerRoom, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus } from '../../stores.js';
+    import { gameRunning, multiplayerRoom, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus, animationState } from '../../stores.js';
     import { keepVisible } from '../../core/keep-visible.js';
     import { emoteOptions, walkOptions, idleOptions, settingsItems } from './constants.js';
     import MultiplayerHotbar from './MultiplayerHotbar.svelte';
     import MultiplayerFab from './MultiplayerFab.svelte';
     import EmoteFan from './EmoteFan.svelte';
     import PeopleIcon from './PeopleIcon.svelte';
+    import CountdownOverlay from './CountdownOverlay.svelte';
 
     let selectedWalk = 0;
     let selectedIdle = 0;
@@ -56,6 +57,18 @@
         fanOpen = false;
     }
 
+    // Derive aggregate animation activity indicator.
+    // Priority: playing > countdown > gathering > joinable > available.
+    function computeActivity(list) {
+        const active = list.find(a => a.localInSession && a.sessionState >= 1);
+        if (active) return active.sessionState === 3 ? 'playing' : active.sessionState === 2 ? 'countdown' : 'gathering';
+        if (list.find(a => a.sessionState >= 1 && a.canJoin)) return 'joinable';
+        if (list.find(a => a.eligible && a.sessionState === 0)) return 'available';
+        return null;
+    }
+
+    $: animActivity = computeActivity(anims);
+
     // Badge pulse when player count changes
     $: {
         if (prevPlayerCount !== null && $multiplayerPlayerCount !== null && $multiplayerPlayerCount !== prevPlayerCount) {
@@ -66,6 +79,12 @@
     }
 
     $: settingsState = { thirdPersonCam: $thirdPersonEnabled, showNameBubbles: $showNameBubbles, allowCustomize: $allowCustomize };
+
+    // Animation state derived from store
+    $: anims = $animationState?.animations ?? [];
+    $: animCurrentInterest = $animationState?.currentAnimIndex === 65535
+        ? null : $animationState?.currentAnimIndex ?? null;
+    $: animPendingInterest = $animationState?.pendingInterest ?? -1;
 
     function refocusCanvas() {
         document.getElementById('canvas')?.focus();
@@ -85,6 +104,14 @@
         window.Module?._mp_trigger_emote?.(index);
         activeEmote = index;
         flash('emote', 300, () => { activeEmote = -1; });
+    }
+
+    function handleToggleInterest(animIndex) {
+        if (animCurrentInterest === animIndex) {
+            window.Module?._mp_cancel_anim_interest?.();
+        } else {
+            window.Module?._mp_set_anim_interest?.(animIndex);
+        }
     }
 
     function showShareFeedback(msg) {
@@ -125,7 +152,11 @@
                 {selectedWalk} {selectedIdle} {activeEmote}
                 playerCount={$multiplayerPlayerCount} {badgeBump} {shareFeedback}
                 onEmote={triggerEmote} onSelectWalk={selectWalk} onSelectIdle={selectIdle}
-                onShare={handleShare} />
+                onShare={handleShare}
+                animations={anims} {animCurrentInterest} {animPendingInterest}
+                onToggleInterest={handleToggleInterest}
+                {animActivity}
+                animsDisabled={!$thirdPersonEnabled} />
 
             <!-- Minimal badge when hotbar is disabled -->
             {#if disabled}
@@ -152,16 +183,22 @@
                 active={fanOpen}
                 onclick={handleFabClick} />
 
-            {#if fanOpen && !disabled}
+            {#if !disabled}
                 <EmoteFan
+                    visible={fanOpen}
                     {emoteOptions} {activeEmote}
                     {walkOptions} {idleOptions} {settingsItems} {settingsState}
                     {selectedWalk} {selectedIdle} {shareFeedback}
                     onSelectWalk={selectWalk} onSelectIdle={selectIdle}
                     onShare={handleShare}
-                    onEmote={triggerEmote} />
+                    onEmote={triggerEmote}
+                    {animActivity}
+                    animations={anims} {animCurrentInterest} {animPendingInterest}
+                    onToggleInterest={handleToggleInterest}
+                    animsDisabled={!$thirdPersonEnabled} />
             {/if}
         {/if}
+        <CountdownOverlay animations={anims} />
     </div>
 {/if}
 

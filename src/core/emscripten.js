@@ -1,5 +1,5 @@
 // Emscripten-related functions for game launching and canvas events
-import { gameRunning, debugUIVisible, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus } from '../stores.js';
+import { gameRunning, debugUIVisible, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus, animationState } from '../stores.js';
 import { pauseInstallAudio } from './audio.js';
 
 const DEFAULT_RENDERER = "0 0x682656f3 0x0 0x0 0x4000000"; // WebGL default
@@ -35,10 +35,12 @@ export function startGame(rendererValue) {
     gameRunning.set(true);
 
     // Prevent browser zoom on trackpad pinch-to-zoom (browsers send wheel events
-    // with ctrlKey: true). Registered on document so overlays are also covered.
-    // Emscripten's handler still receives the event since we don't stop propagation.
+    // with ctrlKey: true). Only prevent default for pinch-zoom (ctrlKey) or when
+    // the target is the canvas — allow normal scrolling in UI overlays.
     document.addEventListener('wheel', function (event) {
-        event.preventDefault();
+        if (event.ctrlKey || event.target === canvas) {
+            event.preventDefault();
+        }
     }, { passive: false });
 
     // Safari fires proprietary gesture events for trackpad pinch separately
@@ -91,6 +93,16 @@ export function setupCanvasEvents() {
         connectionStatus.set(status);
         if (status === 'rejected') {
             sessionStorage.setItem('mp-rejected', '1');
+        }
+    });
+
+    canvas.addEventListener('animationsAvailable', function (event) {
+        try {
+            const data = JSON.parse(event.detail.json);
+            animationState.set(data);
+        } catch (e) {
+            console.error('[Anim] Failed to parse:', e);
+            animationState.set(null);
         }
     });
 
