@@ -28,6 +28,7 @@
     export let animPendingInterest = -1;
     export let onToggleInterest = () => {};
     export let animActivity = null;
+    export let animsDisabled = false;
 
     $: sceneAnims = animations.filter(a => a.category === 1);
     $: npcAnims = animations.filter(a => a.category === 0);
@@ -38,6 +39,9 @@
     // Disable hotbar interactions during countdown and playback
     $: animLocked = animations.some(a => (a.sessionState === 2 || a.sessionState === 3) && a.localInSession);
     $: if (animLocked) { activePopover = null; }
+
+    // Close anims popover when switching to 1st person
+    $: if (animsDisabled && activePopover === 'anims') { activePopover = null; }
 
     $: styleDropdowns = [
         { key: 'emote', label: 'Emote', emoji: emoteOptions[0].emoji, title: 'Emotes',
@@ -118,12 +122,14 @@
             <div class="indicator-wrapper" bind:this={triggerEls.anims}>
                 <button class="indicator-btn"
                     class:active={activePopover === 'anims'}
-                    class:activity-available={!activePopover && animActivity === 'available'}
-                    class:activity-joinable={!activePopover && animActivity === 'joinable'}
-                    class:activity-gathering={!activePopover && animActivity === 'gathering'}
-                    class:activity-countdown={!activePopover && animActivity === 'countdown'}
-                    class:activity-playing={!activePopover && animActivity === 'playing'}
+                    class:activity-available={!activePopover && !animsDisabled && animActivity === 'available'}
+                    class:activity-joinable={!activePopover && !animsDisabled && animActivity === 'joinable'}
+                    class:activity-gathering={!activePopover && !animsDisabled && animActivity === 'gathering'}
+                    class:activity-countdown={!activePopover && !animsDisabled && animActivity === 'countdown'}
+                    class:activity-playing={!activePopover && !animsDisabled && animActivity === 'playing'}
                     class:bounce={animBounce}
+                    class:anims-disabled={animsDisabled}
+                    disabled={animsDisabled}
                     onclick={() => togglePopover('anims')} title="Animations">
                     <span class="indicator-label">Animations</span>
                     <span class="indicator-emoji">&#x1F3AC;</span>
@@ -255,6 +261,8 @@
         40% { transform: scale(1.15); }
         100% { transform: scale(1); }
     }
+
+    .indicator-btn.anims-disabled { opacity: 0.3; cursor: default; }
 
     .indicator-caret { font-size: 10px; color: var(--color-text-muted); line-height: 1; }
 

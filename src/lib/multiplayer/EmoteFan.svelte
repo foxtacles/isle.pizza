@@ -22,6 +22,7 @@
     export let animPendingInterest = -1;
     export let onToggleInterest = () => {};
     export let animActivity = null;
+    export let animsDisabled = false;
     export let visible = false;
 
     let activePopover = null;
@@ -38,6 +39,9 @@
     // Disable strip during countdown and playback
     $: animLocked = animations.some(a => (a.sessionState === 2 || a.sessionState === 3) && a.localInSession);
     $: if (animLocked) { activePopover = null; }
+
+    // Close anims popover when switching to 1st person
+    $: if (animsDisabled && activePopover === 'acts') { activePopover = null; }
 
     $: stylePopovers = [
         { name: 'emote', label: 'Emote', emoji: emoteOptions[0].emoji, options: emoteOptions, selected: activeEmote, onSelect: onEmote, align: 'start' },
@@ -106,10 +110,12 @@
     <!-- Anims popover (animation discovery) -->
     <div class="indicator-wrapper" bind:this={actsTrigger}>
         <button class="strip-btn" class:active={activePopover === 'acts'}
+            class:anims-disabled={animsDisabled}
+            disabled={animsDisabled}
             onclick={() => togglePopover('acts')} title="Animations">
             <span class="acts-btn-wrapper">
                 <span class="strip-emoji">&#x1F3AD;</span>
-                {#if animActivity}
+                {#if animActivity && !animsDisabled}
                     <span class="activity-dot"
                         class:available={animActivity === 'available'}
                         class:joinable={animActivity === 'joinable'}
@@ -179,6 +185,7 @@
     }
 
     .strip.countdown-lock .strip-btn { opacity: 0.3; pointer-events: none; }
+    .strip-btn.anims-disabled { opacity: 0.3; cursor: default; }
 
     /* === Shared button base === */
     .strip-btn {

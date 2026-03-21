@@ -155,7 +155,8 @@
                 onShare={handleShare}
                 animations={anims} {animCurrentInterest} {animPendingInterest}
                 onToggleInterest={handleToggleInterest}
-                {animActivity} />
+                {animActivity}
+                animsDisabled={!$thirdPersonEnabled} />
 
             <!-- Minimal badge when hotbar is disabled -->
             {#if disabled}
@@ -193,7 +194,8 @@
                     onEmote={triggerEmote}
                     {animActivity}
                     animations={anims} {animCurrentInterest} {animPendingInterest}
-                    onToggleInterest={handleToggleInterest} />
+                    onToggleInterest={handleToggleInterest}
+                    animsDisabled={!$thirdPersonEnabled} />
             {/if}
         {/if}
         <CountdownOverlay animations={anims} />
