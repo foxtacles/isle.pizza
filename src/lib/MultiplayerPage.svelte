@@ -218,13 +218,12 @@
                         <div class="mp-feature">
                             <div class="mp-feature-icon">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/><line x1="17" y1="17" x2="22" y2="17"/>
                                 </svg>
                             </div>
                             <div class="mp-feature-text">
-                                <strong>Click on each other</strong>
-                                <span>Click other players to cycle their colors, hats, moods, and sounds — just like clicking characters in the original game.</span>
+                                <strong>Cooperative scenes</strong>
+                                <span>Discover and trigger 300+ original animations together. Explore locations, fill actor roles, and watch scenes play out.</span>
                             </div>
                         </div>
                         <div class="mp-feature">
@@ -234,8 +233,8 @@
                                 </svg>
                             </div>
                             <div class="mp-feature-text">
-                                <strong>Emotes and animations</strong>
-                                <span>Wave, tip your hat, and pick from several walk and idle animations to express yourself.</span>
+                                <strong>Emotes and interactions</strong>
+                                <span>Wave, tip your hat, pick from different walk and idle styles, and click other players to cycle their colors and moods.</span>
                             </div>
                         </div>
                         <div class="mp-feature">
@@ -247,7 +246,7 @@
                             </div>
                             <div class="mp-feature-text">
                                 <strong>Shared world*</strong>
-                                <span>Plants, buildings, and their states are synchronized — everyone sees the same island.</span>
+                                <span>See other players walking and driving around the island. Plants, buildings, and their states are synchronized for everyone.</span>
                             </div>
                         </div>
                     </div>
