@@ -7,6 +7,7 @@
     import { setupCanvasEvents } from './core/emscripten.js';
     import { initMemories } from './core/memories.js';
     import { initAuth } from './core/auth.js';
+    import { initThumbnails } from './core/thumbnails.js';
     import TopContent from './lib/TopContent.svelte';
     import AccountIndicator from './lib/AccountIndicator.svelte';
     import MemoriesPage from './lib/MemoriesPage.svelte';
@@ -98,9 +99,10 @@
         // Setup canvas events
         setupCanvasEvents();
 
-        // Initialize memory persistence (IndexedDB) and auth
+        // Initialize memory persistence (IndexedDB), auth, and building thumbnails
         initMemories();
         initAuth();
+        initThumbnails();
 
         // Setup global tooltip positioning
         setupTooltips();

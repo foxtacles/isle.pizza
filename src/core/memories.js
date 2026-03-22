@@ -1,6 +1,6 @@
 // IndexedDB-based memory persistence for animation completions
 import { memoryUnlocks, memoryCompletions } from '../stores.js';
-import { authSession } from './auth.js';
+import { authSession, authReady } from './auth.js';
 import { API_URL } from './config.js';
 
 const DB_NAME = 'isle-memories';
@@ -8,32 +8,7 @@ const DB_VERSION = 1;
 const STORE_NAME = 'completions';
 
 let db = null;
-let previousSession = undefined;
-
-// Track auth state for server sync and local data cleanup
-authSession.subscribe(session => {
-    const wasLoggedIn = previousSession !== undefined && !!previousSession;
-    const nowLoggedIn = !!session;
-    const isFirstEmit = previousSession === undefined;
-    previousSession = session;
-
-    if (isFirstEmit) {
-        // App load: undefined → session (first login) or undefined → null (no session)
-        if (nowLoggedIn) {
-            syncWithServer();
-        }
-        // undefined → null: do nothing
-        return;
-    }
-
-    if (wasLoggedIn && !nowLoggedIn) {
-        // session → null: sign out, clear local data
-        clearLocalMemories();
-    } else if (!wasLoggedIn && nowLoggedIn) {
-        // null → session: sign in, trigger sync
-        syncWithServer();
-    }
-});
+let currentSession = null;
 
 export async function initMemories() {
     try {
@@ -49,6 +24,28 @@ export async function initMemories() {
             req.onerror = (e) => reject(e.target.error);
         });
         await rebuildStores();
+
+        // Wait for initial auth check to complete, then sync if logged in.
+        // authReady resolves once regardless of timing — no race conditions.
+        currentSession = await authReady;
+        if (currentSession) {
+            await syncWithServer();
+        }
+
+        // Watch subsequent auth transitions (login/logout after init).
+        // The subscription fires immediately with the current value — if it
+        // matches what authReady gave us, it's a no-op.
+        authSession.subscribe(session => {
+            if (session === undefined) return;
+
+            const wasLoggedIn = !!currentSession;
+            const nowLoggedIn = !!session;
+            currentSession = session;
+
+            if (wasLoggedIn === nowLoggedIn) return;
+            if (nowLoggedIn) syncWithServer();
+            else clearLocalMemories();
+        });
     } catch (e) {
         console.error('[Memory] Failed to open IndexedDB:', e);
     }
@@ -66,7 +63,6 @@ export async function recordCompletion(objectId, eventId, participants) {
                 t: Math.floor(Date.now() / 1000),
                 participants
             });
-            // ConstraintError from unique eventId index means duplicate — treat as success
             req.onerror = (e) => {
                 if (req.error?.name === 'ConstraintError') {
                     e.preventDefault();
@@ -81,17 +77,12 @@ export async function recordCompletion(objectId, eventId, participants) {
 
         await rebuildStores();
 
-        // Report to server if logged in (fire-and-forget)
-        if (isLoggedIn() && participants.length > 0) {
+        if (currentSession && participants.length > 0) {
             reportToServer(objectId, eventId, participants);
         }
     } catch (e) {
         console.error('[Memory] Failed to record completion:', e);
     }
-}
-
-function isLoggedIn() {
-    return previousSession !== undefined && !!previousSession;
 }
 
 /**

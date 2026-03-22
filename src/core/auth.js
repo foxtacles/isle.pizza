@@ -15,14 +15,23 @@ export const authClient = createAuthClient({
 // Reactive session store: undefined = loading, null = logged out, object = logged in
 export const authSession = writable(undefined);
 
+// Promise that resolves with the initial session once the auth check completes.
+// Any module that needs "do X when auth is ready" can `await authReady` instead
+// of racing with initAuth() or using coordination flags.
+let resolveAuthReady;
+export const authReady = new Promise(resolve => { resolveAuthReady = resolve; });
+
 // Check session on load
 export async function initAuth() {
     try {
         const session = await authClient.getSession();
-        authSession.set(session?.data || null);
+        const data = session?.data || null;
+        authSession.set(data);
+        resolveAuthReady(data);
     } catch (e) {
         // Not logged in or server unavailable
         authSession.set(null);
+        resolveAuthReady(null);
     }
 }
 

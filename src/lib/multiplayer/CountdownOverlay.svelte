@@ -1,7 +1,7 @@
 <script>
     import { onDestroy } from 'svelte';
     import { fade } from 'svelte/transition';
-    import { AnimationTitles } from './animationTitles.js';
+    import { AnimationTitles } from './animationCatalog.js';
 
     export let animations = [];
 

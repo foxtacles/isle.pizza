@@ -2,7 +2,7 @@
     import { authSession, signInWithDiscord, signInWithGoogle, signInAnonymously, signOut } from '../core/auth.js';
     import { memoryUnlocks, currentPage } from '../stores.js';
     import { navigateTo } from '../core/navigation.js';
-    import { TOTAL_ANIMATIONS } from './multiplayer/animationTitles.js';
+    import { TOTAL_ANIMATIONS } from './multiplayer/animationCatalog.js';
 
     let open = false;
 

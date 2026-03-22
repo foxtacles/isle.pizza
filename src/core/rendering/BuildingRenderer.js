@@ -7,8 +7,8 @@ import { AnimatedRenderer } from './AnimatedRenderer.js';
  * hierarchical ROIs (potentially multi-part like policsta, jail).
  */
 export class BuildingRenderer extends AnimatedRenderer {
-    constructor(canvas) {
-        super(canvas);
+    constructor(canvas, rendererOptions) {
+        super(canvas, rendererOptions);
 
         this.camera.position.set(2.5, 2.0, 4.0);
         this.camera.lookAt(0, -0.3, 0);

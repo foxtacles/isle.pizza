@@ -1,7 +1,7 @@
 <script>
     import { flip } from 'svelte/animate';
     import { CharacterNameMap } from '../../core/savegame/actorConstants.js';
-    import { AnimationTitles } from './animationTitles.js';
+    import { AnimationTitles } from './animationCatalog.js';
     import { memoryUnlocks } from '../../stores.js';
 
     export let animations = [];

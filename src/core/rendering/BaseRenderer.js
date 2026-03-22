@@ -6,7 +6,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
  * geometry building, and animation loop for LEGO model viewers.
  */
 export class BaseRenderer {
-    constructor(canvas) {
+    constructor(canvas, rendererOptions = {}) {
         this.canvas = canvas;
         this.animating = false;
         this.modelGroup = null;
@@ -19,9 +19,11 @@ export class BaseRenderer {
         this.renderer = new THREE.WebGLRenderer({
             canvas,
             antialias: true,
-            alpha: true
+            alpha: true,
+            ...rendererOptions
         });
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
+        this.renderer.setPixelRatio(Math.min(dpr, 2));
         this.renderer.setClearColor(0x000000, 0);
 
         this.setupLighting();
@@ -40,6 +42,9 @@ export class BaseRenderer {
     }
 
     setupControls(target) {
+        // OrbitControls requires a DOM element — skip in worker/offscreen contexts
+        if (typeof document === 'undefined') return;
+
         this.controls = new OrbitControls(this.camera, this.canvas);
         this.controls.enableZoom = true;
         this.controls.enablePan = true;
@@ -85,12 +90,16 @@ export class BaseRenderer {
      * Create a Three.js texture from parsed texture data
      */
     createTexture(textureData) {
-        const canvas = document.createElement('canvas');
-        canvas.width = textureData.width;
-        canvas.height = textureData.height;
+        const w = textureData.width;
+        const h = textureData.height;
+        const canvas = typeof document !== 'undefined'
+            ? document.createElement('canvas')
+            : new OffscreenCanvas(w, h);
+        canvas.width = w;
+        canvas.height = h;
         const ctx = canvas.getContext('2d');
 
-        const imageData = ctx.createImageData(textureData.width, textureData.height);
+        const imageData = ctx.createImageData(w, h);
         for (let i = 0; i < textureData.pixels.length; i++) {
             const colorIdx = textureData.pixels[i];
             const color = textureData.palette[colorIdx] || { r: 0, g: 0, b: 0 };
