@@ -87,18 +87,19 @@
         }
     }
 
+    function toggleSet(current, key) {
+        const next = new Set(current);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+    }
+
     function toggleAnim(objectId) {
-        const next = new Set(expandedAnims);
-        if (next.has(objectId)) next.delete(objectId);
-        else next.add(objectId);
-        expandedAnims = next;
+        expandedAnims = toggleSet(expandedAnims, objectId);
     }
 
     function toggleShowAll(objectId) {
-        const next = new Set(showAllComps);
-        if (next.has(objectId)) next.delete(objectId);
-        else next.add(objectId);
-        showAllComps = next;
+        showAllComps = toggleSet(showAllComps, objectId);
     }
 
     function visibleCompletions(anim) {
@@ -107,10 +108,10 @@
         return anim.completions.slice(0, COMP_CAP);
     }
 
-    function formatDateShort(timestamp) {
+    function formatDateShort(timestamp, now) {
         if (!timestamp) return '';
         const d = new Date(timestamp * 1000);
-        const diffMs = Date.now() - d;
+        const diffMs = (now || Date.now()) - d;
         const diffMins = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
@@ -134,6 +135,24 @@
         return group.total > 0 ? (group.unlocked / group.total * 100) : 0;
     }
 </script>
+
+{#snippet avatarStack(participants)}
+    <div class="comp-avatars">
+        {#each participants as p, idx}
+            <div
+                class="comp-av"
+                class:self={idx === 0}
+                title="{p.displayName} as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}"
+            >
+                {#if $actorThumbnails[p.charIndex]}
+                    <img src={$actorThumbnails[p.charIndex]} alt={ActorDisplayNames[p.charIndex]} />
+                {:else}
+                    <span class="comp-av-fallback">{(ActorDisplayNames[p.charIndex] || '?')[0]}</span>
+                {/if}
+            </div>
+        {/each}
+    </div>
+{/snippet}
 
 <div class="page-content" class:loading={!loaded}>
     <BackButton />
@@ -244,6 +263,7 @@
             {:else}
                 <div class="anim-list">
                     {#each displayAnims as anim}
+                        {@const now = Date.now()}
                         <div class="anim-group" class:unlocked={anim.unlocked}>
                             <!-- Animation header (clickable for unlocked) -->
                             <button
@@ -255,22 +275,8 @@
                                 <span class="anim-title">{anim.title || `Animation #${anim.objectId}`}</span>
                                 {#if anim.completions}
                                     <div class="anim-preview">
-                                        <div class="comp-avatars">
-                                            {#each anim.completions[0].participants as p, idx}
-                                                <div
-                                                    class="comp-av"
-                                                    class:self={idx === 0}
-                                                    title="{p.displayName} as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}"
-                                                >
-                                                    {#if $actorThumbnails[p.charIndex]}
-                                                        <img src={$actorThumbnails[p.charIndex]} alt={ActorDisplayNames[p.charIndex]} />
-                                                    {:else}
-                                                        <span class="comp-av-fallback">{(ActorDisplayNames[p.charIndex] || '?')[0]}</span>
-                                                    {/if}
-                                                </div>
-                                            {/each}
-                                        </div>
-                                        <span class="anim-meta">{anim.completions.length}x &middot; {formatDateShort(anim.completions[0].timestamp)}</span>
+                                        {@render avatarStack(anim.completions[0].participants)}
+                                        <span class="anim-meta">{anim.completions.length}x &middot; {formatDateShort(anim.completions[0].timestamp, now)}</span>
                                     </div>
                                     <span class="anim-chevron" class:open={expandedAnims.has(anim.objectId)}></span>
                                 {/if}
@@ -281,21 +287,7 @@
                                 <div class="completions">
                                     {#each visibleCompletions(anim) as comp}
                                         <div class="comp-row">
-                                            <div class="comp-avatars">
-                                                {#each comp.participants as p, idx}
-                                                    <div
-                                                        class="comp-av"
-                                                        class:self={idx === 0}
-                                                        title="{p.displayName} as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}"
-                                                    >
-                                                        {#if $actorThumbnails[p.charIndex]}
-                                                            <img src={$actorThumbnails[p.charIndex]} alt={ActorDisplayNames[p.charIndex]} />
-                                                        {:else}
-                                                            <span class="comp-av-fallback">{(ActorDisplayNames[p.charIndex] || '?')[0]}</span>
-                                                        {/if}
-                                                    </div>
-                                                {/each}
-                                            </div>
+                                            {@render avatarStack(comp.participants)}
                                             <div class="comp-names">
                                                 {#each comp.participants as p, idx}
                                                     {#if idx < 3}
@@ -313,7 +305,7 @@
                                                 {/if}
                                             </div>
                                             <div class="comp-end">
-                                                <span class="comp-time" title={formatDateFull(comp.timestamp)}>{formatDateShort(comp.timestamp)}</span>
+                                                <span class="comp-time" title={formatDateFull(comp.timestamp)}>{formatDateShort(comp.timestamp, now)}</span>
                                                 <a class="comp-link" href="#memory/{comp.eventId}" title="Share" onclick={e => e.stopPropagation()}>
                                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                                         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
@@ -715,6 +707,8 @@
         width: 100%;
         background: none;
         border: none;
+        font: inherit;
+        color: inherit;
         cursor: default;
         text-align: left;
         border-radius: 4px;
@@ -840,12 +834,11 @@
         align-items: center;
         gap: 10px;
         padding: 5px 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
         min-height: 32px;
     }
 
-    .comp-row:last-child {
-        border-bottom: none;
+    .comp-row + .comp-row {
+        border-top: 1px solid rgba(255, 255, 255, 0.04);
     }
 
     .comp-names {
