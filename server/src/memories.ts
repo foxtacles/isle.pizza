@@ -20,6 +20,15 @@ interface CompletionRow {
 	participants: string;
 }
 
+function getUserCompletions(db: D1Database, userId: string) {
+	return db
+		.prepare(
+			"SELECT object_id, event_id, completed_at, char_index, display_name, participants FROM memory_completions WHERE user_id = ? ORDER BY completed_at DESC"
+		)
+		.bind(userId)
+		.all<CompletionRow>();
+}
+
 function isValidCompletion(c: {
 	objectId: unknown;
 	eventId: unknown;
@@ -86,18 +95,6 @@ memories.post("/", async (c) => {
 	return c.json({ ok: true });
 });
 
-// Get all completions for the current user
-memories.get("/", async (c) => {
-	const session = c.get("session");
-	const result = await c.env.DB.prepare(
-		"SELECT object_id, event_id, completed_at, char_index, display_name, participants FROM memory_completions WHERE user_id = ? ORDER BY completed_at DESC"
-	)
-		.bind(session.user.id)
-		.all<CompletionRow>();
-
-	return c.json({ completions: result.results });
-});
-
 // Bulk import from IndexedDB (sync on login)
 memories.post("/sync", async (c) => {
 	const session = c.get("session");
@@ -161,40 +158,8 @@ memories.post("/sync", async (c) => {
 	}
 
 	// Return full merged set
-	const merged = await c.env.DB.prepare(
-		"SELECT object_id, event_id, completed_at, char_index, display_name, participants FROM memory_completions WHERE user_id = ? ORDER BY completed_at DESC"
-	)
-		.bind(session.user.id)
-		.all<CompletionRow>();
-
+	const merged = await getUserCompletions(c.env.DB, session.user.id);
 	return c.json({ completions: merged.results });
 });
 
-/** Public memory routes (no auth required) */
-const publicMemories = new Hono<{ Bindings: Env }>();
-
-// Public: get unlock count for a user (profile display)
-publicMemories.get("/:userId/count", async (c) => {
-	const userId = c.req.param("userId");
-	const result = await c.env.DB.prepare(
-		"SELECT COUNT(DISTINCT object_id) as count FROM memory_completions WHERE user_id = ?"
-	)
-		.bind(userId)
-		.first<{ count: number }>();
-
-	return c.json({ count: result?.count ?? 0 });
-});
-
-// Public: get all participants for a specific completion event
-publicMemories.get("/event/:eventId", async (c) => {
-	const eventId = c.req.param("eventId");
-	const result = await c.env.DB.prepare(
-		"SELECT user_id, object_id, completed_at, char_index, display_name, participants FROM memory_completions WHERE event_id = ?"
-	)
-		.bind(eventId)
-		.all<CompletionRow>();
-
-	return c.json({ participants: result.results });
-});
-
-export { memories, publicMemories };
+export { memories };

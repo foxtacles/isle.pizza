@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createAuth, type Env } from "./auth";
-import { memories, publicMemories } from "./memories";
+import { memories } from "./memories";
 
 type Variables = {
 	session: { user: { id: string } };
@@ -26,9 +26,6 @@ app.all("/api/auth/*", async (c) => {
 	const auth = createAuth(c.env);
 	return auth.handler(c.req.raw);
 });
-
-// Public memory routes (no auth required) — registered before the auth middleware
-app.route("/api/memories", publicMemories);
 
 // Auth middleware for protected /api/memories routes
 const memoriesAuth = async (c: any, next: any) => {

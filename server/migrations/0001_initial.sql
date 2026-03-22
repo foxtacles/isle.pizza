@@ -58,7 +58,3 @@ CREATE TABLE IF NOT EXISTS memory_completions (
     participants TEXT NOT NULL DEFAULT '[]',
     UNIQUE(user_id, event_id)
 );
-
-CREATE INDEX IF NOT EXISTS idx_completions_user ON memory_completions(user_id);
-CREATE INDEX IF NOT EXISTS idx_completions_object ON memory_completions(user_id, object_id);
-CREATE INDEX IF NOT EXISTS idx_completions_event ON memory_completions(event_id);
