@@ -30,8 +30,8 @@ app.all("/api/auth/*", async (c) => {
 // Public memory routes (no auth required) — registered before the auth middleware
 app.route("/api/memories", publicMemories);
 
-// Auth middleware for protected /api/memories/* routes
-app.use("/api/memories/*", async (c, next) => {
+// Auth middleware for protected /api/memories routes
+const memoriesAuth = async (c: any, next: any) => {
 	const auth = createAuth(c.env);
 	const session = await auth.api.getSession({
 		headers: c.req.raw.headers,
@@ -43,7 +43,9 @@ app.use("/api/memories/*", async (c, next) => {
 
 	c.set("session", session);
 	await next();
-});
+};
+app.use("/api/memories", memoriesAuth);
+app.use("/api/memories/*", memoriesAuth);
 
 // Auth-protected memory routes
 app.route("/api/memories", memories);

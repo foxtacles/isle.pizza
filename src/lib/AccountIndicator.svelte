@@ -2,6 +2,7 @@
     import { authSession, signInWithDiscord, signInWithGoogle, signInAnonymously, signOut } from '../core/auth.js';
     import { memoryUnlocks, currentPage } from '../stores.js';
     import { navigateTo } from '../core/navigation.js';
+    import { TOTAL_ANIMATIONS } from './multiplayer/animationTitles.js';
 
     let open = false;
 
@@ -60,7 +61,7 @@
         <div class="account-dropdown">
             {#if $authSession}
                 <button class="dropdown-item memories-link" onclick={goToMemories}>
-                    <span class="memories-count">{unlockCount} / 284</span>
+                    <span class="memories-count">{unlockCount} / {TOTAL_ANIMATIONS}</span>
                     <span class="memories-label">Memories</span>
                 </button>
                 {#if $authSession.user?.isAnonymous}
@@ -88,7 +89,7 @@
                 </button>
                 <div class="dropdown-divider"></div>
                 <button class="dropdown-item memories-link" onclick={goToMemories}>
-                    <span class="memories-count">{unlockCount} / 284</span>
+                    <span class="memories-count">{unlockCount} / {TOTAL_ANIMATIONS}</span>
                     <span class="memories-label">Memories</span>
                 </button>
             {/if}

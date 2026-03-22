@@ -2,8 +2,7 @@
 import { createAuthClient } from 'better-auth/client';
 import { anonymousClient } from 'better-auth/client/plugins';
 import { writable } from 'svelte/store';
-
-const API_URL = typeof __API_URL__ !== 'undefined' ? __API_URL__ : 'http://localhost:8788';
+import { API_URL } from './config.js';
 
 export const authClient = createAuthClient({
     baseURL: API_URL,

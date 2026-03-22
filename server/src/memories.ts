@@ -17,6 +17,30 @@ interface CompletionRow {
 	completed_at: number;
 	char_index: number;
 	display_name: string;
+	participants: string;
+}
+
+function isValidCompletion(c: {
+	objectId: unknown;
+	eventId: unknown;
+	charIndex?: unknown;
+	displayName?: unknown;
+}): boolean {
+	if (
+		typeof c.objectId !== "number" ||
+		!Number.isInteger(c.objectId) ||
+		c.objectId < 0
+	)
+		return false;
+	if (typeof c.eventId !== "string" || c.eventId.length > 16) return false;
+	if (c.charIndex !== undefined && typeof c.charIndex !== "number")
+		return false;
+	if (
+		c.displayName !== undefined &&
+		(typeof c.displayName !== "string" || c.displayName.length > 7)
+	)
+		return false;
+	return true;
 }
 
 /** Auth-protected memory routes (mounted behind auth middleware) */
@@ -30,27 +54,23 @@ memories.post("/", async (c) => {
 		eventId: string;
 		charIndex: number;
 		displayName: string;
+		participants?: Array<{ charIndex: number; displayName: string }>;
 	}>();
 
 	if (
-		typeof body.objectId !== "number" ||
-		!Number.isInteger(body.objectId) ||
-		body.objectId < 0
+		!isValidCompletion(body) ||
+		typeof body.charIndex !== "number" ||
+		typeof body.displayName !== "string"
 	) {
-		return c.json({ error: "Invalid objectId" }, 400);
-	}
-	if (typeof body.eventId !== "string" || body.eventId.length > 16) {
-		return c.json({ error: "Invalid eventId" }, 400);
-	}
-	if (typeof body.charIndex !== "number") {
-		return c.json({ error: "Invalid charIndex" }, 400);
-	}
-	if (typeof body.displayName !== "string" || body.displayName.length > 7) {
-		return c.json({ error: "Invalid displayName" }, 400);
+		return c.json({ error: "Invalid completion data" }, 400);
 	}
 
+	const participantsJson = Array.isArray(body.participants)
+		? JSON.stringify(body.participants)
+		: "[]";
+
 	await c.env.DB.prepare(
-		"INSERT OR IGNORE INTO memory_completions (user_id, object_id, event_id, completed_at, char_index, display_name) VALUES (?, ?, ?, ?, ?, ?)"
+		"INSERT OR IGNORE INTO memory_completions (user_id, object_id, event_id, completed_at, char_index, display_name, participants) VALUES (?, ?, ?, ?, ?, ?, ?)"
 	)
 		.bind(
 			session.user.id,
@@ -58,7 +78,8 @@ memories.post("/", async (c) => {
 			body.eventId,
 			Math.floor(Date.now() / 1000),
 			body.charIndex,
-			body.displayName
+			body.displayName,
+			participantsJson
 		)
 		.run();
 
@@ -69,27 +90,12 @@ memories.post("/", async (c) => {
 memories.get("/", async (c) => {
 	const session = c.get("session");
 	const result = await c.env.DB.prepare(
-		"SELECT object_id, event_id, completed_at, char_index, display_name FROM memory_completions WHERE user_id = ? ORDER BY completed_at DESC"
+		"SELECT object_id, event_id, completed_at, char_index, display_name, participants FROM memory_completions WHERE user_id = ? ORDER BY completed_at DESC"
 	)
 		.bind(session.user.id)
 		.all<CompletionRow>();
 
 	return c.json({ completions: result.results });
-});
-
-// Get distinct unlocked object IDs for the current user
-memories.get("/unlocked", async (c) => {
-	const session = c.get("session");
-	const result = await c.env.DB.prepare(
-		"SELECT DISTINCT object_id FROM memory_completions WHERE user_id = ?"
-	)
-		.bind(session.user.id)
-		.all<Pick<CompletionRow, "object_id">>();
-
-	return c.json({
-		unlocked: result.results.map((r) => r.object_id),
-		count: result.results.length,
-	});
 });
 
 // Bulk import from IndexedDB (sync on login)
@@ -109,7 +115,7 @@ memories.post("/sync", async (c) => {
 	}
 
 	const stmt = c.env.DB.prepare(
-		"INSERT OR IGNORE INTO memory_completions (user_id, object_id, event_id, completed_at, char_index, display_name) VALUES (?, ?, ?, ?, ?, ?)"
+		"INSERT OR IGNORE INTO memory_completions (user_id, object_id, event_id, completed_at, char_index, display_name, participants) VALUES (?, ?, ?, ?, ?, ?, ?)"
 	);
 
 	// Find existing event_ids for this user to avoid duplicates
@@ -125,25 +131,17 @@ memories.post("/sync", async (c) => {
 	// Insert new completions (deduplicate by event_id)
 	const batch: D1PreparedStatement[] = [];
 	for (const completion of body.completions) {
-		if (
-			typeof completion.objectId !== "number" ||
-			!Number.isInteger(completion.objectId) ||
-			completion.objectId < 0
-		) {
-			continue;
-		}
-		if (existingSet.has(completion.eventId)) {
-			continue;
-		}
+		if (!isValidCompletion(completion)) continue;
+		if (existingSet.has(completion.eventId)) continue;
 		if (
 			!Array.isArray(completion.participants) ||
 			completion.participants.length === 0
-		) {
+		)
 			continue;
-		}
 
-		// Find the local player's data in participants (first entry is typically self)
 		const self = completion.participants[0];
+		const participantsJson = JSON.stringify(completion.participants);
+
 		batch.push(
 			stmt.bind(
 				session.user.id,
@@ -151,7 +149,8 @@ memories.post("/sync", async (c) => {
 				completion.eventId,
 				completion.t || Math.floor(Date.now() / 1000),
 				self.charIndex ?? -1,
-				self.displayName ?? ""
+				self.displayName ?? "",
+				participantsJson
 			)
 		);
 		existingSet.add(completion.eventId);
@@ -163,7 +162,7 @@ memories.post("/sync", async (c) => {
 
 	// Return full merged set
 	const merged = await c.env.DB.prepare(
-		"SELECT object_id, event_id, completed_at, char_index, display_name FROM memory_completions WHERE user_id = ? ORDER BY completed_at DESC"
+		"SELECT object_id, event_id, completed_at, char_index, display_name, participants FROM memory_completions WHERE user_id = ? ORDER BY completed_at DESC"
 	)
 		.bind(session.user.id)
 		.all<CompletionRow>();
@@ -190,7 +189,7 @@ publicMemories.get("/:userId/count", async (c) => {
 publicMemories.get("/event/:eventId", async (c) => {
 	const eventId = c.req.param("eventId");
 	const result = await c.env.DB.prepare(
-		"SELECT user_id, object_id, completed_at, char_index, display_name FROM memory_completions WHERE event_id = ?"
+		"SELECT user_id, object_id, completed_at, char_index, display_name, participants FROM memory_completions WHERE event_id = ?"
 	)
 		.bind(eventId)
 		.all<CompletionRow>();

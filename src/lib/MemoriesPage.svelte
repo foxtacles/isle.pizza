@@ -1,11 +1,9 @@
 <script>
     import { memoryUnlocks, memoryCompletions } from '../stores.js';
-    import { AnimationTitles } from './multiplayer/animationTitles.js';
+    import { AnimationTitles, CATALOG_OBJECT_IDS, TOTAL_ANIMATIONS } from './multiplayer/animationTitles.js';
     import BackButton from './BackButton.svelte';
 
     let filter = 'all'; // 'all' | 'unlocked' | 'locked'
-
-    const TOTAL = 284;
 
     $: unlockCount = $memoryUnlocks.size;
     $: loaded = $memoryCompletions !== null;
@@ -17,27 +15,23 @@
         return map;
     }, {});
 
-    // Build display list from completed animations
-    $: displayList = (() => {
-        const items = [];
-
-        for (const [objectIdStr, comps] of Object.entries(completionsByAnim)) {
-            const objectId = parseInt(objectIdStr);
-            const firstComp = comps[0];
-            const lastComp = comps[comps.length - 1];
-            items.push({
+    // Build display list from all catalog animations
+    $: displayList = CATALOG_OBJECT_IDS.map(objectId => {
+        const comps = completionsByAnim[objectId];
+        if (comps && comps.length > 0) {
+            const sorted = [...comps].sort((a, b) => a.t - b.t);
+            return {
                 objectId,
                 title: AnimationTitles[objectId] || null,
                 unlocked: true,
                 playCount: comps.length,
-                firstPlayed: firstComp.t,
-                lastPlayed: lastComp.t,
-                participants: lastComp.participants || []
-            });
+                firstPlayed: sorted[0].t,
+                lastPlayed: sorted[sorted.length - 1].t,
+                participants: sorted[sorted.length - 1].participants || []
+            };
         }
-
-        return items;
-    })();
+        return { objectId, title: AnimationTitles[objectId] || null, unlocked: false, playCount: 0 };
+    });
 
     $: filtered = filter === 'all' ? displayList
         : filter === 'unlocked' ? displayList.filter(a => a.unlocked)
@@ -59,7 +53,7 @@
         <div class="memories-progress">
             <span class="progress-count">{unlockCount}</span>
             <span class="progress-separator">/</span>
-            <span class="progress-total">{TOTAL}</span>
+            <span class="progress-total">{TOTAL_ANIMATIONS}</span>
         </div>
     </div>
 
@@ -73,15 +67,11 @@
             Unlocked ({unlockCount})
         </button>
         <button class="filter-btn" class:active={filter === 'locked'} onclick={() => filter = 'locked'}>
-            Locked ({TOTAL - unlockCount})
+            Locked ({TOTAL_ANIMATIONS - unlockCount})
         </button>
     </div>
 
-    {#if filter === 'locked'}
-        <div class="locked-message">
-            Play cooperative animations in multiplayer to unlock memories.
-        </div>
-    {:else if filtered.length === 0}
+    {#if filtered.length === 0}
         <div class="empty-message">
             {#if filter === 'unlocked'}
                 No memories yet. Join a multiplayer room and play some animations!
@@ -95,7 +85,9 @@
                 <div class="memory-card" class:unlocked={anim.unlocked}>
                     <div class="card-header">
                         <span class="card-check">{anim.unlocked ? '\u2713' : ''}</span>
-                        <span class="card-plays">{anim.playCount}x</span>
+                        {#if anim.playCount > 0}
+                            <span class="card-plays">{anim.playCount}x</span>
+                        {/if}
                     </div>
                     <div class="card-title">
                         {anim.title || `Animation #${anim.objectId}`}
@@ -103,7 +95,7 @@
                     {#if anim.unlocked && anim.lastPlayed}
                         <div class="card-date">{formatDate(anim.lastPlayed)}</div>
                     {/if}
-                    {#if anim.participants.length > 0}
+                    {#if anim.participants && anim.participants.length > 0}
                         <div class="card-participants">
                             {anim.participants.map(p => p.displayName).join(', ')}
                         </div>
@@ -198,7 +190,7 @@
         color: rgba(255, 255, 255, 0.9);
     }
 
-    .locked-message, .empty-message {
+    .empty-message {
         font-family: Arial, sans-serif;
         font-size: 13px;
         color: rgba(255, 255, 255, 0.35);

@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS memory_completions (
     completed_at INTEGER NOT NULL,
     char_index INTEGER NOT NULL,
     display_name TEXT NOT NULL,
+    participants TEXT NOT NULL DEFAULT '[]',
     UNIQUE(user_id, event_id)
 );
 

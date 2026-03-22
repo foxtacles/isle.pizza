@@ -1,12 +1,11 @@
 // IndexedDB-based memory persistence for animation completions
 import { memoryUnlocks, memoryCompletions } from '../stores.js';
 import { authSession } from './auth.js';
+import { API_URL } from './config.js';
 
 const DB_NAME = 'isle-memories';
 const DB_VERSION = 1;
 const STORE_NAME = 'completions';
-
-const API_URL = typeof __API_URL__ !== 'undefined' ? __API_URL__ : 'http://localhost:8788';
 
 let db = null;
 let previousSession = undefined;
@@ -84,8 +83,7 @@ export async function recordCompletion(objectId, eventId, participants) {
 
         // Report to server if logged in (fire-and-forget)
         if (isLoggedIn() && participants.length > 0) {
-            const self = participants[0];
-            reportToServer(objectId, eventId, self.charIndex, self.displayName);
+            reportToServer(objectId, eventId, participants);
         }
     } catch (e) {
         console.error('[Memory] Failed to record completion:', e);
@@ -139,13 +137,19 @@ export async function clearLocalMemories() {
 
 // --- Server sync ---
 
-async function reportToServer(objectId, eventId, charIndex, displayName) {
+async function reportToServer(objectId, eventId, participants) {
     try {
+        const self = participants[0];
         await fetch(`${API_URL}/api/memories`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ objectId, eventId, charIndex, displayName })
+            body: JSON.stringify({
+                objectId, eventId,
+                charIndex: self.charIndex,
+                displayName: self.displayName,
+                participants
+            })
         });
     } catch (e) {
         console.warn('[Memory] Failed to report to server:', e);
@@ -180,7 +184,7 @@ async function syncWithServer() {
                     objectId: sc.object_id,
                     eventId: sc.event_id,
                     t: sc.completed_at,
-                    participants: [{ charIndex: sc.char_index, displayName: sc.display_name }]
+                    participants: JSON.parse(sc.participants || '[]')
                 });
             }
         }
