@@ -11,6 +11,13 @@ export default defineConfig(({ mode }) => ({
     __RELAY_URL__: JSON.stringify(siteConfig.relayUrl),
     __API_URL__: JSON.stringify(siteConfig.apiUrl)
   },
+  worker: {
+    rollupOptions: {
+      output: {
+        entryFileNames: '[name].js'
+      }
+    }
+  },
   build: {
     outDir: 'dist',
     assetsDir: '.',
