@@ -194,7 +194,7 @@
                 </div>
                 <div class="intro-step">
                     <span class="step-num">2</span>
-                    <span class="step-text">Visit locations on the island and browse available animations from the hotbar</span>
+                    <span class="step-text">Explore the island and browse available animations from the hotbar</span>
                 </div>
                 <div class="intro-step">
                     <span class="step-num">3</span>
@@ -373,9 +373,8 @@
         border-radius: 50%;
         object-fit: cover;
         image-rendering: pixelated;
-        border: 2px solid var(--color-primary);
         flex-shrink: 0;
-        box-shadow: var(--shadow-glow);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     }
 
     .hero-text {
