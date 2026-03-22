@@ -8,6 +8,9 @@
     let filter = 'all';
     let selectedLocation = null;
     let introOpen = true;
+    let expandedAnims = new Set();
+    let showAllComps = new Set();
+    const COMP_CAP = 5;
 
     $: unlockCount = $memoryUnlocks.size;
     $: loaded = $memoryCompletions !== null;
@@ -84,24 +87,47 @@
         }
     }
 
-    function formatDate(timestamp) {
+    function toggleAnim(objectId) {
+        const next = new Set(expandedAnims);
+        if (next.has(objectId)) next.delete(objectId);
+        else next.add(objectId);
+        expandedAnims = next;
+    }
+
+    function toggleShowAll(objectId) {
+        const next = new Set(showAllComps);
+        if (next.has(objectId)) next.delete(objectId);
+        else next.add(objectId);
+        showAllComps = next;
+    }
+
+    function visibleCompletions(anim) {
+        if (!anim.completions) return [];
+        if (showAllComps.has(anim.objectId)) return anim.completions;
+        return anim.completions.slice(0, COMP_CAP);
+    }
+
+    function formatDateShort(timestamp) {
         if (!timestamp) return '';
         const d = new Date(timestamp * 1000);
-        const now = new Date();
-        const diffMs = now - d;
+        const diffMs = Date.now() - d;
         const diffMins = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
 
-        let relative;
-        if (diffMins < 1) relative = 'Just now';
-        else if (diffMins < 60) relative = `${diffMins}m ago`;
-        else if (diffHours < 24) relative = `${diffHours}h ago`;
-        else if (diffDays < 7) relative = `${diffDays}d ago`;
-        else relative = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    }
 
+    function formatDateFull(timestamp) {
+        if (!timestamp) return '';
+        const d = new Date(timestamp * 1000);
+        const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
         const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-        return `${relative} · ${time}`;
+        return `${date} \u00b7 ${time}`;
     }
 
     function locPct(group) {
@@ -219,38 +245,76 @@
                 <div class="anim-list">
                     {#each displayAnims as anim}
                         <div class="anim-group" class:unlocked={anim.unlocked}>
-                            <!-- Animation header -->
-                            <div class="anim-header">
+                            <!-- Animation header (clickable for unlocked) -->
+                            <button
+                                class="anim-header"
+                                class:expandable={anim.unlocked}
+                                onclick={() => anim.unlocked && toggleAnim(anim.objectId)}
+                            >
                                 <span class="anim-icon">{anim.unlocked ? '\u2713' : '?'}</span>
                                 <span class="anim-title">{anim.title || `Animation #${anim.objectId}`}</span>
                                 {#if anim.completions}
-                                    <span class="anim-count">{anim.completions.length}x</span>
+                                    <div class="anim-preview">
+                                        <div class="comp-avatars">
+                                            {#each anim.completions[0].participants as p, idx}
+                                                <div
+                                                    class="comp-av"
+                                                    class:self={idx === 0}
+                                                    title="{p.displayName} as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}"
+                                                >
+                                                    {#if $actorThumbnails[p.charIndex]}
+                                                        <img src={$actorThumbnails[p.charIndex]} alt={ActorDisplayNames[p.charIndex]} />
+                                                    {:else}
+                                                        <span class="comp-av-fallback">{(ActorDisplayNames[p.charIndex] || '?')[0]}</span>
+                                                    {/if}
+                                                </div>
+                                            {/each}
+                                        </div>
+                                        <span class="anim-meta">{anim.completions.length}x &middot; {formatDateShort(anim.completions[0].timestamp)}</span>
+                                    </div>
+                                    <span class="anim-chevron" class:open={expandedAnims.has(anim.objectId)}></span>
                                 {/if}
-                            </div>
+                            </button>
 
-                            <!-- Completion cards (one per play) -->
-                            {#if anim.completions}
+                            <!-- Expanded completion rows -->
+                            {#if anim.completions && expandedAnims.has(anim.objectId)}
                                 <div class="completions">
-                                    {#each anim.completions as comp}
-                                        <div class="comp-card">
-                                            <div class="comp-roster">
+                                    {#each visibleCompletions(anim) as comp}
+                                        <div class="comp-row">
+                                            <div class="comp-avatars">
                                                 {#each comp.participants as p, idx}
-                                                    <div class="comp-participant" class:self={idx === 0}>
-                                                        <div class="participant-avatar">
-                                                            {#if $actorThumbnails[p.charIndex]}
-                                                                <img src={$actorThumbnails[p.charIndex]} alt={ActorDisplayNames[p.charIndex]} />
-                                                            {:else}
-                                                                <div class="thumb-spinner participant-spinner"></div>
-                                                            {/if}
-                                                        </div>
-                                                        <span class="participant-player">{p.displayName}</span>
-                                                        <span class="participant-char">as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}</span>
+                                                    <div
+                                                        class="comp-av"
+                                                        class:self={idx === 0}
+                                                        title="{p.displayName} as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}"
+                                                    >
+                                                        {#if $actorThumbnails[p.charIndex]}
+                                                            <img src={$actorThumbnails[p.charIndex]} alt={ActorDisplayNames[p.charIndex]} />
+                                                        {:else}
+                                                            <span class="comp-av-fallback">{(ActorDisplayNames[p.charIndex] || '?')[0]}</span>
+                                                        {/if}
                                                     </div>
                                                 {/each}
                                             </div>
-                                            <div class="comp-meta">
-                                                <span class="comp-date">{formatDate(comp.timestamp)}</span>
-                                                <a class="comp-share" href="#memory/{comp.eventId}" title="Share">
+                                            <div class="comp-names">
+                                                {#each comp.participants as p, idx}
+                                                    {#if idx < 3}
+                                                        {#if idx > 0}<span class="comp-sep">&middot;</span>{/if}
+                                                        <span class="comp-name" class:self={idx === 0}>
+                                                            {p.displayName}
+                                                            {#if idx === 0}
+                                                                <span class="comp-char">as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}</span>
+                                                            {/if}
+                                                        </span>
+                                                    {/if}
+                                                {/each}
+                                                {#if comp.participants.length > 3}
+                                                    <span class="comp-more">+{comp.participants.length - 3}</span>
+                                                {/if}
+                                            </div>
+                                            <div class="comp-end">
+                                                <span class="comp-time" title={formatDateFull(comp.timestamp)}>{formatDateShort(comp.timestamp)}</span>
+                                                <a class="comp-link" href="#memory/{comp.eventId}" title="Share" onclick={e => e.stopPropagation()}>
                                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                                         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                                                         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
@@ -259,6 +323,11 @@
                                             </div>
                                         </div>
                                     {/each}
+                                    {#if anim.completions.length > COMP_CAP && !showAllComps.has(anim.objectId)}
+                                        <button class="comp-show-more" onclick={() => toggleShowAll(anim.objectId)}>
+                                            Show {anim.completions.length - COMP_CAP} more
+                                        </button>
+                                    {/if}
                                 </div>
                             {/if}
                         </div>
@@ -643,6 +712,21 @@
         align-items: center;
         gap: 8px;
         padding: 7px 4px;
+        width: 100%;
+        background: none;
+        border: none;
+        cursor: default;
+        text-align: left;
+        border-radius: 4px;
+        transition: background 0.12s;
+    }
+
+    .anim-header.expandable {
+        cursor: pointer;
+    }
+
+    .anim-header.expandable:hover {
+        background: rgba(255, 255, 255, 0.03);
     }
 
     .anim-icon {
@@ -672,122 +756,186 @@
         color: var(--color-text-light);
     }
 
-    .anim-count {
-        font-family: 'Consolas', 'Menlo', monospace;
-        font-size: 10px;
-        color: var(--color-text-muted);
-        flex-shrink: 0;
-    }
-
-    /* --- Completion Cards --- */
-    .completions {
-        display: flex;
-        flex-direction: column;
-        padding: 0 0 8px 28px;
-        gap: 6px;
-    }
-
-    .comp-card {
-        padding: 8px 10px;
-        border-radius: 6px;
-        background: var(--color-bg-elevated);
-        border: 1px solid var(--color-border-dark);
-    }
-
-    .comp-roster {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .comp-participant {
+    .anim-preview {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 4px 0;
+        flex-shrink: 0;
     }
 
-    .comp-participant.self {
-        border-left: 2px solid var(--color-primary);
-        padding-left: 8px;
-        margin-left: -10px;
+    .anim-meta {
+        font-size: 0.7em;
+        color: var(--color-text-muted);
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
-    .comp-participant.self .participant-player {
-        color: var(--color-primary);
+    .anim-chevron {
+        display: inline-block;
+        width: 0;
+        height: 0;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 4px solid var(--color-text-muted);
+        flex-shrink: 0;
+        transition: transform 0.15s;
+        transform: rotate(-90deg);
     }
 
-    .comp-participant.self .participant-avatar {
-        box-shadow: 0 0 0 1.5px var(--color-primary);
+    .anim-chevron.open {
+        transform: rotate(0deg);
     }
 
-    .participant-avatar {
-        width: 28px;
-        height: 28px;
+    /* --- Avatar Stack (shared by header + completion rows) --- */
+    .comp-avatars {
+        display: flex;
+        flex-shrink: 0;
+    }
+
+    .comp-av {
+        width: 24px;
+        height: 24px;
         border-radius: 50%;
         overflow: hidden;
         background: var(--color-bg-input);
+        border: 1.5px solid var(--color-bg-elevated);
         flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: center;
+        position: relative;
     }
 
-    .participant-avatar img {
+    .comp-av + .comp-av {
+        margin-left: -8px;
+    }
+
+    .comp-av.self {
+        border-color: var(--color-primary);
+        z-index: 1;
+    }
+
+    .comp-av img {
         width: 100%;
         height: 100%;
         object-fit: contain;
     }
 
-    .participant-spinner {
-        width: 12px;
-        height: 12px;
+    .comp-av-fallback {
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--color-text-muted);
+        text-transform: uppercase;
     }
 
-    .participant-player {
-        font-size: 0.75em;
-        font-weight: 600;
-        color: var(--color-text-light);
+    /* --- Completion Rows --- */
+    .completions {
+        display: flex;
+        flex-direction: column;
+        padding: 0 0 6px 28px;
+    }
+
+    .comp-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 5px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        min-height: 32px;
+    }
+
+    .comp-row:last-child {
+        border-bottom: none;
+    }
+
+    .comp-names {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: baseline;
+        overflow: hidden;
         white-space: nowrap;
+    }
+
+    .comp-name {
+        font-size: 0.72em;
+        color: var(--color-text-medium);
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .comp-name.self {
+        color: var(--color-primary);
+        font-weight: 600;
+    }
+
+    .comp-char {
+        font-size: 0.9em;
+        color: var(--color-text-muted);
+        font-weight: 400;
+        margin-left: 3px;
+    }
+
+    .comp-sep {
+        color: var(--color-text-muted);
+        margin: 0 5px;
+        flex-shrink: 0;
+        font-size: 0.72em;
+    }
+
+    .comp-more {
+        font-size: 0.68em;
+        color: var(--color-text-muted);
+        margin-left: 5px;
         flex-shrink: 0;
     }
 
-    .participant-char {
-        font-size: 0.7em;
-        color: var(--color-text-muted);
-        margin-left: auto;
-        text-align: right;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        min-width: 0;
-    }
-
-    .comp-meta {
+    .comp-end {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        padding-top: 4px;
-        margin-top: 2px;
+        gap: 8px;
+        flex-shrink: 0;
+        margin-left: auto;
     }
 
-    .comp-date {
+    .comp-time {
         font-size: 0.65em;
         color: var(--color-text-muted);
         white-space: nowrap;
     }
 
-    .comp-share {
+    .comp-link {
         color: var(--color-text-muted);
-        opacity: 0.4;
-        transition: all 0.15s;
+        opacity: 0;
+        transition: opacity 0.15s;
         display: flex;
         align-items: center;
+        padding: 4px;
     }
 
-    .comp-share:hover {
+    .comp-row:hover .comp-link {
+        opacity: 0.5;
+    }
+
+    .comp-link:hover {
         opacity: 1;
         color: var(--color-primary);
         text-decoration: none;
+    }
+
+    .comp-show-more {
+        background: none;
+        border: none;
+        color: var(--color-text-muted);
+        font-size: 0.7em;
+        cursor: pointer;
+        padding: 6px 0;
+        text-align: center;
+        transition: color 0.15s;
+    }
+
+    .comp-show-more:hover {
+        color: var(--color-primary);
     }
 
     /* --- Responsive --- */
@@ -820,13 +968,29 @@
             padding-left: 16px;
         }
 
-        .participant-char {
+        .comp-av {
+            width: 20px;
+            height: 20px;
+        }
+
+        .comp-av + .comp-av {
+            margin-left: -6px;
+        }
+
+        .comp-char {
             display: none;
         }
 
-        .participant-avatar {
-            width: 24px;
-            height: 24px;
+        .comp-link {
+            opacity: 0.4;
+        }
+
+        .comp-row {
+            gap: 8px;
+        }
+
+        .anim-meta {
+            font-size: 0.65em;
         }
     }
 </style>
