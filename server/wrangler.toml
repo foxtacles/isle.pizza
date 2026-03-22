@@ -10,4 +10,3 @@ database_id = "local"
 
 [vars]
 API_URL = "http://localhost:8788"
-BETTER_AUTH_SECRET = "dev-secret-change-in-production-32chars!"

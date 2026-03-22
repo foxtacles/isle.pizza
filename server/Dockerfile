@@ -1,5 +1,7 @@
 FROM node:22-slim
 
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY server/package.json server/package-lock.json ./
@@ -8,6 +10,7 @@ RUN npm install
 COPY server/src/ ./src/
 COPY server/migrations/ ./migrations/
 COPY server/wrangler.toml server/tsconfig.json ./
+COPY server/.dev.vars* ./
 
 EXPOSE 8788
 

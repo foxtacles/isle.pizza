@@ -6,7 +6,9 @@ import { API_URL } from './config.js';
 
 export const authClient = createAuthClient({
     baseURL: API_URL,
-    plugins: [anonymousClient()],
+    plugins: [
+        anonymousClient(),
+    ],
     fetchOptions: {
         credentials: 'include'
     }
@@ -36,11 +38,11 @@ export async function initAuth() {
 }
 
 export async function signInWithDiscord() {
-    await authClient.signIn.social({ provider: 'discord' });
+    await authClient.signIn.social({ provider: 'discord', callbackURL: window.location.origin });
 }
 
 export async function signInWithGoogle() {
-    await authClient.signIn.social({ provider: 'google' });
+    await authClient.signIn.social({ provider: 'google', callbackURL: window.location.origin });
 }
 
 export async function signInAnonymously() {

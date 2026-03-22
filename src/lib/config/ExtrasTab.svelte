@@ -1,7 +1,6 @@
 <script>
     import ImageButton from '../ImageButton.svelte';
-    import { installState, swRegistration, currentPage } from '../../stores.js';
-    import { navigateToMultiplayer } from '../../core/navigation.js';
+    import { installState, swRegistration } from '../../stores.js';
 
     export let opfsDisabled;
     export let openSection;
@@ -11,19 +10,6 @@
     export let handleUninstall;
 
     $: progressAngle = ($installState.progress / 100) * 360;
-
-    function navigateToSaveEditor(e) {
-        e.preventDefault();
-        if (opfsDisabled) return;
-        history.pushState({ page: 'save-editor' }, '', '#save-editor');
-        currentPage.set('save-editor');
-    }
-
-    function handleNavigateToMultiplayer(e) {
-        e.preventDefault();
-        if (opfsDisabled) return;
-        navigateToMultiplayer();
-    }
 </script>
 
 <div class="config-tab-panel active" id="config-tab-extras">
@@ -94,35 +80,4 @@
             </div>
         </div>
     </div>
-    <div class="nav-links-row">
-        <div class="config-section-card">
-            <a href="#multiplayer" class="config-card-header nav-link" class:disabled={opfsDisabled} onclick={handleNavigateToMultiplayer}>Multiplayer</a>
-        </div>
-        <div class="config-section-card">
-            <a href="#save-editor" class="config-card-header nav-link" class:disabled={opfsDisabled} onclick={navigateToSaveEditor}>Save Editor</a>
-        </div>
-    </div>
 </div>
-
-<style>
-    .nav-links-row {
-        display: flex;
-        gap: 12px;
-    }
-
-    .nav-links-row > * {
-        flex: 1;
-        margin-bottom: 0;
-    }
-
-    .nav-links-row :global(.config-card-header) {
-        box-sizing: border-box;
-        height: 100%;
-    }
-
-    @media (max-width: 768px) {
-        .nav-links-row {
-            flex-direction: column;
-        }
-    }
-</style>

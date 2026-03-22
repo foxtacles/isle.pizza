@@ -23,7 +23,7 @@ export function createAuth(env: Env) {
 					await env.DB.prepare(
 						"UPDATE memory_completions SET user_id = ? WHERE user_id = ?"
 					)
-						.bind(newUser.user.id, anonymousUser.id)
+						.bind(newUser.user.id, anonymousUser.user.id)
 						.run();
 				},
 			}),
