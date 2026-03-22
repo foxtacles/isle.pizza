@@ -10,3 +10,15 @@ database_id = "local"
 
 [vars]
 API_URL = "http://localhost:8788"
+
+[env.production]
+workers_dev = false
+preview_urls = false
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "isle-pizza"
+database_id = "23b0f585-fa7a-4c35-8684-428aac9b5f89"
+
+[env.production.vars]
+API_URL = "https://api.isle.pizza"

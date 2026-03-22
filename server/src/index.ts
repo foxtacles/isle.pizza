@@ -13,7 +13,7 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 app.use(
 	"*",
 	cors({
-		origin: ["http://localhost:5173", "http://localhost:3000"],
+		origin: ["http://localhost:5173", "http://localhost:3000", "https://isle.pizza", "https://dev.isle.pizza"],
 		credentials: true,
 	})
 );

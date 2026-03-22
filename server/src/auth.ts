@@ -46,6 +46,6 @@ export function createAuth(env: Env) {
 					}
 				: {}),
 		},
-		trustedOrigins: ["http://localhost:5173", "http://localhost:3000"],
+		trustedOrigins: ["http://localhost:5173", "http://localhost:3000", "https://isle.pizza", "https://dev.isle.pizza"],
 	});
 }
