@@ -38,12 +38,7 @@
             const anims = groups[label];
             const unlocked = anims.filter(a => a.unlocked).length;
             return { label, anims, unlocked, total: anims.length };
-        }).sort((a, b) => {
-            const ratioA = a.total > 0 ? a.unlocked / a.total : 0;
-            const ratioB = b.total > 0 ? b.unlocked / b.total : 0;
-            if (ratioB !== ratioA) return ratioB - ratioA;
-            return a.label.localeCompare(b.label);
-        });
+        }).sort((a, b) => a.label.localeCompare(b.label));
     }
 
     function buildEntry(objectId, comps) {
@@ -211,11 +206,11 @@
         </div>
     {/if}
 
-    <!-- Location List -->
-    <div class="loc-list">
+    <!-- Location Grid -->
+    <div class="loc-grid">
         {#each locationGroups as group}
             <button
-                class="loc-row"
+                class="loc-card"
                 class:selected={selectedLocation === group.label}
                 class:has-unlocks={group.unlocked > 0}
                 onclick={() => selectLocation(group.label)}
@@ -227,12 +222,14 @@
                         <div class="thumb-spinner loc-spinner"></div>
                     {/if}
                 </div>
-                <span class="loc-name">{group.label}</span>
-                <div class="loc-progress-row">
-                    <div class="loc-bar-track">
-                        <div class="loc-bar-fill" style="width: {locPct(group)}%"></div>
+                <div class="loc-info">
+                    <span class="loc-name">{group.label}</span>
+                    <div class="loc-progress-row">
+                        <div class="loc-bar-track">
+                            <div class="loc-bar-fill" style="width: {locPct(group)}%"></div>
+                        </div>
+                        <span class="loc-count">{group.unlocked}/{group.total}</span>
                     </div>
-                    <span class="loc-count">{group.unlocked}/{group.total}</span>
                 </div>
             </button>
         {/each}
@@ -530,7 +527,7 @@
     .loc-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
+        gap: 6px;
         margin-bottom: 8px;
     }
 
@@ -541,7 +538,7 @@
         padding: 8px 6px 6px;
         background: var(--gradient-panel);
         border: 1px solid var(--color-border-dark);
-        border-radius: 8px;
+        border-radius: 6px;
         cursor: pointer;
         transition: all 0.15s;
         box-shadow: var(--shadow-sm);
@@ -562,9 +559,9 @@
     }
 
     .loc-thumb {
-        width: 56px;
-        height: 56px;
-        border-radius: 6px;
+        width: 88px;
+        height: 88px;
+        border-radius: 5px;
         overflow: hidden;
         margin-bottom: 4px;
         display: flex;
@@ -579,8 +576,8 @@
     }
 
     .loc-spinner {
-        width: 24px;
-        height: 24px;
+        width: 20px;
+        height: 20px;
     }
 
     .loc-info {
@@ -589,22 +586,25 @@
     }
 
     .loc-name {
-        font-size: 0.75em;
+        font-size: 0.7em;
         font-weight: 600;
         color: var(--color-text-medium);
         display: block;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .loc-progress-row {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
     }
 
     .loc-bar-track {
         flex: 1;
-        height: 3px;
+        height: 2px;
         background: var(--color-border-dark);
         border-radius: 2px;
         overflow: hidden;
@@ -619,7 +619,7 @@
 
     .loc-count {
         font-family: 'Consolas', 'Menlo', monospace;
-        font-size: 10px;
+        font-size: 9px;
         color: var(--color-text-muted);
         white-space: nowrap;
     }
@@ -754,14 +754,12 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        flex-shrink: 0;
     }
 
     .anim-meta {
         font-size: 0.7em;
         color: var(--color-text-muted);
         white-space: nowrap;
-        flex-shrink: 0;
     }
 
     .anim-chevron {
@@ -942,14 +940,9 @@
             height: 48px;
         }
 
-        .loc-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 6px;
-        }
-
         .loc-thumb {
-            width: 48px;
-            height: 48px;
+            width: 68px;
+            height: 68px;
         }
 
         .detail-filters {
@@ -983,7 +976,7 @@
         }
 
         .anim-meta {
-            font-size: 0.65em;
+            display: none;
         }
     }
 </style>
