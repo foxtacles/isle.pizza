@@ -1,0 +1,55 @@
+// Authentication client for isle.pizza API (better-auth)
+import { createAuthClient } from 'better-auth/client';
+import { anonymousClient } from 'better-auth/client/plugins';
+import { writable } from 'svelte/store';
+
+const API_URL = typeof __API_URL__ !== 'undefined' ? __API_URL__ : 'http://localhost:8788';
+
+export const authClient = createAuthClient({
+    baseURL: API_URL,
+    plugins: [anonymousClient()],
+    fetchOptions: {
+        credentials: 'include'
+    }
+});
+
+// Reactive session store: undefined = loading, null = logged out, object = logged in
+export const authSession = writable(undefined);
+
+// Check session on load
+export async function initAuth() {
+    try {
+        const session = await authClient.getSession();
+        authSession.set(session?.data || null);
+    } catch (e) {
+        // Not logged in or server unavailable
+        authSession.set(null);
+    }
+}
+
+export async function signInWithDiscord() {
+    await authClient.signIn.social({ provider: 'discord' });
+}
+
+export async function signInWithGoogle() {
+    await authClient.signIn.social({ provider: 'google' });
+}
+
+export async function signInAnonymously() {
+    const result = await authClient.signIn.anonymous();
+    if (result?.data) {
+        authSession.set(result.data);
+    }
+}
+
+export async function signOut() {
+    // Set session to null first so subscribers (e.g. memories.js) can
+    // react immediately, even if the server call fails.
+    authSession.set(null);
+    try {
+        await authClient.signOut();
+    } catch (e) {
+        // Session is already cleared locally; server-side cleanup is best-effort
+        console.warn('[Auth] signOut request failed:', e);
+    }
+}

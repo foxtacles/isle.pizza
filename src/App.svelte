@@ -1,11 +1,15 @@
 <script>
     import { onMount } from 'svelte';
     import { computePosition, flip, shift, offset } from '@floating-ui/dom';
-    import { currentPage, debugEnabled, multiplayerRoom, parseHash, initialInvalidRoom } from './stores.js';
+    import { currentPage, debugEnabled, gameRunning, multiplayerRoom, parseHash, initialInvalidRoom } from './stores.js';
     import { showToast } from './core/toast.js';
     import { registerServiceWorker, checkCacheStatus } from './core/service-worker.js';
     import { setupCanvasEvents } from './core/emscripten.js';
+    import { initMemories } from './core/memories.js';
+    import { initAuth } from './core/auth.js';
     import TopContent from './lib/TopContent.svelte';
+    import AccountIndicator from './lib/AccountIndicator.svelte';
+    import MemoriesPage from './lib/MemoriesPage.svelte';
     import Controls from './lib/Controls.svelte';
     import ReadMePage from './lib/ReadMePage.svelte';
     import ConfigurePage from './lib/ConfigurePage.svelte';
@@ -94,6 +98,10 @@
         // Setup canvas events
         setupCanvasEvents();
 
+        // Initialize memory persistence (IndexedDB) and auth
+        initMemories();
+        initAuth();
+
         // Setup global tooltip positioning
         setupTooltips();
 
@@ -148,6 +156,10 @@
 <UpdatePopup />
 <ConfigToast />
 
+{#if !$gameRunning}
+    <AccountIndicator />
+{/if}
+
 <main id="main-container">
     <div class="page-wrapper" class:active={$currentPage === 'main'}>
         <TopContent />
@@ -167,6 +179,9 @@
     </div>
     <div class="page-wrapper" class:active={$currentPage === 'multiplayer'}>
         <MultiplayerPage />
+    </div>
+    <div class="page-wrapper" class:active={$currentPage === 'memories'}>
+        <MemoriesPage />
     </div>
 
     <div class="footer-disclaimer">

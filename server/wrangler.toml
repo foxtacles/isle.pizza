@@ -1,0 +1,13 @@
+name = "isle-pizza-api"
+main = "src/index.ts"
+compatibility_date = "2026-03-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "isle-pizza"
+database_id = "local"
+
+[vars]
+API_URL = "http://localhost:8788"
+BETTER_AUTH_SECRET = "dev-secret-change-in-production-32chars!"

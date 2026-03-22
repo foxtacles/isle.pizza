@@ -1,5 +1,6 @@
 // Emscripten-related functions for game launching and canvas events
 import { gameRunning, debugUIVisible, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus, animationState } from '../stores.js';
+import { recordCompletion } from './memories.js';
 import { pauseInstallAudio } from './audio.js';
 
 const DEFAULT_RENDERER = "0 0x682656f3 0x0 0x0 0x4000000"; // WebGL default
@@ -103,6 +104,15 @@ export function setupCanvasEvents() {
         } catch (e) {
             console.error('[Anim] Failed to parse:', e);
             animationState.set(null);
+        }
+    });
+
+    canvas.addEventListener('animationCompleted', function (event) {
+        try {
+            const data = JSON.parse(event.detail.json);
+            recordCompletion(data.objectId, data.eventId, data.participants);
+        } catch (e) {
+            console.error('[Memory] Failed to process completion:', e);
         }
     });
 

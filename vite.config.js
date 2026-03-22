@@ -8,7 +8,8 @@ export default defineConfig(({ mode }) => ({
   plugins: [svelte()],
   define: {
     __BUILD_TIME__: mode === 'development' ? null : JSON.stringify(buildTime),
-    __RELAY_URL__: JSON.stringify(siteConfig.relayUrl)
+    __RELAY_URL__: JSON.stringify(siteConfig.relayUrl),
+    __API_URL__: JSON.stringify(siteConfig.apiUrl)
   },
   build: {
     outDir: 'dist',
