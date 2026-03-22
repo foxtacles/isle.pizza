@@ -346,7 +346,7 @@
         display: flex;
         align-items: center;
         gap: 14px;
-        padding: 12px 0 8px;
+        padding-bottom: 8px;
     }
 
     .hero-avatar {
