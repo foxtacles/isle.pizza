@@ -446,6 +446,7 @@
         margin-bottom: 4px;
         background: none;
         border: none;
+        font: inherit;
         cursor: pointer;
         font-size: 0.75em;
         color: var(--color-text-muted);
@@ -526,7 +527,7 @@
     /* --- Location Grid --- */
     .loc-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 6px;
         margin-bottom: 8px;
     }
@@ -542,6 +543,8 @@
         cursor: pointer;
         transition: all 0.15s;
         box-shadow: var(--shadow-sm);
+        font: inherit;
+        color: inherit;
     }
 
     .loc-card:hover {
@@ -559,8 +562,8 @@
     }
 
     .loc-thumb {
-        width: 88px;
-        height: 88px;
+        width: 68px;
+        height: 68px;
         border-radius: 5px;
         overflow: hidden;
         margin-bottom: 4px;
@@ -661,6 +664,7 @@
         padding: 2px 0;
         border: none;
         background: none;
+        font: inherit;
         color: var(--color-text-muted);
         font-size: 0.75em;
         cursor: pointer;
@@ -688,7 +692,6 @@
     .anim-list {
         display: flex;
         flex-direction: column;
-        gap: 2px;
     }
 
     .anim-group {
@@ -917,6 +920,7 @@
     .comp-show-more {
         background: none;
         border: none;
+        font: inherit;
         color: var(--color-text-muted);
         font-size: 0.7em;
         cursor: pointer;
@@ -940,9 +944,13 @@
             height: 48px;
         }
 
+        .loc-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
         .loc-thumb {
-            width: 68px;
-            height: 68px;
+            width: 48px;
+            height: 48px;
         }
 
         .detail-filters {
