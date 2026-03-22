@@ -3,7 +3,7 @@ import { memoryUnlocks, memoryCompletions } from '../stores.js';
 import { authSession, authReady } from './auth.js';
 import { API_URL } from './config.js';
 
-const DB_NAME = 'isle-memories';
+const DB_NAME = 'isle-pizza-memories';
 const DB_VERSION = 1;
 const STORE_NAME = 'completions';
 
