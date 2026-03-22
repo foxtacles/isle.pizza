@@ -7,7 +7,7 @@
 
     let filter = 'all';
     let selectedLocation = null;
-    let introOpen = true;
+    let introOpen = false;
     let expandedAnims = new Set();
     let showAllComps = new Set();
     const COMP_CAP = 5;
@@ -156,22 +156,25 @@
 
 <div class="page-content" class:loading={!loaded}>
     <BackButton />
+    <div class="memories-inner">
 
     <!-- Hero -->
     <div class="hero">
         <img class="hero-avatar" src="images/nick_closeup.webp" alt="Nick Brick" />
         <div class="hero-text">
             <h1>Nick Brick's Memories</h1>
-            <p class="hero-subtitle">Help Nick remember what happened on the island.</p>
+            <div class="hero-meta">
+                <span class="hero-subtitle">Help Nick remember what happened on the island.</span>
+                <span class="hero-progress">
+                    <span class="progress-num">{unlockCount}</span>
+                    <span class="progress-sep">/</span>
+                    <span class="progress-den">{TOTAL_ANIMATIONS}</span>
+                </span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" style="width: {progressPct}%"></div>
+            </div>
         </div>
-        <div class="hero-progress">
-            <span class="progress-num">{unlockCount}</span>
-            <span class="progress-sep">/</span>
-            <span class="progress-den">{TOTAL_ANIMATIONS}</span>
-        </div>
-    </div>
-    <div class="progress-track">
-        <div class="progress-fill" style="width: {progressPct}%"></div>
     </div>
 
     <!-- Introduction -->
@@ -208,11 +211,11 @@
         </div>
     {/if}
 
-    <!-- Location Grid -->
-    <div class="loc-grid">
+    <!-- Location List -->
+    <div class="loc-list">
         {#each locationGroups as group}
             <button
-                class="loc-card"
+                class="loc-row"
                 class:selected={selectedLocation === group.label}
                 class:has-unlocks={group.unlocked > 0}
                 onclick={() => selectLocation(group.label)}
@@ -224,14 +227,12 @@
                         <div class="thumb-spinner loc-spinner"></div>
                     {/if}
                 </div>
-                <div class="loc-info">
-                    <span class="loc-name">{group.label}</span>
-                    <div class="loc-progress-row">
-                        <div class="loc-bar-track">
-                            <div class="loc-bar-fill" style="width: {locPct(group)}%"></div>
-                        </div>
-                        <span class="loc-count">{group.unlocked}/{group.total}</span>
+                <span class="loc-name">{group.label}</span>
+                <div class="loc-progress-row">
+                    <div class="loc-bar-track">
+                        <div class="loc-bar-fill" style="width: {locPct(group)}%"></div>
                     </div>
+                    <span class="loc-count">{group.unlocked}/{group.total}</span>
                 </div>
             </button>
         {/each}
@@ -328,34 +329,34 @@
             {/if}
         </div>
     {/if}
+    </div>
 </div>
 
 <style>
-    .page-content {
+    .page-content.loading {
+        visibility: hidden;
+    }
+
+    .memories-inner {
         display: flex;
         flex-direction: column;
         align-items: stretch;
         width: 100%;
         max-width: 720px;
-        margin: 0 auto;
         padding: 0 12px;
         box-sizing: border-box;
     }
 
-    .page-content :global(*) {
+    .memories-inner :global(*) {
         box-sizing: border-box;
     }
 
-    .page-content.loading {
-        visibility: hidden;
-    }
-
-    .page-content a {
+    .memories-inner a {
         color: var(--color-primary);
         text-decoration: none;
     }
 
-    .page-content a:hover {
+    .memories-inner a:hover {
         text-decoration: underline;
     }
 
@@ -390,15 +391,22 @@
         line-height: 1.2;
     }
 
+    .hero-meta {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 2px;
+    }
+
     .hero-subtitle {
         font-size: 0.75em;
         color: var(--color-text-muted);
-        margin: 2px 0 0;
     }
 
     .hero-progress {
         font-family: 'Consolas', 'Menlo', monospace;
-        font-size: 14px;
+        font-size: 11px;
         white-space: nowrap;
         flex-shrink: 0;
     }
@@ -418,11 +426,11 @@
     }
 
     .progress-track {
-        height: 4px;
+        height: 3px;
         background: var(--color-border-dark);
         border-radius: 2px;
         overflow: hidden;
-        margin-bottom: 12px;
+        margin-top: 6px;
     }
 
     .progress-fill {
@@ -530,7 +538,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 10px 8px 8px;
+        padding: 8px 6px 6px;
         background: var(--gradient-panel);
         border: 1px solid var(--color-border-dark);
         border-radius: 8px;
@@ -554,11 +562,11 @@
     }
 
     .loc-thumb {
-        width: 72px;
-        height: 72px;
+        width: 56px;
+        height: 56px;
         border-radius: 6px;
         overflow: hidden;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -619,11 +627,7 @@
     /* --- Detail Panel --- */
     .detail {
         margin-top: 8px;
-        padding: 12px;
-        background: var(--gradient-panel);
-        border: 1px solid var(--color-border-dark);
-        border-radius: 8px;
-        box-shadow: var(--shadow-sm);
+        padding: 4px 0;
     }
 
     .detail-head {
@@ -649,31 +653,28 @@
 
     .detail-filters {
         display: flex;
-        gap: 4px;
+        gap: 12px;
         margin-left: auto;
     }
 
     .filter-btn {
-        padding: 4px 10px;
-        border: 1px solid var(--color-border-dark);
-        border-radius: 12px;
+        padding: 2px 0;
+        border: none;
         background: none;
         color: var(--color-text-muted);
         font-size: 0.75em;
         cursor: pointer;
-        transition: all 0.15s;
+        transition: color 0.15s;
+        border-bottom: 1.5px solid transparent;
     }
 
     .filter-btn:hover {
-        background: var(--color-bg-panel);
-        border-color: var(--color-border-medium);
         color: var(--color-text-medium);
     }
 
     .filter-btn.active {
-        background: var(--color-primary-glow);
-        border-color: var(--color-primary);
         color: var(--color-primary);
+        border-bottom-color: var(--color-primary);
     }
 
     .empty {
@@ -732,7 +733,7 @@
     }
 
     .anim-group.unlocked .anim-icon {
-        color: var(--color-primary);
+        color: rgba(76, 175, 80, 0.7);
     }
 
     .anim-title {
@@ -746,7 +747,7 @@
     }
 
     .anim-group.unlocked .anim-title {
-        color: var(--color-text-light);
+        color: var(--color-text-medium);
     }
 
     .anim-preview {
@@ -947,8 +948,8 @@
         }
 
         .loc-thumb {
-            width: 60px;
-            height: 60px;
+            width: 48px;
+            height: 48px;
         }
 
         .detail-filters {
