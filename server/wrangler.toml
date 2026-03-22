@@ -12,6 +12,7 @@ database_id = "local"
 API_URL = "http://localhost:8788"
 
 [env.production]
+name = "isle-api"
 workers_dev = false
 preview_urls = false
 
