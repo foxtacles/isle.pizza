@@ -1083,9 +1083,9 @@ select:focus {
 }
 
 .tab-btn {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr;
     align-items: center;
-    justify-content: center;
     flex: 1 1 calc(33.333% - 10px);
     min-width: 0;
     gap: 10px;
@@ -1548,7 +1548,6 @@ select:focus {
     .tab-btn {
         flex: 1 1 calc(50% - 5px);
         min-width: 0;
-        justify-content: center;
     }
 
     .voices-grid {
