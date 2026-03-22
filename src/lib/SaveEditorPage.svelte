@@ -539,7 +539,6 @@
     .no-saves-image {
         width: 100px;
         height: auto;
-        image-rendering: pixelated;
         margin-bottom: 16px;
         border-radius: 8px;
     }
@@ -586,7 +585,6 @@
     .slot-character-icon {
         width: 32px;
         height: 37px;
-        image-rendering: pixelated;
     }
 
     .slot-name {
@@ -665,7 +663,6 @@
         width: 40px;
         height: 46px;
         display: block;
-        image-rendering: pixelated;
     }
 
     .tab-carousel-wrapper {

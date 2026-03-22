@@ -330,7 +330,6 @@
         display: block;
         width: 100%;
         height: auto;
-        image-rendering: pixelated;
     }
 
     .texture-thumb.carousel-item {

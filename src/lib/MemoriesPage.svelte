@@ -370,7 +370,6 @@
         height: 64px;
         border-radius: 50%;
         object-fit: cover;
-        image-rendering: pixelated;
         flex-shrink: 0;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     }

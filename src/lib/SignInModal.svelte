@@ -46,8 +46,35 @@
             </button>
 
             <div class="modal-header">
-                <h2>Sign in</h2>
-                <p>Save your progress across devices</p>
+                <img class="character-avatar" src="images/register.webp" alt="Infomaniac" />
+                <h2>Sign in to LEGO Island</h2>
+                <p>Keep everything synced across devices</p>
+                <div class="benefits-chips">
+                    <span class="benefit-chip">
+                        <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 13V3h8v10H4z"/><path d="M7 3V1h2v2"/><path d="M6 6h4M6 8.5h4"/>
+                        </svg>
+                        Saves
+                    </span>
+                    <span class="benefit-chip">
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        Settings
+                    </span>
+                    <span class="benefit-chip">
+                        <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="6" cy="6.5" r="3"/><circle cx="10.5" cy="9" r="3"/>
+                        </svg>
+                        Multiplayer
+                    </span>
+                    <span class="benefit-chip">
+                        <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M8 1.5l1.8 3.7 4 .6-2.9 2.8.7 4L8 10.8l-3.6 1.8.7-4-2.9-2.8 4-.6z"/>
+                        </svg>
+                        Memories
+                    </span>
+                </div>
             </div>
 
             <div class="modal-body">
@@ -95,7 +122,7 @@
     .modal-panel {
         position: relative;
         box-sizing: border-box;
-        background: #1a1a1a;
+        background: var(--color-bg-dark);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
         padding: 32px 28px;
@@ -130,7 +157,6 @@
     }
 
     .modal-header h2 {
-        font-family: Arial, sans-serif;
         font-size: 20px;
         font-weight: 600;
         color: rgba(255, 255, 255, 0.9);
@@ -138,10 +164,46 @@
     }
 
     .modal-header p {
-        font-family: Arial, sans-serif;
         font-size: 13px;
         color: rgba(255, 255, 255, 0.4);
         margin: 0;
+    }
+
+    .character-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        display: block;
+        margin: 0 auto 14px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+        border: 2px solid rgba(255, 215, 0, 0.25);
+    }
+
+    .benefits-chips {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-top: 12px;
+    }
+
+    .benefit-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 3px 9px;
+        background: rgba(255, 215, 0, 0.08);
+        border: 1px solid rgba(255, 215, 0, 0.15);
+        border-radius: 10px;
+        font-size: 11px;
+        color: rgba(255, 215, 0, 0.7);
+        white-space: nowrap;
+    }
+
+    .benefit-chip svg {
+        flex-shrink: 0;
+        stroke: rgba(255, 215, 0, 0.6);
     }
 
     .modal-body {
@@ -159,7 +221,6 @@
         padding: 11px 16px;
         border: none;
         border-radius: 8px;
-        font-family: Arial, sans-serif;
         font-size: 14px;
         font-weight: 500;
         cursor: pointer;
@@ -204,7 +265,6 @@
     }
 
     .divider span {
-        font-family: Arial, sans-serif;
         font-size: 12px;
         color: rgba(255, 255, 255, 0.3);
     }
@@ -215,7 +275,6 @@
         border-radius: 8px;
         padding: 11px 16px;
         color: rgba(255, 255, 255, 0.5);
-        font-family: Arial, sans-serif;
         font-size: 14px;
         cursor: pointer;
         transition: background 0.15s, color 0.15s;
