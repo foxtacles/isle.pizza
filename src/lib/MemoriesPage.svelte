@@ -151,7 +151,7 @@
 
 <div class="page-content" class:loading={!loaded}>
     <BackButton />
-    <div class="memories-inner">
+    <div class="page-inner-content memories-inner">
 
     <!-- Hero -->
     <div class="hero">
@@ -338,23 +338,7 @@
         display: flex;
         flex-direction: column;
         align-items: stretch;
-        width: 100%;
-        max-width: 720px;
-        padding: 0 12px;
-        box-sizing: border-box;
-    }
-
-    .memories-inner :global(*) {
-        box-sizing: border-box;
-    }
-
-    .memories-inner a {
-        color: var(--color-primary);
-        text-decoration: none;
-    }
-
-    .memories-inner a:hover {
-        text-decoration: underline;
+        text-align: left;
     }
 
     /* --- Hero --- */
