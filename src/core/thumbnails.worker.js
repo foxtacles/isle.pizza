@@ -56,7 +56,7 @@ async function renderBuildings(wdbParser, wdbData, globalTextures) {
         }
     }
 
-    const canvas = new OffscreenCanvas(128, 128);
+    const canvas = new OffscreenCanvas(256, 256);
     const renderer = new BuildingRenderer(canvas, { preserveDrawingBuffer: true });
 
     const result = {};

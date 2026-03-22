@@ -86,9 +86,22 @@
 
     function formatDate(timestamp) {
         if (!timestamp) return '';
-        return new Date(timestamp * 1000).toLocaleDateString(undefined, {
-            month: 'short', day: 'numeric'
-        });
+        const d = new Date(timestamp * 1000);
+        const now = new Date();
+        const diffMs = now - d;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        let relative;
+        if (diffMins < 1) relative = 'Just now';
+        else if (diffMins < 60) relative = `${diffMins}m ago`;
+        else if (diffHours < 24) relative = `${diffHours}h ago`;
+        else if (diffDays < 7) relative = `${diffDays}d ago`;
+        else relative = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+        const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        return `${relative} · ${time}`;
     }
 
     function locPct(group) {
@@ -136,7 +149,7 @@
                 </div>
                 <div class="intro-step">
                     <span class="step-num">2</span>
-                    <span class="step-text">Visit locations on the island and use the Scene/Act buttons to browse available animations</span>
+                    <span class="step-text">Visit locations on the island and browse available animations from the hotbar</span>
                 </div>
                 <div class="intro-step">
                     <span class="step-num">3</span>
@@ -215,32 +228,35 @@
                                 {/if}
                             </div>
 
-                            <!-- Completion rows (one per play) -->
+                            <!-- Completion cards (one per play) -->
                             {#if anim.completions}
                                 <div class="completions">
                                     {#each anim.completions as comp}
-                                        <div class="comp-row">
-                                            <span class="comp-date">{formatDate(comp.timestamp)}</span>
-                                            <div class="comp-actors">
-                                                {#each comp.participants as p}
-                                                    <div class="comp-actor" title="{p.displayName} as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}">
-                                                        <div class="actor-thumb">
+                                        <div class="comp-card">
+                                            <div class="comp-roster">
+                                                {#each comp.participants as p, idx}
+                                                    <div class="comp-participant" class:self={idx === 0}>
+                                                        <div class="participant-avatar">
                                                             {#if $actorThumbnails[p.charIndex]}
                                                                 <img src={$actorThumbnails[p.charIndex]} alt={ActorDisplayNames[p.charIndex]} />
                                                             {:else}
-                                                                <div class="thumb-spinner actor-spinner"></div>
+                                                                <div class="thumb-spinner participant-spinner"></div>
                                                             {/if}
                                                         </div>
-                                                        <span class="actor-label">{p.displayName}</span>
+                                                        <span class="participant-player">{p.displayName}</span>
+                                                        <span class="participant-char">as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}</span>
                                                     </div>
                                                 {/each}
                                             </div>
-                                            <a class="comp-share" href="#memory/{comp.eventId}" title="Share (coming soon)">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                                                </svg>
-                                            </a>
+                                            <div class="comp-meta">
+                                                <span class="comp-date">{formatDate(comp.timestamp)}</span>
+                                                <a class="comp-share" href="#memory/{comp.eventId}" title="Share">
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
                                         </div>
                                     {/each}
                                 </div>
@@ -492,7 +508,6 @@
         width: 100%;
         height: 100%;
         object-fit: contain;
-        image-rendering: pixelated;
     }
 
     .loc-spinner {
@@ -664,84 +679,114 @@
         flex-shrink: 0;
     }
 
-    /* --- Completion Rows --- */
+    /* --- Completion Cards --- */
     .completions {
         display: flex;
         flex-direction: column;
-        padding: 0 0 6px 28px;
-        gap: 4px;
-    }
-
-    .comp-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 4px 6px;
-        border-radius: 4px;
-        background: var(--color-bg-elevated);
-    }
-
-    .comp-date {
-        font-size: 10px;
-        color: var(--color-text-muted);
-        white-space: nowrap;
-        flex-shrink: 0;
-        min-width: 44px;
-    }
-
-    .comp-actors {
-        display: flex;
-        flex-wrap: wrap;
+        padding: 0 0 8px 28px;
         gap: 6px;
-        flex: 1;
-        min-width: 0;
     }
 
-    .comp-actor {
+    .comp-card {
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: var(--color-bg-elevated);
+        border: 1px solid var(--color-border-dark);
+    }
+
+    .comp-roster {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .comp-participant {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 8px;
+        padding: 4px 0;
     }
 
-    .actor-thumb {
-        width: 36px;
-        height: 36px;
+    .comp-participant.self {
+        border-left: 2px solid var(--color-primary);
+        padding-left: 8px;
+        margin-left: -10px;
+    }
+
+    .comp-participant.self .participant-player {
+        color: var(--color-primary);
+    }
+
+    .comp-participant.self .participant-avatar {
+        box-shadow: 0 0 0 1.5px var(--color-primary);
+    }
+
+    .participant-avatar {
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         overflow: hidden;
-        background: var(--color-bg-dark);
-        border: 1px solid var(--color-border-dark);
+        background: var(--color-bg-input);
         flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
-    .actor-thumb img {
+    .participant-avatar img {
         width: 100%;
         height: 100%;
         object-fit: contain;
     }
 
-    .actor-spinner {
-        width: 16px;
-        height: 16px;
+    .participant-spinner {
+        width: 12px;
+        height: 12px;
     }
 
-    .actor-label {
-        font-size: 10px;
-        color: var(--color-text-medium);
+    .participant-player {
+        font-size: 0.75em;
+        font-weight: 600;
+        color: var(--color-text-light);
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .participant-char {
+        font-size: 0.7em;
+        color: var(--color-text-muted);
+        margin-left: auto;
+        text-align: right;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+    }
+
+    .comp-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 4px;
+        margin-top: 2px;
+    }
+
+    .comp-date {
+        font-size: 0.65em;
+        color: var(--color-text-muted);
         white-space: nowrap;
     }
 
     .comp-share {
-        flex-shrink: 0;
         color: var(--color-text-muted);
-        opacity: 0.5;
-        transition: opacity 0.15s;
+        opacity: 0.4;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
     }
 
     .comp-share:hover {
         opacity: 1;
+        color: var(--color-primary);
         text-decoration: none;
     }
 
@@ -771,12 +816,17 @@
             width: 100%;
         }
 
-        .comp-date {
+        .completions {
+            padding-left: 16px;
+        }
+
+        .participant-char {
             display: none;
         }
 
-        .actor-label {
-            display: none;
+        .participant-avatar {
+            width: 24px;
+            height: 24px;
         }
     }
 </style>
