@@ -608,7 +608,7 @@ export const ActorDisplayNames = Object.freeze([
     /* 8  */ 'Rhoda Hogg',
     /* 9  */ 'Valerie Stubbins',
     /* 10 */ 'Snap Lockitt',
-    /* 11 */ 'pt',
+    /* 11 */ 'Pitt Stop',
     /* 12 */ 'Maggie Post',
     /* 13 */ 'Buck Pounds',
     /* 14 */ 'Ed Mail',
