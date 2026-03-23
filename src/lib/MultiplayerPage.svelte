@@ -15,7 +15,7 @@
     const RELAY_URL = __RELAY_URL__;
     const RELAY_HTTP = RELAY_URL.replace('wss://', 'https://').replace('ws://', 'http://');
 
-    let maxPlayers = 5;
+    const maxPlayers = 16;
     let creating = false;
 
     let selectedActorIndex = Number(sessionStorage.getItem('mp-actor')) || 0;
@@ -159,16 +159,6 @@
 
             {#if !hasRoom}
                 <div class="mp-section">
-                    <div class="mp-slider-field">
-                        <label class="form-group-label" for="max-players-slider">
-                            Island size ({maxPlayers})
-                            <span class="tooltip-trigger">?
-                                <span class="tooltip-content">Maximum number of players that can join this island at the same time.</span>
-                            </span>
-                        </label>
-                        <input type="range" id="max-players-slider" min="2" max="20" bind:value={maxPlayers} disabled={$opfsDisabled}>
-                    </div>
-
                     <button class="preset-btn mp-create-btn" onclick={handleCreateRoom} disabled={creating || $opfsDisabled}>
                         {#if creating}
                             Creating...
@@ -321,21 +311,7 @@
         gap: 10px;
     }
 
-    /* Room creation */
-    .mp-slider-field :global(.form-group-label) {
-        min-height: 20px;
-    }
-
-    .mp-slider-field input[type="range"] {
-        transition: opacity 0.2s ease;
-    }
-
-    .mp-slider-field input[type="range"]:disabled {
-        opacity: 0.3;
-    }
-
     .mp-create-btn {
-        margin-top: 4px;
         display: flex;
         align-items: center;
         justify-content: center;
