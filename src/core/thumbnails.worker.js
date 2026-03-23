@@ -3,7 +3,7 @@
 import { BuildingRenderer } from './rendering/BuildingRenderer.js';
 import { ActorRenderer } from './rendering/ActorRenderer.js';
 import { ActorInfoInit } from './savegame/actorConstants.js';
-import { WdbParser, buildPartsMap, buildGlobalPartsMap, resolveLods } from './formats/WdbParser.js';
+import { WdbParser, buildPartsMap, buildGlobalPartsMap, collectAllRois } from './formats/WdbParser.js';
 
 const LOCATION_BUILDINGS = {
     'Bank': 'bank',
@@ -39,13 +39,7 @@ async function renderBuildings(wdbParser, wdbData, globalTextures) {
                 worldPartsMap = buildPartsMap(wdbParser, world.parts);
             }
 
-            const rois = [];
-            const collectRois = (node) => {
-                const lods = resolveLods(node, worldPartsMap);
-                if (lods.length > 0) rois.push({ name: node.name, lods });
-                for (const child of node.children || []) collectRois(child);
-            };
-            collectRois(modelData.roi);
+            const rois = collectAllRois(modelData.roi, worldPartsMap);
 
             if (rois.length > 0) {
                 modelsMap.set(modelKey, {

@@ -6,7 +6,7 @@
     import SettingsPanel from './SettingsPanel.svelte';
     import AnimationPanel from './AnimationPanel.svelte';
     import PeopleIcon from './PeopleIcon.svelte';
-    import { bestAnimTab } from './constants.js';
+    import AnimationTabs from './AnimationTabs.svelte';
 
     export let visible = false;
     export let emoteOptions;
@@ -31,11 +31,9 @@
     export let animActivity = null;
     export let animsDisabled = false;
 
-    $: sceneAnims = animations.filter(a => a.category === 1);
-    $: npcAnims = animations.filter(a => a.category === 0);
-
     let animTab = 'scene';
-    $: filteredAnims = animTab === 'scene' ? sceneAnims : npcAnims;
+    let filteredAnims = [];
+    let animTabsRef;
 
     // Disable hotbar interactions during countdown and playback
     $: animLocked = animations.some(a => (a.sessionState === 2 || a.sessionState === 3) && a.localInSession);
@@ -85,7 +83,7 @@
         if (animLocked) return;
         if (activePopover === name) { activePopover = null; resetHideTimer(); }
         else {
-            if (name === 'anims') animTab = bestAnimTab(sceneAnims, npcAnims, animTab);
+            if (name === 'anims') animTabsRef?.selectBestTab();
             activePopover = name; keepAlive();
         }
     }
@@ -142,19 +140,11 @@
                 <HotbarPopover open={activePopover === 'anims'} triggerEl={triggerEls.anims}
                     onClose={closePopover} align="start">
                     <div class="popover-anims">
-                        <div class="anims-tabs">
-                            <button class="anims-tab" class:active={animTab === 'scene'}
-                                onclick={() => { animTab = 'scene'; }}>
-                                Scene{#if sceneAnims.length}&nbsp;({sceneAnims.length}){/if}
-                            </button>
-                            <button class="anims-tab" class:active={animTab === 'act'}
-                                onclick={() => { animTab = 'act'; }}>
-                                Act{#if npcAnims.length}&nbsp;({npcAnims.length}){/if}
-                            </button>
-                        </div>
-                        {#key animTab}
-                            <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} />
-                        {/key}
+                        <AnimationTabs bind:this={animTabsRef} {animations} bind:animTab onFilteredChange={(a) => filteredAnims = a}>
+                            {#key animTab}
+                                <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} />
+                            {/key}
+                        </AnimationTabs>
                     </div>
                 </HotbarPopover>
             </div>
@@ -214,8 +204,8 @@
         cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease;
         font-family: inherit; outline: none;
     }
-    @media (hover: hover) { .indicator-btn:hover { background: rgba(255, 255, 255, 0.08); } }
-    .indicator-btn.active { background: rgba(255, 215, 0, 0.12); border-color: rgba(255, 215, 0, 0.4); }
+    @media (hover: hover) { .indicator-btn:hover { background: var(--color-surface-hover); } }
+    .indicator-btn.active { background: var(--color-primary-surface); border-color: var(--color-primary-border); }
 
     .indicator-label { font-size: 0.7em; font-weight: 600; color: var(--color-text-muted); line-height: 1; }
     .indicator-btn.active .indicator-label { color: var(--color-primary); }
@@ -296,32 +286,4 @@
         flex-direction: column;
     }
 
-    .anims-tabs {
-        display: flex;
-        gap: 2px;
-        margin-bottom: 6px;
-        flex-shrink: 0;
-    }
-
-    .anims-tab {
-        flex: 1;
-        padding: 6px 0;
-        border: none;
-        border-radius: 7px;
-        background: rgba(255, 255, 255, 0.04);
-        color: var(--color-text-muted);
-        font-size: 12px;
-        font-weight: 600;
-        font-family: inherit;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        outline: none;
-    }
-
-    @media (hover: hover) { .anims-tab:hover { background: rgba(255, 255, 255, 0.08); } }
-
-    .anims-tab.active {
-        background: rgba(255, 215, 0, 0.12);
-        color: var(--color-primary);
-    }
 </style>

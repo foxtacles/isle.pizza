@@ -27,6 +27,14 @@
     --gradient-hover: linear-gradient(135deg, #333 0%, #222 100%);
     --gradient-card: var(--gradient-card);
 
+    /* Semi-transparent surfaces */
+    --color-surface-subtle: rgba(255, 255, 255, 0.04);
+    --color-surface-hover: rgba(255, 255, 255, 0.08);
+
+    /* Primary (gold) surfaces */
+    --color-primary-surface: rgba(255, 215, 0, 0.12);
+    --color-primary-border: rgba(255, 215, 0, 0.4);
+
     /* Shadows */
     --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.2);
     --shadow-md: 0 4px 15px rgba(0, 0, 0, 0.4);

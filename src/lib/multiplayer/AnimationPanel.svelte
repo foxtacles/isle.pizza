@@ -180,7 +180,7 @@
     }
 
     .anim-row + .anim-row {
-        border-top: 1px solid rgba(255, 255, 255, 0.04);
+        border-top: 1px solid var(--color-surface-subtle);
     }
 
     @media (hover: hover) {
