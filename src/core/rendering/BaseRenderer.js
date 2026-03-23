@@ -16,6 +16,9 @@ export class BaseRenderer {
 
         this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
 
+        const logicalWidth = canvas.width;
+        const logicalHeight = canvas.height;
+
         this.renderer = new THREE.WebGLRenderer({
             canvas,
             antialias: true,
@@ -24,6 +27,7 @@ export class BaseRenderer {
         });
         const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
         this.renderer.setPixelRatio(Math.min(dpr, 2));
+        this.renderer.setSize(logicalWidth, logicalHeight, !!canvas.style);
         this.renderer.setClearColor(0x000000, 0);
 
         this.setupLighting();

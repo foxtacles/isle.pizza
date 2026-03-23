@@ -9,6 +9,7 @@
     border-radius: 8px;
     cursor: grab;
     max-width: 100%;
+    aspect-ratio: 1;
 }
 
 .preview-container canvas:active {

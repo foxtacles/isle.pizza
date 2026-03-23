@@ -31,8 +31,8 @@
     <div class="preview-container">
         <canvas
             bind:this={canvas}
-            width="190"
-            height="190"
+            width="285"
+            height="285"
             class:hidden={loading || error}
             onclick={onCanvasClick}
             role="button"

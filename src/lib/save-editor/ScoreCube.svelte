@@ -119,8 +119,8 @@
     <div class="score-cube-container">
         <canvas
             bind:this={canvas}
-            width="200"
-            height="200"
+            width="300"
+            height="300"
             onclick={handleClick}
             class:hidden={loading || error}
             role="button"
@@ -150,6 +150,7 @@
         border-radius: 8px;
         margin-bottom: 12px;
         max-width: 100%;
+        aspect-ratio: 1;
     }
 
     canvas:active {
