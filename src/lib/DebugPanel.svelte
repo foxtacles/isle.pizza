@@ -548,5 +548,18 @@
     border-color: var(--color-primary);
 }
 
+#debug-animation-select optgroup,
+#debug-location-select optgroup {
+    background-color: var(--color-bg-dark);
+    color: var(--color-primary);
+    font-weight: bold;
+}
+
+#debug-animation-select option,
+#debug-location-select option {
+    background-color: var(--color-bg-panel);
+    color: #e0e0e0;
+    padding: 4px;
+}
 
 </style>
