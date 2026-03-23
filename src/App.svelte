@@ -122,7 +122,7 @@
 
         // Show error toast if initial URL had an invalid room
         if (initialInvalidRoom) {
-            showToast('Invalid room URL', { error: true, duration: 3000 });
+            showToast('Invalid island URL', { error: true, duration: 3000 });
         }
 
         // Handle browser back/forward
@@ -138,7 +138,7 @@
                 multiplayerRoom.set(result.room);
                 currentPage.set(result.page);
                 if (result.invalidRoom) {
-                    showToast('Invalid room URL', { error: true, duration: 3000 });
+                    showToast('Invalid island URL', { error: true, duration: 3000 });
                 }
             }
         });

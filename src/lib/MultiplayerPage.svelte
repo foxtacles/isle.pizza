@@ -35,7 +35,7 @@
     {
         if (sessionStorage.getItem('mp-rejected')) {
             sessionStorage.removeItem('mp-rejected');
-            setTimeout(() => showToast('Room is full', { error: true, duration: 3000 }), 0);
+            setTimeout(() => showToast('Island is full', { error: true, duration: 3000 }), 0);
         }
     }
 
@@ -155,15 +155,15 @@
                 </span>
             </h2>
 
-            <p class="mp-description">Explore LEGO Island together with other players. Create a room and share the link to get started.</p>
+            <p class="mp-description">Explore LEGO Island together with other players. Create an island and share the link to get started.</p>
 
             {#if !hasRoom}
                 <div class="mp-section">
                     <div class="mp-slider-field">
                         <label class="form-group-label" for="max-players-slider">
-                            Room size ({maxPlayers})
+                            Island size ({maxPlayers})
                             <span class="tooltip-trigger">?
-                                <span class="tooltip-content">Maximum number of players that can join this room at the same time.</span>
+                                <span class="tooltip-content">Maximum number of players that can join this island at the same time.</span>
                             </span>
                         </label>
                         <input type="range" id="max-players-slider" min="2" max="20" bind:value={maxPlayers} disabled={$opfsDisabled}>
@@ -176,7 +176,7 @@
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                             </svg>
-                            Create Room
+                            Create Island
                         {/if}
                     </button>
                 </div>
@@ -250,7 +250,7 @@
                                 {/if}
                             </span>
                         </span>
-                        <button class="mp-share-btn" onclick={handleCopyLink} title="Copy room link">
+                        <button class="mp-share-btn" onclick={handleCopyLink} title="Copy island link">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
                                 <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
@@ -267,7 +267,7 @@
                     {/if}
 
                     {#if roomFull}
-                        <p class="mp-full-msg">Room is full. Wait for a player to leave or create a new room.</p>
+                        <p class="mp-full-msg">Island is full. Wait for a player to leave or create a new island.</p>
                     {:else}
                         <button class="preset-btn mp-run-btn" onclick={handleRunGame} disabled={$opfsDisabled}>Run Game</button>
                     {/if}

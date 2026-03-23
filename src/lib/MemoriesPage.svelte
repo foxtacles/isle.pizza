@@ -180,7 +180,7 @@
     {#if introOpen}
         <div class="intro">
             <p class="intro-text">
-                Join a multiplayer room and explore LEGO Island together to reenact the original
+                Join a multiplayer island and explore LEGO Island together to reenact the original
                 in-game animations. Each animation needs specific characters to perform it and a
                 spectator to trigger it — so you always need at least two players. When an animation
                 plays successfully, it's saved as a memory for everyone involved.
@@ -188,7 +188,7 @@
             <div class="intro-steps">
                 <div class="intro-step">
                     <span class="step-num">1</span>
-                    <span class="step-text">Create or join a room from the <a href="#multiplayer">Multiplayer page</a></span>
+                    <span class="step-text">Create or join an island from the <a href="#multiplayer">Multiplayer page</a></span>
                 </div>
                 <div class="intro-step">
                     <span class="step-num">2</span>

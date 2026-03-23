@@ -48,7 +48,7 @@
 {#if visible && $currentPage === 'main' && !$gameRunning}
     <div class="whats-new-banner" class:dismissing onanimationend={handleAnimationEnd}>
         <span class="banner-label">New</span>
-        <span class="banner-message">{WHATS_NEW_MESSAGE} <a href="#multiplayer" class="banner-link" onclick={(e) => { e.preventDefault(); dismissImmediate(); navigateTo('multiplayer'); }}>Create a room and play LEGO Island with friends.</a></span>
+        <span class="banner-message">{WHATS_NEW_MESSAGE} <a href="#multiplayer" class="banner-link" onclick={(e) => { e.preventDefault(); dismissImmediate(); navigateTo('multiplayer'); }}>Create an island and play with friends.</a></span>
         <button class="banner-dismiss" aria-label="Dismiss" onclick={dismiss}>×</button>
     </div>
 {/if}
