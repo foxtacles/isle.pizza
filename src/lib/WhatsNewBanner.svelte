@@ -1,6 +1,6 @@
 <script>
     import { navigateTo } from '../core/navigation.js';
-    import { currentPage } from '../stores.js';
+    import { currentPage, gameRunning } from '../stores.js';
 
     const WHATS_NEW_MESSAGE = 'Multiplayer is here!';
     const STORAGE_KEY = 'whats-new-dismissed';
@@ -45,7 +45,7 @@
     }
 </script>
 
-{#if visible && $currentPage === 'main'}
+{#if visible && $currentPage === 'main' && !$gameRunning}
     <div class="whats-new-banner" class:dismissing onanimationend={handleAnimationEnd}>
         <span class="banner-label">New</span>
         <span class="banner-message">{WHATS_NEW_MESSAGE} <a href="#multiplayer" class="banner-link" onclick={(e) => { e.preventDefault(); dismissImmediate(); navigateTo('multiplayer'); }}>Create a room and play LEGO Island with friends.</a></span>
