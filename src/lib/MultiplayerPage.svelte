@@ -16,14 +16,8 @@
     const RELAY_HTTP = RELAY_URL.replace('wss://', 'https://').replace('ws://', 'http://');
 
     let maxPlayers = 5;
-    let maxActors = 0;
-    let actorsEnabled = false;
     let creating = false;
 
-    function handleToggleActors() {
-        actorsEnabled = !actorsEnabled;
-        maxActors = actorsEnabled ? 5 : 0;
-    }
     let selectedActorIndex = Number(sessionStorage.getItem('mp-actor')) || 0;
 
     // Room lobby state
@@ -111,7 +105,7 @@
             await fetch(`${RELAY_HTTP}/room/${name}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ maxPlayers, maxActors })
+                body: JSON.stringify({ maxPlayers })
             });
 
             navigateToRoom(name);
@@ -165,29 +159,14 @@
 
             {#if !hasRoom}
                 <div class="mp-section">
-                    <div class="mp-slider-row">
-                        <div class="mp-slider-field">
-                            <label class="form-group-label" for="max-players-slider">
-                                Room size ({maxPlayers})
-                                <span class="tooltip-trigger">?
-                                    <span class="tooltip-content">Maximum number of players that can join this room at the same time.</span>
-                                </span>
-                            </label>
-                            <input type="range" id="max-players-slider" min="2" max="20" bind:value={maxPlayers} disabled={$opfsDisabled}>
-                        </div>
-
-                        <div class="mp-slider-field">
-                            <label class="form-group-label" for="max-actors-slider">
-                                NPCs ({maxActors})
-                                <span class="tooltip-trigger">?
-                                    <span class="tooltip-content">Spawn environment actors up to the chosen maximum. Disabling also skips NPC camera animations. NPCs are not shared between players.</span>
-                                </span>
-                                <button type="button" class="mp-toggle-switch" class:on={actorsEnabled} onclick={handleToggleActors} disabled={$opfsDisabled} aria-label="Toggle NPCs">
-                                    <span class="mp-toggle-knob"></span>
-                                </button>
-                            </label>
-                            <input type="range" id="max-actors-slider" min={actorsEnabled ? 5 : 0} max="40" bind:value={maxActors} disabled={!actorsEnabled || $opfsDisabled}>
-                        </div>
+                    <div class="mp-slider-field">
+                        <label class="form-group-label" for="max-players-slider">
+                            Room size ({maxPlayers})
+                            <span class="tooltip-trigger">?
+                                <span class="tooltip-content">Maximum number of players that can join this room at the same time.</span>
+                            </span>
+                        </label>
+                        <input type="range" id="max-players-slider" min="2" max="20" bind:value={maxPlayers} disabled={$opfsDisabled}>
                     </div>
 
                     <button class="preset-btn mp-create-btn" onclick={handleCreateRoom} disabled={creating || $opfsDisabled}>
@@ -343,16 +322,6 @@
     }
 
     /* Room creation */
-    .mp-slider-row {
-        display: flex;
-        gap: 12px;
-    }
-
-    .mp-slider-field {
-        flex: 1;
-        min-width: 0;
-    }
-
     .mp-slider-field :global(.form-group-label) {
         min-height: 20px;
     }
@@ -363,45 +332,6 @@
 
     .mp-slider-field input[type="range"]:disabled {
         opacity: 0.3;
-    }
-
-    /* Toggle switch (inline in label) */
-    .mp-toggle-switch {
-        position: relative;
-        width: 36px;
-        height: 20px;
-        border: none;
-        padding: 0;
-        border-radius: 20px;
-        background: var(--color-border-dark);
-        transition: background-color 0.2s ease;
-        flex-shrink: 0;
-        cursor: pointer;
-    }
-
-    .mp-toggle-switch:disabled {
-        opacity: 0.3;
-        cursor: default;
-    }
-
-    .mp-toggle-switch.on {
-        background-color: #3a5f3a;
-    }
-
-    .mp-toggle-knob {
-        position: absolute;
-        top: 3px;
-        left: 3px;
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        background: var(--color-text-muted);
-        transition: all 0.2s ease;
-    }
-
-    .mp-toggle-switch.on .mp-toggle-knob {
-        left: 19px;
-        background: var(--color-primary);
     }
 
     .mp-create-btn {
