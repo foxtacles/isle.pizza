@@ -3,7 +3,7 @@
     import StyleGrid from './StyleGrid.svelte';
     import SettingsPanel from './SettingsPanel.svelte';
     import AnimationPanel from './AnimationPanel.svelte';
-    import { bestAnimTab } from './constants.js';
+    import AnimationTabs from './AnimationTabs.svelte';
 
     export let emoteOptions;
     export let activeEmote;
@@ -32,10 +32,8 @@
     let actsTrigger;
     let animTab = 'scene';
     let actsListEl;
-
-    $: sceneAnims = animations.filter(a => a.category === 1);
-    $: npcAnims = animations.filter(a => a.category === 0);
-    $: filteredAnims = animTab === 'scene' ? sceneAnims : npcAnims;
+    let filteredAnims = [];
+    let animTabsRef;
 
     // Disable strip during countdown and playback
     $: animLocked = animations.some(a => (a.sessionState === 2 || a.sessionState === 3) && a.localInSession);
@@ -56,7 +54,7 @@
     function togglePopover(name) {
         if (activePopover === name) { activePopover = null; }
         else {
-            if (name === 'acts') animTab = bestAnimTab(sceneAnims, npcAnims, animTab);
+            if (name === 'acts') animTabsRef?.selectBestTab();
             activePopover = name;
         }
     }
@@ -118,21 +116,13 @@
         </button>
         <HotbarPopover open={activePopover === 'acts'} triggerEl={actsTrigger} onClose={closePopover} align="end">
             <div class="popover-acts">
-                <div class="acts-tabs">
-                    <button class="acts-tab" class:active={animTab === 'scene'}
-                        onclick={() => { animTab = 'scene'; }}>
-                        Scene{#if sceneAnims.length}&nbsp;({sceneAnims.length}){/if}
-                    </button>
-                    <button class="acts-tab" class:active={animTab === 'act'}
-                        onclick={() => { animTab = 'act'; }}>
-                        Act{#if npcAnims.length}&nbsp;({npcAnims.length}){/if}
-                    </button>
-                </div>
-                <div class="acts-list" bind:this={actsListEl}>
-                    {#key animTab}
-                        <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} isMobile={true} scrollContainer={actsListEl} />
-                    {/key}
-                </div>
+                <AnimationTabs bind:this={animTabsRef} {animations} bind:animTab onFilteredChange={(a) => filteredAnims = a}>
+                    <div class="acts-list" bind:this={actsListEl}>
+                        {#key animTab}
+                            <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} isMobile={true} scrollContainer={actsListEl} />
+                        {/key}
+                    </div>
+                </AnimationTabs>
             </div>
         </HotbarPopover>
     </div>
@@ -185,7 +175,7 @@
         flex: 1;
         min-width: 0;
         padding: 6px 2px;
-        background: rgba(255, 255, 255, 0.04);
+        background: var(--color-surface-subtle);
         border: 1.5px solid transparent;
         border-radius: 10px;
         cursor: pointer;
@@ -203,8 +193,8 @@
     }
 
     .strip-btn.active {
-        background: rgba(255, 215, 0, 0.12);
-        border-color: rgba(255, 215, 0, 0.4);
+        background: var(--color-primary-surface);
+        border-color: var(--color-primary-border);
     }
 
     .strip-emoji {
@@ -243,37 +233,6 @@
         display: flex;
         flex-direction: column;
         height: 220px;
-    }
-
-    .acts-tabs {
-        display: flex;
-        gap: 2px;
-        margin-bottom: 6px;
-        flex-shrink: 0;
-    }
-
-    .acts-tab {
-        flex: 1;
-        padding: 7px 0;
-        border: none;
-        border-radius: 7px;
-        background: rgba(255, 255, 255, 0.04);
-        color: var(--color-text-muted);
-        font-size: 12px;
-        font-weight: 600;
-        font-family: inherit;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        outline: none;
-    }
-
-    .acts-tab:active {
-        transform: scale(0.97);
-    }
-
-    .acts-tab.active {
-        background: rgba(255, 215, 0, 0.12);
-        color: var(--color-primary);
     }
 
     .acts-list {

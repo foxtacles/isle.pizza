@@ -168,7 +168,7 @@
         height: 32px;
         border-radius: 50%;
         border: 1.5px solid rgba(255, 255, 255, 0.15);
-        background: rgba(255, 255, 255, 0.08);
+        background: var(--color-surface-hover);
         cursor: pointer;
         padding: 0;
         overflow: hidden;
@@ -274,7 +274,7 @@
 
     .dropdown-divider {
         height: 1px;
-        background: rgba(255, 255, 255, 0.08);
+        background: var(--color-surface-hover);
         margin: 2px 0;
     }
 </style>

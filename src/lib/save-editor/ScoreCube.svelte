@@ -1,7 +1,8 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
     import { ScoreCubeRenderer } from '../../core/rendering/ScoreCubeRenderer.js';
-    import { WdbParser, findRoi } from '../../core/formats/WdbParser.js';
+    import { findRoi } from '../../core/formats/WdbParser.js';
+    import { getWdb } from '../../core/wdbCache.js';
     import EditorTooltip from '../EditorTooltip.svelte';
 
     export let missions = {};
@@ -18,15 +19,7 @@
 
     onMount(async () => {
         try {
-            // Load and parse WDB
-            const response = await fetch('/LEGO/data/WORLD.WDB');
-            if (!response.ok) {
-                throw new Error(`Failed to load WORLD.WDB: ${response.status}`);
-            }
-
-            const buffer = await response.arrayBuffer();
-            const parser = new WdbParser(buffer);
-            const wdb = parser.parse();
+            const { wdbParser: parser, wdbData: wdb } = await getWdb();
 
             // Find ICUBE world and scormain model
             const icubeWorld = wdb.worlds.find(w => w.name === 'ICUBE');

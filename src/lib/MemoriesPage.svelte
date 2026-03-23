@@ -334,6 +334,13 @@
         visibility: hidden;
     }
 
+    .thumb-spinner {
+        border-radius: 50%;
+        border: 2px solid var(--color-border-dark);
+        border-top-color: var(--color-primary);
+        animation: spin 0.6s linear infinite;
+    }
+
     .memories-inner {
         display: flex;
         flex-direction: column;

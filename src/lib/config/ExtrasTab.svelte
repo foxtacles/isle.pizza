@@ -81,3 +81,65 @@
         </div>
     </div>
 </div>
+
+<style>
+.offline-note {
+    font-size: 0.75em;
+    color: #666;
+    margin-top: 8px;
+}
+
+.offline-play-controls .offline-error {
+    color: var(--color-primary);
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+.offline-play-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    align-items: center;
+}
+
+.offline-play-text p {
+    text-align: left;
+    line-height: 1.5;
+    font-size: 0.9em;
+}
+
+.offline-play-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 150px;
+}
+
+.progress-circular {
+    display: flex;
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background:
+        radial-gradient(var(--color-bg-input) 60%, transparent 61%),
+        conic-gradient(var(--color-primary) 0deg, var(--color-border-dark) 0deg);
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-light);
+    font-size: 1.2em;
+    font-weight: bold;
+    font-family: 'Consolas', 'Menlo', monospace;
+    transition: background 0.2s ease-out;
+}
+
+@media (max-width: 768px) {
+    .offline-play-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+
+    .offline-play-text p {
+        text-align: center;
+    }
+}
+</style>
