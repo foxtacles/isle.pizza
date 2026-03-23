@@ -194,7 +194,7 @@
 
     .strip-btn.active {
         background: var(--color-primary-surface);
-        border-color: rgba(255, 215, 0, 0.4);
+        border-color: var(--color-primary-border);
     }
 
     .strip-emoji {

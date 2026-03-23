@@ -1,22 +1,25 @@
 import { WdbParser } from './formats/WdbParser.js';
 
-let cached = null;
+let pending = null;
 
 /**
  * Fetch and parse WORLD.WDB once, returning cached result on subsequent calls.
+ * Concurrent callers share the same in-flight request.
  * @returns {Promise<{ wdbParser: WdbParser, wdbData: object }>}
  */
-export async function getWdb() {
-    if (cached) return cached;
+export function getWdb() {
+    if (!pending) {
+        pending = (async () => {
+            const response = await fetch('/LEGO/data/WORLD.WDB');
+            if (!response.ok) {
+                throw new Error(`Failed to load WORLD.WDB: ${response.status}`);
+            }
 
-    const response = await fetch('/LEGO/data/WORLD.WDB');
-    if (!response.ok) {
-        throw new Error(`Failed to load WORLD.WDB: ${response.status}`);
+            const buffer = await response.arrayBuffer();
+            const wdbParser = new WdbParser(buffer);
+            const wdbData = wdbParser.parse();
+            return { wdbParser, wdbData };
+        })();
     }
-
-    const buffer = await response.arrayBuffer();
-    const wdbParser = new WdbParser(buffer);
-    const wdbData = wdbParser.parse();
-    cached = { wdbParser, wdbData };
-    return cached;
+    return pending;
 }
