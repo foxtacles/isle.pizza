@@ -49,7 +49,7 @@
     display: none !important;
 }
 
-button, a, label, input, select, .tooltip-trigger, [role="button"] {
+button, a, label, input, select, .tooltip-trigger, .control-img, [role="button"] {
     -webkit-tap-highlight-color: transparent;
 }
 
