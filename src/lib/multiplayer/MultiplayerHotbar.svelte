@@ -69,14 +69,16 @@
     let pinned = true;
     let hidden = false;
     let hideTimer;
+    let mouseInside = false;
 
     $: shown = visible && !hidden;
-    $: if (!visible) { activePopover = null; hidden = false; clearTimeout(hideTimer); }
+    $: if (!visible) { activePopover = null; hidden = false; mouseInside = false; clearTimeout(hideTimer); }
 
     function keepAlive() { hidden = false; clearTimeout(hideTimer); }
     function scheduleHide() { clearTimeout(hideTimer); hideTimer = setTimeout(() => { hidden = true; }, 1000); }
-    function resetHideTimer() { keepAlive(); if (!pinned) scheduleHide(); }
-    function handleZoneLeave() { if (!pinned && activePopover === null) scheduleHide(); }
+    function resetHideTimer() { keepAlive(); if (!pinned && !mouseInside) scheduleHide(); }
+    function handleMouseEnter() { mouseInside = true; keepAlive(); }
+    function handleMouseLeave() { mouseInside = false; if (!pinned && activePopover === null) scheduleHide(); }
     function closePopover() { activePopover = null; resetHideTimer(); }
 
     function togglePopover(name) {
@@ -89,7 +91,7 @@
     }
 
     function handleEmoteSelect(index) { onEmote(index); closePopover(); }
-    function handleStyleSelect(callback, index) { callback(index); resetHideTimer(); }
+    function handleStyleSelect(callback, index) { callback(index); keepAlive(); }
 
     function togglePin() {
         pinned = !pinned;
@@ -101,10 +103,10 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="hotbar-zone" class:active={visible}
-    onmouseenter={keepAlive} onmouseleave={handleZoneLeave}>
+<div class="hotbar-zone">
     {#if shown}
-        <div class="hotbar" class:countdown-lock={animLocked} transition:fly={{ y: 48, duration: 200 }}>
+        <div class="hotbar" class:countdown-lock={animLocked} transition:fly={{ y: 48, duration: 200 }}
+            onmouseenter={handleMouseEnter} onmouseleave={handleMouseLeave}>
             {#each styleDropdowns as dd (dd.key)}
                 <div class="indicator-wrapper" bind:this={triggerEls[dd.key]}>
                     <button class="indicator-btn" class:active={activePopover === dd.key}
@@ -168,6 +170,9 @@
                 <span class="player-count" class:bump={badgeBump}><PeopleIcon />{playerCount}</span>
             {/if}
         </div>
+    {:else if visible}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class="hotbar-trigger" onmouseenter={keepAlive}></div>
     {/if}
 </div>
 
@@ -177,9 +182,13 @@
         z-index: 1000; display: flex; justify-content: center; align-items: flex-end;
         padding-bottom: 16px; pointer-events: none;
     }
-    .hotbar-zone.active { pointer-events: auto; }
+    .hotbar-trigger {
+        position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+        width: 300px; height: 16px; pointer-events: auto;
+    }
 
     .hotbar {
+        pointer-events: auto;
         display: flex; align-items: center; gap: 4px; padding: 4px 8px;
         background: rgba(24, 24, 24, 0.85); border: 1px solid var(--color-border-medium);
         border-radius: 12px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
