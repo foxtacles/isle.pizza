@@ -858,66 +858,8 @@ select:focus {
     margin: 0 auto;
 }
 
-/* Quote panel with side art */
-.quote-panel {
-    display: flex;
-    background-color: var(--color-bg-card);
-    border: 1px solid var(--color-border-dark);
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 15px;
-}
-
-.quote-panel-art {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    padding: 15px;
-    background-color: #111;
-}
-
-.quote-panel-art img {
-    width: auto;
-    height: auto;
-    max-width: 180px;
-    border-radius: 4px;
-    display: block;
-}
-
-.quote-panel-content {
-    flex: 1;
-    padding: 20px;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.quote-panel-content p {
-    color: var(--color-text-medium);
-    font-size: 0.95em;
-    line-height: 1.6;
-    margin: 0 0 12px 0;
-    font-style: italic;
-}
-
-.quote-panel-content footer {
-    color: var(--color-primary);
-    font-size: 0.9em;
-    font-weight: bold;
-    text-align: right;
-}
-
-.quote-panel-content footer::before {
-    content: '— ';
-}
-
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .quote-panel-art {
-        display: none;
-    }
-
     #install-video {
         width: 260px;
     }
