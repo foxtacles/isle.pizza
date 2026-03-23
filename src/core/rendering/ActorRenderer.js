@@ -80,17 +80,20 @@ const PART_NAME_TO_ANIM_NODE = {
  * Mirrors the game's LegoCharacterManager::CreateActorROI logic.
  */
 export class ActorRenderer extends AnimatedRenderer {
-    constructor(canvas) {
-        super(canvas);
+    constructor(canvas, rendererOptions) {
+        super(canvas, rendererOptions);
         this.partGroups = []; // 10 part groups for click targeting
         this._queuedClickMove = null; // queued click animation move index (0-3)
+        this.skipAnimations = false;
 
         this.camera.position.set(2, 0.8, 3.5);
         this.camera.lookAt(0, 0.2, 0);
 
         this.setupControls(new THREE.Vector3(0, 0.2, 0));
-        this.controls.autoRotate = false;
-        this._initialAutoRotate = false;
+        if (this.controls) {
+            this.controls.autoRotate = false;
+            this._initialAutoRotate = false;
+        }
     }
 
     /**
@@ -177,8 +180,10 @@ export class ActorRenderer extends AnimatedRenderer {
         this.scene.add(this.modelGroup);
 
         // Load and start walking/vehicle animation based on mood
-        const mood = charState?.mood ?? 0;
-        this.loadAnimationForActor(actorIndex, mood, vehicleInfo);
+        if (!this.skipAnimations) {
+            const mood = charState?.mood ?? 0;
+            this.loadAnimationForActor(actorIndex, mood, vehicleInfo);
+        }
 
         this.renderer.render(this.scene, this.camera);
     }

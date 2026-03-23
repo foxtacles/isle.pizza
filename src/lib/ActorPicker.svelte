@@ -1,7 +1,8 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
     import { ActorRenderer } from '../core/rendering/ActorRenderer.js';
-    import { WdbParser, buildGlobalPartsMap } from '../core/formats/WdbParser.js';
+    import { buildGlobalPartsMap } from '../core/formats/WdbParser.js';
+    import { getWdb } from '../core/wdbCache.js';
     import { ActorInfoInit, ActorDisplayNames } from '../core/savegame/actorConstants.js';
     import Carousel from './Carousel.svelte';
 
@@ -33,12 +34,7 @@
 
     onMount(async () => {
         try {
-            const response = await fetch('/LEGO/data/WORLD.WDB');
-            if (!response.ok) throw new Error(`Failed to load WORLD.WDB: ${response.status}`);
-
-            const buffer = await response.arrayBuffer();
-            const wdbParser = new WdbParser(buffer);
-            const wdbData = wdbParser.parse();
+            const { wdbData } = await getWdb();
 
             if (!wdbData.globalParts) throw new Error('No global parts found in WORLD.WDB');
 

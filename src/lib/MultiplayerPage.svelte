@@ -16,14 +16,8 @@
     const RELAY_HTTP = RELAY_URL.replace('wss://', 'https://').replace('ws://', 'http://');
 
     let maxPlayers = 5;
-    let maxActors = 0;
-    let actorsEnabled = false;
     let creating = false;
 
-    function handleToggleActors() {
-        actorsEnabled = !actorsEnabled;
-        maxActors = actorsEnabled ? 5 : 0;
-    }
     let selectedActorIndex = Number(sessionStorage.getItem('mp-actor')) || 0;
 
     // Room lobby state
@@ -41,7 +35,7 @@
     {
         if (sessionStorage.getItem('mp-rejected')) {
             sessionStorage.removeItem('mp-rejected');
-            setTimeout(() => showToast('Room is full', { error: true, duration: 3000 }), 0);
+            setTimeout(() => showToast('Island is full', { error: true, duration: 3000 }), 0);
         }
     }
 
@@ -111,7 +105,7 @@
             await fetch(`${RELAY_HTTP}/room/${name}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ maxPlayers, maxActors })
+                body: JSON.stringify({ maxPlayers })
             });
 
             navigateToRoom(name);
@@ -161,33 +155,18 @@
                 </span>
             </h2>
 
-            <p class="mp-description">Explore LEGO Island together with other players. Create a room and share the link to get started.</p>
+            <p class="mp-description">Explore LEGO Island together with other players. Create an island and share the link to get started.</p>
 
             {#if !hasRoom}
                 <div class="mp-section">
-                    <div class="mp-slider-row">
-                        <div class="mp-slider-field">
-                            <label class="form-group-label" for="max-players-slider">
-                                Room size ({maxPlayers})
-                                <span class="tooltip-trigger">?
-                                    <span class="tooltip-content">Maximum number of players that can join this room at the same time.</span>
-                                </span>
-                            </label>
-                            <input type="range" id="max-players-slider" min="2" max="20" bind:value={maxPlayers} disabled={$opfsDisabled}>
-                        </div>
-
-                        <div class="mp-slider-field">
-                            <label class="form-group-label" for="max-actors-slider">
-                                NPCs ({maxActors})
-                                <span class="tooltip-trigger">?
-                                    <span class="tooltip-content">Spawn environment actors up to the chosen maximum. Disabling also skips NPC camera animations. NPCs are not shared between players.</span>
-                                </span>
-                                <button type="button" class="mp-toggle-switch" class:on={actorsEnabled} onclick={handleToggleActors} disabled={$opfsDisabled} aria-label="Toggle NPCs">
-                                    <span class="mp-toggle-knob"></span>
-                                </button>
-                            </label>
-                            <input type="range" id="max-actors-slider" min={actorsEnabled ? 5 : 0} max="40" bind:value={maxActors} disabled={!actorsEnabled || $opfsDisabled}>
-                        </div>
+                    <div class="mp-slider-field">
+                        <label class="form-group-label" for="max-players-slider">
+                            Island size ({maxPlayers})
+                            <span class="tooltip-trigger">?
+                                <span class="tooltip-content">Maximum number of players that can join this island at the same time.</span>
+                            </span>
+                        </label>
+                        <input type="range" id="max-players-slider" min="2" max="20" bind:value={maxPlayers} disabled={$opfsDisabled}>
                     </div>
 
                     <button class="preset-btn mp-create-btn" onclick={handleCreateRoom} disabled={creating || $opfsDisabled}>
@@ -197,7 +176,7 @@
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                             </svg>
-                            Create Room
+                            Create Island
                         {/if}
                     </button>
                 </div>
@@ -271,7 +250,7 @@
                                 {/if}
                             </span>
                         </span>
-                        <button class="mp-share-btn" onclick={handleCopyLink} title="Copy room link">
+                        <button class="mp-share-btn" onclick={handleCopyLink} title="Copy island link">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
                                 <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
@@ -288,7 +267,7 @@
                     {/if}
 
                     {#if roomFull}
-                        <p class="mp-full-msg">Room is full. Wait for a player to leave or create a new room.</p>
+                        <p class="mp-full-msg">Island is full. Wait for a player to leave or create a new island.</p>
                     {:else}
                         <button class="preset-btn mp-run-btn" onclick={handleRunGame} disabled={$opfsDisabled}>Run Game</button>
                     {/if}
@@ -343,16 +322,6 @@
     }
 
     /* Room creation */
-    .mp-slider-row {
-        display: flex;
-        gap: 12px;
-    }
-
-    .mp-slider-field {
-        flex: 1;
-        min-width: 0;
-    }
-
     .mp-slider-field :global(.form-group-label) {
         min-height: 20px;
     }
@@ -363,45 +332,6 @@
 
     .mp-slider-field input[type="range"]:disabled {
         opacity: 0.3;
-    }
-
-    /* Toggle switch (inline in label) */
-    .mp-toggle-switch {
-        position: relative;
-        width: 36px;
-        height: 20px;
-        border: none;
-        padding: 0;
-        border-radius: 20px;
-        background: var(--color-border-dark);
-        transition: background-color 0.2s ease;
-        flex-shrink: 0;
-        cursor: pointer;
-    }
-
-    .mp-toggle-switch:disabled {
-        opacity: 0.3;
-        cursor: default;
-    }
-
-    .mp-toggle-switch.on {
-        background-color: #3a5f3a;
-    }
-
-    .mp-toggle-knob {
-        position: absolute;
-        top: 3px;
-        left: 3px;
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        background: var(--color-text-muted);
-        transition: all 0.2s ease;
-    }
-
-    .mp-toggle-switch.on .mp-toggle-knob {
-        left: 19px;
-        background: var(--color-primary);
     }
 
     .mp-create-btn {

@@ -9,8 +9,8 @@ import { BaseRenderer } from './BaseRenderer.js';
  * management, animation caching, raycasting, and shared keyframe utilities.
  */
 export class AnimatedRenderer extends BaseRenderer {
-    constructor(canvas) {
-        super(canvas);
+    constructor(canvas, rendererOptions) {
+        super(canvas, rendererOptions);
         this.clock = new THREE.Clock();
         this.mixer = null;
         this.currentAction = null;
@@ -178,7 +178,7 @@ export class AnimatedRenderer extends BaseRenderer {
 
             this.mixer.addEventListener('finished', () => {
                 this.stopAnimation();
-                this.controls.autoRotate = true;
+                if (this.controls) this.controls.autoRotate = true;
             });
         } catch (e) {
             // Animation unavailable — ignore

@@ -1,7 +1,6 @@
 <script>
     import ImageButton from '../ImageButton.svelte';
-    import { installState, swRegistration, currentPage } from '../../stores.js';
-    import { navigateToMultiplayer } from '../../core/navigation.js';
+    import { installState, swRegistration } from '../../stores.js';
 
     export let opfsDisabled;
     export let openSection;
@@ -11,19 +10,6 @@
     export let handleUninstall;
 
     $: progressAngle = ($installState.progress / 100) * 360;
-
-    function navigateToSaveEditor(e) {
-        e.preventDefault();
-        if (opfsDisabled) return;
-        history.pushState({ page: 'save-editor' }, '', '#save-editor');
-        currentPage.set('save-editor');
-    }
-
-    function handleNavigateToMultiplayer(e) {
-        e.preventDefault();
-        if (opfsDisabled) return;
-        navigateToMultiplayer();
-    }
 </script>
 
 <div class="config-tab-panel active" id="config-tab-extras">
@@ -94,35 +80,66 @@
             </div>
         </div>
     </div>
-    <div class="nav-links-row">
-        <div class="config-section-card">
-            <a href="#multiplayer" class="config-card-header nav-link" class:disabled={opfsDisabled} onclick={handleNavigateToMultiplayer}>Multiplayer</a>
-        </div>
-        <div class="config-section-card">
-            <a href="#save-editor" class="config-card-header nav-link" class:disabled={opfsDisabled} onclick={navigateToSaveEditor}>Save Editor</a>
-        </div>
-    </div>
 </div>
 
 <style>
-    .nav-links-row {
-        display: flex;
-        gap: 12px;
+.offline-note {
+    font-size: 0.75em;
+    color: #666;
+    margin-top: 8px;
+}
+
+.offline-play-controls .offline-error {
+    color: var(--color-primary);
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+.offline-play-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    align-items: center;
+}
+
+.offline-play-text p {
+    text-align: left;
+    line-height: 1.5;
+    font-size: 0.9em;
+}
+
+.offline-play-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 150px;
+}
+
+.progress-circular {
+    display: flex;
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background:
+        radial-gradient(var(--color-bg-input) 60%, transparent 61%),
+        conic-gradient(var(--color-primary) 0deg, var(--color-border-dark) 0deg);
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-light);
+    font-size: 1.2em;
+    font-weight: bold;
+    font-family: 'Consolas', 'Menlo', monospace;
+    transition: background 0.2s ease-out;
+}
+
+@media (max-width: 768px) {
+    .offline-play-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
     }
 
-    .nav-links-row > * {
-        flex: 1;
-        margin-bottom: 0;
+    .offline-play-text p {
+        text-align: center;
     }
-
-    .nav-links-row :global(.config-card-header) {
-        box-sizing: border-box;
-        height: 100%;
-    }
-
-    @media (max-width: 768px) {
-        .nav-links-row {
-            flex-direction: column;
-        }
-    }
+}
 </style>

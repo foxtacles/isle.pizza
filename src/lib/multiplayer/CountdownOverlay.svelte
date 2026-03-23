@@ -1,7 +1,7 @@
 <script>
     import { onDestroy } from 'svelte';
     import { fade } from 'svelte/transition';
-    import { AnimationTitles } from './animationTitles.js';
+    import { AnimationTitles } from './animationCatalog.js';
 
     export let animations = [];
 
@@ -88,10 +88,6 @@
         color: rgba(255, 255, 255, 0.7);
         text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
         text-align: center;
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
     }
 
     @keyframes countdown-pulse {

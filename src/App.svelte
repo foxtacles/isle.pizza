@@ -1,11 +1,16 @@
 <script>
     import { onMount } from 'svelte';
     import { computePosition, flip, shift, offset } from '@floating-ui/dom';
-    import { currentPage, debugEnabled, multiplayerRoom, parseHash, initialInvalidRoom } from './stores.js';
+    import { currentPage, debugEnabled, gameRunning, multiplayerRoom, parseHash, initialInvalidRoom } from './stores.js';
     import { showToast } from './core/toast.js';
     import { registerServiceWorker, checkCacheStatus } from './core/service-worker.js';
     import { setupCanvasEvents } from './core/emscripten.js';
+    import { initMemories } from './core/memories.js';
+    import { initAuth } from './core/auth.js';
+    import { initThumbnails } from './core/thumbnails.js';
     import TopContent from './lib/TopContent.svelte';
+    import AccountIndicator from './lib/AccountIndicator.svelte';
+    import MemoriesPage from './lib/MemoriesPage.svelte';
     import Controls from './lib/Controls.svelte';
     import ReadMePage from './lib/ReadMePage.svelte';
     import ConfigurePage from './lib/ConfigurePage.svelte';
@@ -94,6 +99,11 @@
         // Setup canvas events
         setupCanvasEvents();
 
+        // Initialize memory persistence (IndexedDB), auth, and building thumbnails
+        initMemories();
+        initAuth();
+        initThumbnails();
+
         // Setup global tooltip positioning
         setupTooltips();
 
@@ -112,7 +122,7 @@
 
         // Show error toast if initial URL had an invalid room
         if (initialInvalidRoom) {
-            showToast('Invalid room URL', { error: true, duration: 3000 });
+            showToast('Invalid island URL', { error: true, duration: 3000 });
         }
 
         // Handle browser back/forward
@@ -128,7 +138,7 @@
                 multiplayerRoom.set(result.room);
                 currentPage.set(result.page);
                 if (result.invalidRoom) {
-                    showToast('Invalid room URL', { error: true, duration: 3000 });
+                    showToast('Invalid island URL', { error: true, duration: 3000 });
                 }
             }
         });
@@ -147,6 +157,10 @@
 <GoodbyePopup />
 <UpdatePopup />
 <ConfigToast />
+
+{#if !$gameRunning}
+    <AccountIndicator />
+{/if}
 
 <main id="main-container">
     <div class="page-wrapper" class:active={$currentPage === 'main'}>
@@ -167,6 +181,9 @@
     </div>
     <div class="page-wrapper" class:active={$currentPage === 'multiplayer'}>
         <MultiplayerPage />
+    </div>
+    <div class="page-wrapper" class:active={$currentPage === 'memories'}>
+        <MemoriesPage />
     </div>
 
     <div class="footer-disclaimer">

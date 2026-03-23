@@ -1,7 +1,8 @@
 <script>
     import { flip } from 'svelte/animate';
     import { CharacterNameMap } from '../../core/savegame/actorConstants.js';
-    import { AnimationTitles } from './animationTitles.js';
+    import { AnimationTitles } from './animationCatalog.js';
+    import { memoryUnlocks } from '../../stores.js';
 
     export let animations = [];
     export let currentInterest = null;
@@ -100,7 +101,10 @@
                 disabled={isClickDisabled(anim)}
                 onclick={() => handleClick(anim)}>
                 <div class="row-left">
-                    <span class="anim-name">{AnimationTitles[anim.objectId] || anim.name}</span>
+                    <span class="anim-name">
+                        {AnimationTitles[anim.objectId] || anim.name}
+                        {#if $memoryUnlocks.has(anim.objectId)}<span class="unlocked-mark" title="Memory unlocked">&#10003;</span>{/if}
+                    </span>
                     {#if anim.sessionState === 3 && anim.localInSession}
                         <span class="anim-sub playing-text">Playing...</span>
                     {:else if anim.sessionState === 2 && anim.localInSession}
@@ -176,7 +180,7 @@
     }
 
     .anim-row + .anim-row {
-        border-top: 1px solid rgba(255, 255, 255, 0.04);
+        border-top: 1px solid var(--color-surface-subtle);
     }
 
     @media (hover: hover) {
@@ -237,6 +241,12 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .unlocked-mark {
+        color: rgba(76, 175, 80, 0.7);
+        font-size: 10px;
+        margin-left: 4px;
     }
 
     .anim-sub {

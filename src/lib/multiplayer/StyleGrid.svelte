@@ -31,7 +31,7 @@
         height: 56px;
         min-width: 0;
         overflow: hidden;
-        background: rgba(255, 255, 255, 0.04);
+        background: var(--color-surface-subtle);
         border: 1.5px solid transparent;
         border-radius: 10px;
         cursor: pointer;
@@ -43,7 +43,7 @@
 
     @media (hover: hover) {
         .style-btn:hover {
-            background: rgba(255, 255, 255, 0.08);
+            background: var(--color-surface-hover);
         }
     }
 
@@ -52,7 +52,7 @@
     }
 
     .style-btn.selected {
-        background: rgba(255, 215, 0, 0.12);
+        background: var(--color-primary-surface);
         border-color: var(--color-primary);
         box-shadow: 0 0 8px rgba(255, 215, 0, 0.1);
     }

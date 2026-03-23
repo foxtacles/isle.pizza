@@ -18,7 +18,7 @@
         align-items: center;
         justify-content: center;
         gap: 2px;
-        background: rgba(255, 255, 255, 0.04);
+        background: var(--color-surface-subtle);
         border: 1.5px solid transparent;
         border-radius: 10px;
         cursor: pointer;
@@ -31,7 +31,7 @@
 
     @media (hover: hover) {
         .emote-btn:hover {
-            background: rgba(255, 255, 255, 0.08);
+            background: var(--color-surface-hover);
         }
     }
 
