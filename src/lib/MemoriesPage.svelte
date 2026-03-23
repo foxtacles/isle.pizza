@@ -746,7 +746,7 @@
         font-size: 0.7em;
         color: var(--color-text-muted);
         white-space: nowrap;
-        min-width: 5.5em;
+        min-width: 6.0em;
         text-align: right;
     }
 
