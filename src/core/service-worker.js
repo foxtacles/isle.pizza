@@ -100,7 +100,7 @@ export async function startInstall(missingFiles, language) {
     await requestPersistentStorage();
 
     if (downloaderWorker) downloaderWorker.terminate();
-    downloaderWorker = new Worker('/downloader.js');
+    downloaderWorker = new Worker(new URL('./downloader.worker.js', import.meta.url));
     downloaderWorker.onmessage = handleWorkerMessage;
 
     installState.update(state => ({
