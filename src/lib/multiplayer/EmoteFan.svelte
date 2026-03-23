@@ -65,21 +65,6 @@
         activePopover = null;
     }
 
-    // JS-based touch scrolling for acts list (bypasses touch-action: none on .strip ancestor)
-    let touchStartY = 0;
-    let touchStartScroll = 0;
-
-    function handleActsTouch(e) {
-        touchStartY = e.touches[0].clientY;
-        touchStartScroll = actsListEl.scrollTop;
-    }
-
-    function handleActsMove(e) {
-        if (!actsListEl) return;
-        const dy = touchStartY - e.touches[0].clientY;
-        actsListEl.scrollTop = touchStartScroll + dy;
-        e.preventDefault();
-    }
 </script>
 
 <div class="strip" class:visible class:countdown-lock={animLocked}>
@@ -143,9 +128,7 @@
                         Act{#if npcAnims.length}&nbsp;({npcAnims.length}){/if}
                     </button>
                 </div>
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <div class="acts-list" bind:this={actsListEl}
-                    ontouchstart={handleActsTouch} ontouchmove={handleActsMove}>
+                <div class="acts-list" bind:this={actsListEl}>
                     {#key animTab}
                         <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} isMobile={true} scrollContainer={actsListEl} />
                     {/key}
@@ -176,7 +159,7 @@
         opacity: 0;
         pointer-events: none;
         transition: transform 0.2s cubic-bezier(0.34, 1.2, 0.64, 1), opacity 0.15s ease;
-        touch-action: none;
+        touch-action: manipulation;
         user-select: none;
         -webkit-user-select: none;
         -webkit-touch-callout: none;
@@ -210,6 +193,7 @@
         outline: none;
         font-family: inherit;
         box-sizing: border-box;
+        touch-action: none;
     }
 
     .strip-btn:active {
@@ -245,10 +229,12 @@
 
     .popover-content {
         width: 200px;
+        touch-action: none;
     }
 
     .popover-settings {
         width: 220px;
+        touch-action: none;
     }
 
     /* === Acts popover === */
@@ -297,6 +283,7 @@
         touch-action: pan-y;
         scrollbar-width: thin;
         scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+        margin-right: -5px;
     }
 
     .acts-list::-webkit-scrollbar { width: 4px; }

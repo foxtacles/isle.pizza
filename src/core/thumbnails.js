@@ -3,8 +3,9 @@
 // building and actor thumbnails on a background thread using OffscreenCanvas.
 // The main thread only receives finished data URLs — zero blocking.
 //
-// Only actors that appear in the user's completions are rendered.
-import { writable, get } from 'svelte/store';
+// Subscribes to memoryCompletions so thumbnails are (re-)generated whenever
+// the set of needed actors changes (e.g. after login, logout→login, new completions).
+import { writable } from 'svelte/store';
 import { memoryCompletions } from '../stores.js';
 
 /** Maps location label (e.g. "Pizzeria") to a data URL of the rendered building. */
@@ -26,54 +27,66 @@ function getNeededActors(completions) {
     return [...indices];
 }
 
-/** Wait for memoryCompletions to be loaded (non-null). */
-function waitForCompletions() {
-    return new Promise(resolve => {
-        const current = get(memoryCompletions);
-        if (current !== null) {
-            resolve(current);
-            return;
-        }
-        const unsub = memoryCompletions.subscribe(val => {
-            if (val !== null) {
-                unsub();
-                resolve(val);
-            }
-        });
+let renderedActors = new Set();
+let buildingsRendered = false;
+let activeWorker = null;
+
+export function initThumbnails() {
+    memoryCompletions.subscribe(completions => {
+        if (completions === null) return;
+
+        const needed = getNeededActors(completions);
+        const missing = needed.filter(i => !renderedActors.has(i));
+        if (missing.length === 0 && buildingsRendered) return;
+
+        spawnWorker(missing, !buildingsRendered);
     });
 }
 
-export async function initThumbnails() {
-    try {
-        const completions = await waitForCompletions();
-        const actorIndices = getNeededActors(completions);
+function spawnWorker(actorIndices, includeBuildings) {
+    if (activeWorker) {
+        activeWorker.terminate();
+        activeWorker = null;
+    }
 
+    try {
         const worker = new Worker(
             new URL('./thumbnails.worker.js', import.meta.url),
             { type: 'module' }
         );
+        activeWorker = worker;
 
         worker.onmessage = (e) => {
+            if (worker !== activeWorker) return;
+
             switch (e.data.type) {
                 case 'buildings':
                     buildingThumbnails.set(e.data.thumbnails);
+                    buildingsRendered = true;
                     break;
                 case 'actors':
-                    actorThumbnails.set(e.data.thumbnails);
+                    actorThumbnails.update(current => ({
+                        ...current,
+                        ...e.data.thumbnails
+                    }));
+                    for (const i of actorIndices) renderedActors.add(i);
                     worker.terminate();
+                    activeWorker = null;
                     break;
                 case 'error':
                     console.warn('[Thumbnails] Worker error:', e.data.message);
                     worker.terminate();
+                    activeWorker = null;
                     break;
             }
         };
 
         worker.onerror = (e) => {
             console.warn('[Thumbnails] Worker failed:', e.message);
+            if (worker === activeWorker) activeWorker = null;
         };
 
-        worker.postMessage({ actorIndices });
+        worker.postMessage({ actorIndices, skipBuildings: !includeBuildings });
     } catch (e) {
         console.warn('[Thumbnails] Thumbnails unavailable:', e);
     }

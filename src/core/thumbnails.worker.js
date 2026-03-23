@@ -116,8 +116,10 @@ self.onmessage = async (e) => {
             ...(wdbData.globalParts?.textures || [])
         ];
 
-        const buildings = await renderBuildings(wdbParser, wdbData, globalTextures);
-        self.postMessage({ type: 'buildings', thumbnails: buildings });
+        if (!e.data.skipBuildings) {
+            const buildings = await renderBuildings(wdbParser, wdbData, globalTextures);
+            self.postMessage({ type: 'buildings', thumbnails: buildings });
+        }
 
         const actors = await renderActors(wdbData, globalTextures, e.data.actorIndices);
         self.postMessage({ type: 'actors', thumbnails: actors });
