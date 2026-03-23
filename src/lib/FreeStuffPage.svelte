@@ -44,3 +44,42 @@
         </div>
     </div>
 </div>
+
+<style>
+.resource-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+}
+
+.resource-item {
+    display: block;
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border-dark);
+    border-radius: 8px;
+    padding: 20px;
+    text-decoration: none;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.resource-item:hover {
+    background-color: #252525;
+    border-color: var(--color-border-light);
+}
+
+.resource-item h3 {
+    margin: 0 0 8px 0;
+    color: var(--color-primary);
+    font-size: 1.2em;
+}
+
+.resource-item p {
+    margin: 0;
+    color: #b0b0b0;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+
+</style>
