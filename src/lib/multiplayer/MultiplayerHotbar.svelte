@@ -69,20 +69,24 @@
     let pinned = true;
     let hidden = false;
     let hideTimer;
-    let mouseInside = false;
+    let pointerInside = false;
+    let revealTime = 0;
 
     $: shown = visible && !hidden;
-    $: if (!visible) { activePopover = null; hidden = false; mouseInside = false; clearTimeout(hideTimer); }
+    $: if (!visible) { activePopover = null; hidden = false; pointerInside = false; clearTimeout(hideTimer); }
 
     function keepAlive() { hidden = false; clearTimeout(hideTimer); }
-    function scheduleHide() { clearTimeout(hideTimer); hideTimer = setTimeout(() => { hidden = true; }, 1000); }
-    function resetHideTimer() { keepAlive(); if (!pinned && !mouseInside) scheduleHide(); }
-    function handleMouseEnter() { mouseInside = true; keepAlive(); }
-    function handleMouseLeave() { mouseInside = false; if (!pinned && activePopover === null) scheduleHide(); }
+    function scheduleHide(delay = 1000) { clearTimeout(hideTimer); hideTimer = setTimeout(() => { hidden = true; }, delay); }
+    function resetHideTimer() { keepAlive(); if (!pinned && !pointerInside) scheduleHide(); }
+    function handlePointerEnter() { pointerInside = true; keepAlive(); }
+    function handlePointerLeave() { pointerInside = false; if (!pinned && activePopover === null) scheduleHide(); }
+    function justRevealed() { return performance.now() - revealTime < 400; }
+    function revealFromTrigger() { revealTime = performance.now(); keepAlive(); if (!pinned) scheduleHide(3000); }
     function closePopover() { activePopover = null; resetHideTimer(); }
 
     function togglePopover(name) {
         if (animLocked) return;
+        if (justRevealed()) return;
         if (activePopover === name) { activePopover = null; resetHideTimer(); }
         else {
             if (name === 'anims') animTabsRef?.selectBestTab();
@@ -94,6 +98,7 @@
     function handleStyleSelect(callback, index) { callback(index); keepAlive(); }
 
     function togglePin() {
+        if (justRevealed()) return;
         pinned = !pinned;
         if (pinned) keepAlive();
         else resetHideTimer();
@@ -106,7 +111,7 @@
 <div class="hotbar-zone">
     {#if shown}
         <div class="hotbar" class:countdown-lock={animLocked} transition:fly={{ y: 48, duration: 200 }}
-            onmouseenter={handleMouseEnter} onmouseleave={handleMouseLeave}>
+            onpointerenter={handlePointerEnter} onpointerleave={handlePointerLeave}>
             {#each styleDropdowns as dd (dd.key)}
                 <div class="indicator-wrapper" bind:this={triggerEls[dd.key]}>
                     <button class="indicator-btn" class:active={activePopover === dd.key}
@@ -172,7 +177,7 @@
         </div>
     {:else if visible}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="hotbar-trigger" onmouseenter={keepAlive}></div>
+        <div class="hotbar-trigger" onpointerenter={revealFromTrigger}></div>
     {/if}
 </div>
 
