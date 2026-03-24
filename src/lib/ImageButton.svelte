@@ -19,8 +19,8 @@
     src={hovered ? onSrc : offSrc}
     {alt}
     tabindex="0"
-    onpointerenter={() => hovered = true}
-    onpointerleave={() => hovered = false}
+    onmouseenter={() => hovered = true}
+    onmouseleave={() => hovered = false}
     {onclick}
     onkeydown={(e) => e.key === 'Enter' && onclick()}
 />

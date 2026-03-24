@@ -67,17 +67,16 @@
         if (child) scrollChildIntoView(child);
     }
 
-    function handlePointerDown(e) {
+    function handleMouseDown(e) {
         if (e.button !== 0) return;
         isDragging = true;
         hasDragged = false;
         dragStartX = e.pageX;
         scrollStartLeft = trackRef.scrollLeft;
         trackRef.style.scrollBehavior = 'auto';
-        trackRef.setPointerCapture(e.pointerId);
     }
 
-    function handlePointerMove(e) {
+    function handleMouseMove(e) {
         if (!isDragging) return;
         e.preventDefault();
         const dx = e.pageX - dragStartX;
@@ -87,7 +86,7 @@
         trackRef.scrollLeft = scrollStartLeft - dx;
     }
 
-    function handlePointerUp() {
+    function handleMouseUp() {
         if (!isDragging) return;
         isDragging = false;
         trackRef.style.scrollBehavior = 'smooth';
@@ -120,10 +119,10 @@
         role="group"
         onscroll={updateArrows}
         onclick={handleClick}
-        onpointerdown={handlePointerDown}
-        onpointermove={handlePointerMove}
-        onpointerup={handlePointerUp}
-        onlostpointercapture={handlePointerUp}
+        onmousedown={handleMouseDown}
+        onmousemove={handleMouseMove}
+        onmouseup={handleMouseUp}
+        onmouseleave={handleMouseUp}
     >
         <slot />
     </div>
@@ -146,7 +145,6 @@
         scroll-behavior: smooth;
         flex: 1;
         min-width: 0;
-        touch-action: pan-y;
     }
 
     .carousel-track::-webkit-scrollbar {
