@@ -70,6 +70,7 @@
     let hidden = false;
     let hideTimer;
     let pointerInside = false;
+    let revealTime = 0;
 
     $: shown = visible && !hidden;
     $: if (!visible) { activePopover = null; hidden = false; pointerInside = false; clearTimeout(hideTimer); }
@@ -79,13 +80,13 @@
     function resetHideTimer() { keepAlive(); if (!pinned && !pointerInside) scheduleHide(); }
     function handlePointerEnter() { pointerInside = true; keepAlive(); }
     function handlePointerLeave() { pointerInside = false; if (!pinned && activePopover === null) scheduleHide(); }
-    let revealTime = 0;
+    function justRevealed() { return performance.now() - revealTime < 400; }
     function revealFromTrigger() { revealTime = performance.now(); keepAlive(); if (!pinned) scheduleHide(3000); }
     function closePopover() { activePopover = null; resetHideTimer(); }
 
     function togglePopover(name) {
         if (animLocked) return;
-        if (performance.now() - revealTime < 400) return;
+        if (justRevealed()) return;
         if (activePopover === name) { activePopover = null; resetHideTimer(); }
         else {
             if (name === 'anims') animTabsRef?.selectBestTab();
@@ -97,7 +98,7 @@
     function handleStyleSelect(callback, index) { callback(index); keepAlive(); }
 
     function togglePin() {
-        if (performance.now() - revealTime < 400) return;
+        if (justRevealed()) return;
         pinned = !pinned;
         if (pinned) keepAlive();
         else resetHideTimer();
