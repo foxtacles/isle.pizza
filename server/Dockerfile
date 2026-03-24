@@ -16,5 +16,5 @@ EXPOSE 8788
 
 # Apply D1 migrations then start wrangler dev.
 # wrangler runs as PID 1 via exec so it receives SIGINT (Ctrl+C).
-CMD node_modules/.bin/wrangler d1 execute isle-pizza --local --file=migrations/0001_initial.sql && \
+CMD node_modules/.bin/wrangler d1 migrations apply isle-pizza --local && \
     exec node_modules/.bin/wrangler dev --ip 0.0.0.0 --port 8788

@@ -130,17 +130,11 @@ export async function clearLocalMemories() {
 
 async function reportToServer(objectId, eventId, participants) {
     try {
-        const self = participants[0];
         await fetch(`${API_URL}/api/memories`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({
-                objectId, eventId,
-                charIndex: self.charIndex,
-                displayName: self.displayName,
-                participants
-            })
+            body: JSON.stringify({ objectId, eventId, participants })
         });
     } catch (e) {
         console.warn('[Memory] Failed to report to server:', e);

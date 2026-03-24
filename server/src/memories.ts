@@ -15,15 +15,13 @@ interface CompletionRow {
 	object_id: number;
 	event_id: string;
 	completed_at: number;
-	char_index: number;
-	display_name: string;
 	participants: string;
 }
 
 function getUserCompletions(db: D1Database, userId: string) {
 	return db
 		.prepare(
-			"SELECT object_id, event_id, completed_at, char_index, display_name, participants FROM memory_completions WHERE user_id = ? ORDER BY completed_at DESC"
+			"SELECT object_id, event_id, completed_at, participants FROM memory_completions WHERE user_id = ? ORDER BY completed_at DESC"
 		)
 		.bind(userId)
 		.all<CompletionRow>();
@@ -32,8 +30,6 @@ function getUserCompletions(db: D1Database, userId: string) {
 function isValidCompletion(c: {
 	objectId: unknown;
 	eventId: unknown;
-	charIndex?: unknown;
-	displayName?: unknown;
 }): boolean {
 	if (
 		typeof c.objectId !== "number" ||
@@ -42,13 +38,6 @@ function isValidCompletion(c: {
 	)
 		return false;
 	if (typeof c.eventId !== "string" || c.eventId.length > 16) return false;
-	if (c.charIndex !== undefined && typeof c.charIndex !== "number")
-		return false;
-	if (
-		c.displayName !== undefined &&
-		(typeof c.displayName !== "string" || c.displayName.length > 7)
-	)
-		return false;
 	return true;
 }
 
@@ -61,33 +50,27 @@ memories.post("/", async (c) => {
 	const body = await c.req.json<{
 		objectId: number;
 		eventId: string;
-		charIndex: number;
-		displayName: string;
-		participants?: Array<{ charIndex: number; displayName: string }>;
+		participants: Array<{ charIndex: number; displayName: string }>;
 	}>();
 
 	if (
 		!isValidCompletion(body) ||
-		typeof body.charIndex !== "number" ||
-		typeof body.displayName !== "string"
+		!Array.isArray(body.participants) ||
+		body.participants.length === 0
 	) {
 		return c.json({ error: "Invalid completion data" }, 400);
 	}
 
-	const participantsJson = Array.isArray(body.participants)
-		? JSON.stringify(body.participants)
-		: "[]";
+	const participantsJson = JSON.stringify(body.participants);
 
 	await c.env.DB.prepare(
-		"INSERT OR IGNORE INTO memory_completions (user_id, object_id, event_id, completed_at, char_index, display_name, participants) VALUES (?, ?, ?, ?, ?, ?, ?)"
+		"INSERT OR IGNORE INTO memory_completions (user_id, object_id, event_id, completed_at, participants) VALUES (?, ?, ?, ?, ?)"
 	)
 		.bind(
 			session.user.id,
 			body.objectId,
 			body.eventId,
 			Math.floor(Date.now() / 1000),
-			body.charIndex,
-			body.displayName,
 			participantsJson
 		)
 		.run();
@@ -112,7 +95,7 @@ memories.post("/sync", async (c) => {
 	}
 
 	const stmt = c.env.DB.prepare(
-		"INSERT OR IGNORE INTO memory_completions (user_id, object_id, event_id, completed_at, char_index, display_name, participants) VALUES (?, ?, ?, ?, ?, ?, ?)"
+		"INSERT OR IGNORE INTO memory_completions (user_id, object_id, event_id, completed_at, participants) VALUES (?, ?, ?, ?, ?)"
 	);
 
 	// Find existing event_ids for this user to avoid duplicates
@@ -136,18 +119,13 @@ memories.post("/sync", async (c) => {
 		)
 			continue;
 
-		const self = completion.participants[0];
-		const participantsJson = JSON.stringify(completion.participants);
-
 		batch.push(
 			stmt.bind(
 				session.user.id,
 				completion.objectId,
 				completion.eventId,
 				completion.t || Math.floor(Date.now() / 1000),
-				self.charIndex ?? -1,
-				self.displayName ?? "",
-				participantsJson
+				JSON.stringify(completion.participants)
 			)
 		);
 		existingSet.add(completion.eventId);

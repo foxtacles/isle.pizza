@@ -7,6 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 binding = "DB"
 database_name = "isle-pizza"
 database_id = "local"
+migrations_dir = "migrations"
 
 [vars]
 API_URL = "http://localhost:8788"
@@ -20,6 +21,7 @@ preview_urls = false
 binding = "DB"
 database_name = "isle-pizza"
 database_id = "23b0f585-fa7a-4c35-8684-428aac9b5f89"
+migrations_dir = "migrations"
 
 [env.production.vars]
 API_URL = "https://api.isle.pizza"
