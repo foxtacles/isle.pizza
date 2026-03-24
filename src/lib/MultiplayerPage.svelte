@@ -438,6 +438,7 @@
     }
 
     .mp-create-toggle {
+        flex: 0 0 36px;
         width: 36px;
         border-radius: 0 6px 6px 0;
         border-left: 1px solid var(--color-border-dark);
