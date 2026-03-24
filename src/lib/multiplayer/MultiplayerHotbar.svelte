@@ -69,16 +69,16 @@
     let pinned = true;
     let hidden = false;
     let hideTimer;
-    let mouseInside = false;
+    let pointerInside = false;
 
     $: shown = visible && !hidden;
-    $: if (!visible) { activePopover = null; hidden = false; mouseInside = false; clearTimeout(hideTimer); }
+    $: if (!visible) { activePopover = null; hidden = false; pointerInside = false; clearTimeout(hideTimer); }
 
     function keepAlive() { hidden = false; clearTimeout(hideTimer); }
     function scheduleHide() { clearTimeout(hideTimer); hideTimer = setTimeout(() => { hidden = true; }, 1000); }
-    function resetHideTimer() { keepAlive(); if (!pinned && !mouseInside) scheduleHide(); }
-    function handleMouseEnter() { mouseInside = true; keepAlive(); }
-    function handleMouseLeave() { mouseInside = false; if (!pinned && activePopover === null) scheduleHide(); }
+    function resetHideTimer() { keepAlive(); if (!pinned && !pointerInside) scheduleHide(); }
+    function handlePointerEnter() { pointerInside = true; keepAlive(); }
+    function handlePointerLeave() { pointerInside = false; if (!pinned && activePopover === null) scheduleHide(); }
     function closePopover() { activePopover = null; resetHideTimer(); }
 
     function togglePopover(name) {
@@ -106,7 +106,7 @@
 <div class="hotbar-zone">
     {#if shown}
         <div class="hotbar" class:countdown-lock={animLocked} transition:fly={{ y: 48, duration: 200 }}
-            onmouseenter={handleMouseEnter} onmouseleave={handleMouseLeave}>
+            onpointerenter={handlePointerEnter} onpointerleave={handlePointerLeave}>
             {#each styleDropdowns as dd (dd.key)}
                 <div class="indicator-wrapper" bind:this={triggerEls[dd.key]}>
                     <button class="indicator-btn" class:active={activePopover === dd.key}
@@ -172,7 +172,7 @@
         </div>
     {:else if visible}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="hotbar-trigger" onmouseenter={keepAlive}></div>
+        <div class="hotbar-trigger" onpointerenter={keepAlive}></div>
     {/if}
 </div>
 
