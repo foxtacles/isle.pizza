@@ -75,14 +75,17 @@
     $: if (!visible) { activePopover = null; hidden = false; pointerInside = false; clearTimeout(hideTimer); }
 
     function keepAlive() { hidden = false; clearTimeout(hideTimer); }
-    function scheduleHide() { clearTimeout(hideTimer); hideTimer = setTimeout(() => { hidden = true; }, 1000); }
+    function scheduleHide(delay = 1000) { clearTimeout(hideTimer); hideTimer = setTimeout(() => { hidden = true; }, delay); }
     function resetHideTimer() { keepAlive(); if (!pinned && !pointerInside) scheduleHide(); }
     function handlePointerEnter() { pointerInside = true; keepAlive(); }
     function handlePointerLeave() { pointerInside = false; if (!pinned && activePopover === null) scheduleHide(); }
+    let revealTime = 0;
+    function revealFromTrigger() { revealTime = performance.now(); keepAlive(); if (!pinned) scheduleHide(3000); }
     function closePopover() { activePopover = null; resetHideTimer(); }
 
     function togglePopover(name) {
         if (animLocked) return;
+        if (performance.now() - revealTime < 400) return;
         if (activePopover === name) { activePopover = null; resetHideTimer(); }
         else {
             if (name === 'anims') animTabsRef?.selectBestTab();
@@ -94,6 +97,7 @@
     function handleStyleSelect(callback, index) { callback(index); keepAlive(); }
 
     function togglePin() {
+        if (performance.now() - revealTime < 400) return;
         pinned = !pinned;
         if (pinned) keepAlive();
         else resetHideTimer();
@@ -172,7 +176,7 @@
         </div>
     {:else if visible}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="hotbar-trigger" onpointerenter={keepAlive}></div>
+        <div class="hotbar-trigger" onpointerenter={revealFromTrigger}></div>
     {/if}
 </div>
 
