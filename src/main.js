@@ -2,6 +2,10 @@ import App from './App.svelte';
 import { mount } from 'svelte';
 import './app.css';
 
+function signalCrash(message) {
+    window.dispatchEvent(new CustomEvent('game-crash', { detail: { message } }));
+}
+
 // Global Module object required by Emscripten - must be defined before isle.js loads
 window.Module = {
     arguments: ['--ini', '/config/isle.ini'],
@@ -12,15 +16,11 @@ window.Module = {
     },
     canvas: null, // Will be set after mount
     onAbort: function (what) {
-        window.dispatchEvent(new CustomEvent('game-crash', {
-            detail: { message: String(what || 'Unknown error') }
-        }));
+        signalCrash(String(what || 'Unknown error'));
     },
     onExit: function (code) {
         if (code !== 0) {
-            window.dispatchEvent(new CustomEvent('game-crash', {
-                detail: { message: 'Game exited with code ' + code }
-            }));
+            signalCrash('Game exited with code ' + code);
         } else {
             window.location.reload();
         }
@@ -30,9 +30,14 @@ window.Module = {
 // Safety net: catch worker errors that bypass abort() (e.g. WASM trap instructions)
 window.addEventListener('unhandledrejection', function (event) {
     if (window.Module.running && event.reason?.message?.includes('Aborted')) {
-        window.dispatchEvent(new CustomEvent('game-crash', {
-            detail: { message: event.reason.message }
-        }));
+        signalCrash(event.reason.message);
+    }
+});
+
+// Catch uncaught errors from worker threads (e.g. RuntimeError: unreachable)
+window.addEventListener('error', function (event) {
+    if (window.Module.running && event.message?.includes('RuntimeError')) {
+        signalCrash(event.message);
     }
 });
 
