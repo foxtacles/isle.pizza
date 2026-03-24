@@ -314,9 +314,7 @@ body {
 }
 
 .page-back-button {
-    display: block;
-    width: 100%;
-    text-align: left;
+    align-self: flex-start;
     font-size: 24px;
     font-weight: bold;
     color: white;
