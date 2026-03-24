@@ -96,6 +96,9 @@ export const memoryUnlocks = writable(new Set());
 // All completion records from IndexedDB (null = not loaded yet)
 export const memoryCompletions = writable(null);
 
+// Crash state — set when game aborts/crashes
+export const gameCrashed = writable(null);
+
 // Save editor state
 export const saveEditorState = writable({
     slots: [],           // Array of SaveSlot objects

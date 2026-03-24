@@ -11,10 +11,30 @@ window.Module = {
         window.Module.running = true;
     },
     canvas: null, // Will be set after mount
-    onExit: function () {
-        window.location.reload();
+    onAbort: function (what) {
+        window.dispatchEvent(new CustomEvent('game-crash', {
+            detail: { message: String(what || 'Unknown error') }
+        }));
+    },
+    onExit: function (code) {
+        if (code !== 0) {
+            window.dispatchEvent(new CustomEvent('game-crash', {
+                detail: { message: 'Game exited with code ' + code }
+            }));
+        } else {
+            window.location.reload();
+        }
     }
 };
+
+// Safety net: catch worker errors that bypass abort() (e.g. WASM trap instructions)
+window.addEventListener('unhandledrejection', function (event) {
+    if (window.Module.running && event.reason?.message?.includes('Aborted')) {
+        window.dispatchEvent(new CustomEvent('game-crash', {
+            detail: { message: event.reason.message }
+        }));
+    }
+});
 
 // Mount Svelte app
 const app = mount(App, {

@@ -1,5 +1,5 @@
 // Emscripten-related functions for game launching and canvas events
-import { gameRunning, debugUIVisible, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus, animationState } from '../stores.js';
+import { gameRunning, debugUIVisible, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus, animationState, gameCrashed } from '../stores.js';
 import { recordCompletion } from './memories.js';
 import { pauseInstallAudio } from './audio.js';
 
@@ -118,5 +118,12 @@ export function setupCanvasEvents() {
 
     canvas.addEventListener('extensionProgress', function (event) {
         statusMessageBar.innerHTML = 'Loading ' + event.detail.name + '... please wait! <code>' + event.detail.progress + '%</code>';
+    });
+
+    let crashed = false;
+    window.addEventListener('game-crash', function (event) {
+        if (crashed) return;
+        crashed = true;
+        gameCrashed.set({ message: event.detail.message });
     });
 }

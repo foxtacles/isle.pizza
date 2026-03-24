@@ -24,6 +24,7 @@
     import MultiplayerOverlay from './lib/multiplayer/MultiplayerOverlay.svelte';
     import WhatsNewBanner from './lib/WhatsNewBanner.svelte';
     import CanvasWrapper from './lib/CanvasWrapper.svelte';
+    import CrashOverlay from './lib/CrashOverlay.svelte';
 
     async function positionTooltip(trigger) {
         const tooltip = trigger.querySelector('.tooltip-content');
@@ -201,6 +202,7 @@
 </main>
 
 <CanvasWrapper />
+<CrashOverlay />
 
 <MultiplayerOverlay />
 
