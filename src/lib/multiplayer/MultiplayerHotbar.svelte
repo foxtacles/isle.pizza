@@ -78,8 +78,8 @@
     function keepAlive() { hidden = false; clearTimeout(hideTimer); }
     function scheduleHide(delay = 1000) { clearTimeout(hideTimer); hideTimer = setTimeout(() => { hidden = true; }, delay); }
     function resetHideTimer() { keepAlive(); if (!pinned && !pointerInside) scheduleHide(); }
-    function handlePointerEnter() { pointerInside = true; keepAlive(); }
-    function handlePointerLeave() { pointerInside = false; if (!pinned && activePopover === null) scheduleHide(); }
+    function handlePointerEnter(e) { if (e.pointerType === 'touch') return; pointerInside = true; keepAlive(); }
+    function handlePointerLeave(e) { if (e.pointerType === 'touch') return; pointerInside = false; if (!pinned && activePopover === null) scheduleHide(); }
     function justRevealed() { return performance.now() - revealTime < 400; }
     function revealFromTrigger() { revealTime = performance.now(); keepAlive(); if (!pinned) scheduleHide(3000); }
     function closePopover() { activePopover = null; resetHideTimer(); }
