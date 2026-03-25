@@ -1,6 +1,5 @@
 /**
  * Shared Lambert shading GLSL for all renderers.
- * Replaces Three.js MeshLambertMaterial + AmbientLight + DirectionalLight.
  *
  * OGL automatically provides these uniforms when rendering with a camera:
  *   modelViewMatrix (mat4), projectionMatrix (mat4), normalMatrix (mat3),
@@ -48,9 +47,8 @@ export const LAMBERT_FRAGMENT = /* glsl */ `
     }
 `;
 
-// Shared lighting uniform values matching the original Three.js setup:
-//   AmbientLight(0xffffff, 0.8) → ambient = vec3(0.8)
-//   DirectionalLight(0xffffff, 0.6) at position (1, 2, 3) → direction normalized
+// Shared lighting uniform values:
+//   Ambient intensity 0.8, directional intensity 0.6, direction (1, 2, 3) normalized
 const _lightDir = [1, 2, 3];
 const _len = Math.sqrt(_lightDir[0] ** 2 + _lightDir[1] ** 2 + _lightDir[2] ** 2);
 

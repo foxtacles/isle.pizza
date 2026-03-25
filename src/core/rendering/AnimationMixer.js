@@ -1,6 +1,7 @@
 /**
- * Lightweight animation system replacing Three.js AnimationMixer/AnimationClip.
- * Drives OGL Transform nodes by resolving track names like "part_body.position".
+ * Lightweight animation system for OGL Transform nodes.
+ * Resolves track names like "part_body.position" to scene graph nodes
+ * and interpolates keyframed values (vector lerp, quaternion slerp, boolean step).
  */
 
 export const LoopRepeat = 0;
@@ -57,7 +58,7 @@ export class AnimationTrack {
     }
 }
 
-// Quaternion track factory (matches Three.js QuaternionKeyframeTrack interface)
+// Quaternion track factory
 export function QuaternionTrack(name, times, values) {
     return new AnimationTrack(name, times, values, 'quaternion');
 }
