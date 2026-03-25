@@ -1,8 +1,11 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Renderer, Camera, Transform, Mesh, Geometry, Program, Texture } from 'ogl';
+import { Orbit } from 'ogl/src/extras/Orbit.js';
+import { Vec3 } from 'ogl/src/math/Vec3.js';
+import { Quat } from 'ogl/src/math/Quat.js';
+import { LAMBERT_VERTEX, LAMBERT_FRAGMENT, LIGHT_UNIFORMS } from './LambertShader.js';
 
 /**
- * Base renderer providing shared Three.js setup, lighting, texture creation,
+ * Base renderer providing shared OGL setup, texture creation,
  * geometry building, and animation loop for LEGO model viewers.
  */
 export class BaseRenderer {
@@ -12,59 +15,73 @@ export class BaseRenderer {
         this.modelGroup = null;
         this.textures = new Map();
 
-        this.scene = new THREE.Scene();
+        const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 2) : 1;
 
-        this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-
-        const logicalWidth = canvas.width;
-        const logicalHeight = canvas.height;
-
-        this.renderer = new THREE.WebGLRenderer({
+        this.glRenderer = new Renderer({
             canvas,
             antialias: true,
             alpha: true,
+            dpr,
+            width: canvas.width / dpr,
+            height: canvas.height / dpr,
             ...rendererOptions
         });
-        const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
-        this.renderer.setPixelRatio(Math.min(dpr, 2));
-        this.renderer.setSize(logicalWidth, logicalHeight, !!canvas.style);
-        this.renderer.setClearColor(0x000000, 0);
+        this.gl = this.glRenderer.gl;
 
-        this.setupLighting();
+        // Transparent clear
+        this.gl.clearColor(0, 0, 0, 0);
+
+        this.scene = new Transform();
+
+        this.camera = new Camera(this.gl, { fov: 45, near: 0.1, far: 100 });
 
         this.controls = null;
         this._didDrag = false;
     }
 
-    setupLighting() {
-        const ambient = new THREE.AmbientLight(0xffffff, 0.8);
-        this.scene.add(ambient);
-
-        const sunLight = new THREE.DirectionalLight(0xffffff, 0.6);
-        sunLight.position.set(1, 2, 3);
-        this.scene.add(sunLight);
-    }
-
     setupControls(target) {
-        // OrbitControls requires a DOM element — skip in worker/offscreen contexts
+        // Orbit requires a DOM element — skip in worker/offscreen contexts
         if (typeof document === 'undefined') return;
 
-        this.controls = new OrbitControls(this.camera, this.canvas);
-        this.controls.enableZoom = true;
-        this.controls.enablePan = true;
-        this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.1;
-        this.controls.autoRotate = true;
-        this.controls.autoRotateSpeed = 4.0;
-        this.controls.target.copy(target);
-
-        this.controls.addEventListener('start', () => {
-            this.controls.autoRotate = false;
+        // OGL's Orbit stores autoRotate in a closure that can't be mutated.
+        // We disable it in OGL and drive auto-rotation ourselves.
+        this._orbit = new Orbit(this.camera, {
+            element: this.canvas,
+            target: new Vec3(target[0], target[1], target[2]),
+            enableZoom: true,
+            enablePan: true,
+            ease: 0.15,
+            inertia: 0.85,
+            autoRotate: false,
+            autoRotateSpeed: 1.0,
         });
+
+        // Wrap with mutable autoRotate
+        this.controls = {
+            target: this._orbit.target,
+            autoRotate: true,
+            autoRotateSpeed: 4.0,
+            forcePosition: () => this._orbit.forcePosition(),
+            remove: () => this._orbit.remove(),
+            update: () => {
+                if (this.controls.autoRotate) {
+                    // Rotate camera around target by a small angle per frame
+                    const angle = ((2 * Math.PI) / 60 / 60) * this.controls.autoRotateSpeed;
+                    const q = new Quat().fromAxisAngle(new Vec3(0, 1, 0), -angle);
+                    const offset = new Vec3().copy(this.camera.position).sub(this.controls.target);
+                    offset.applyQuaternion(q);
+                    this.camera.position.copy(this.controls.target).add(offset);
+                    this._orbit.forcePosition();
+                }
+                this._orbit.update();
+            },
+        };
 
         this._onPointerDown = (e) => {
             this._didDrag = false;
             this._pointerStart = { x: e.clientX, y: e.clientY };
+            // Stop auto-rotate on user interaction
+            this.controls.autoRotate = false;
         };
         this._onPointerMove = (e) => {
             if (!this._pointerStart) return;
@@ -76,13 +93,16 @@ export class BaseRenderer {
         this.canvas.addEventListener('pointerdown', this._onPointerDown);
         this.canvas.addEventListener('pointermove', this._onPointerMove);
 
-        this._initialAutoRotate = this.controls.autoRotate;
-        this.controls.saveState();
+        this._initialAutoRotate = true;
+        this._savedCameraPos = new Vec3().copy(this.camera.position);
+        this._savedTarget = new Vec3().copy(this.controls.target);
     }
 
     resetView() {
         if (!this.controls) return;
-        this.controls.reset();
+        this.camera.position.copy(this._savedCameraPos);
+        this.controls.target.copy(this._savedTarget);
+        this.controls.forcePosition();
         this.controls.autoRotate = this._initialAutoRotate;
     }
 
@@ -91,7 +111,7 @@ export class BaseRenderer {
     }
 
     /**
-     * Create a Three.js texture from parsed texture data
+     * Create an OGL texture from parsed palette-indexed texture data.
      */
     createTexture(textureData) {
         const w = textureData.width;
@@ -114,18 +134,20 @@ export class BaseRenderer {
         }
         ctx.putImageData(imageData, 0, 0);
 
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.minFilter = THREE.NearestFilter;
-        texture.magFilter = THREE.NearestFilter;
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
+        const texture = new Texture(this.gl, {
+            image: canvas,
+            minFilter: this.gl.NEAREST,
+            magFilter: this.gl.NEAREST,
+            wrapS: this.gl.REPEAT,
+            wrapT: this.gl.REPEAT,
+            generateMipmaps: false,
+            flipY: false,
+        });
         return texture;
     }
 
     /**
      * Build the texture lookup map from an array of texture data objects.
-     * @param {Array} textures - Texture data with name, width, height, palette, pixels
-     * @param {boolean} overwrite - If false, skip textures already in the map
      */
     loadTextures(textures, overwrite = true) {
         if (!textures) return;
@@ -139,33 +161,66 @@ export class BaseRenderer {
     }
 
     /**
-     * Create a material for a mesh using its texture or color properties.
-     * @param {object} mesh - Mesh with properties (textureName, color)
-     * @param {THREE.Color} [fallbackColor] - Color when mesh has no texture or color
+     * Create an OGL Program (shader material) for a mesh.
+     * @param {object} mesh - Mesh data with properties (textureName, color)
+     * @param {number[]|null} fallbackColor - [r, g, b] normalized, or null
+     * @returns {Program}
      */
-    createMeshMaterial(mesh, fallbackColor = null) {
+    createMeshProgram(mesh, fallbackColor = null) {
         const meshTexName = mesh.properties?.textureName?.toLowerCase();
         if (meshTexName && this.textures.has(meshTexName)) {
-            return new THREE.MeshLambertMaterial({
-                map: this.textures.get(meshTexName),
-                side: THREE.DoubleSide,
-                color: 0xffffff
+            return this._createLambertProgram({
+                tMap: { value: this.textures.get(meshTexName) },
+                uUseTexture: { value: 1 },
+                uColor: { value: [1, 1, 1] },
+                uOpacity: { value: 1 },
             });
         }
 
         const meshColor = mesh.properties?.color;
         const color = meshColor
-            ? new THREE.Color(meshColor.r / 255, meshColor.g / 255, meshColor.b / 255)
-            : (fallbackColor || new THREE.Color(0.5, 0.5, 0.5));
+            ? [meshColor.r / 255, meshColor.g / 255, meshColor.b / 255]
+            : (fallbackColor || [0.5, 0.5, 0.5]);
 
-        return new THREE.MeshLambertMaterial({
-            color,
-            side: THREE.DoubleSide
+        return this._createLambertProgram({
+            tMap: { value: this._emptyTexture() },
+            uUseTexture: { value: 0 },
+            uColor: { value: color },
+            uOpacity: { value: 1 },
         });
     }
 
     /**
-     * Create a single geometry from mesh data
+     * Create a Lambert-shaded Program with the given extra uniforms.
+     */
+    _createLambertProgram(extraUniforms, opts = {}) {
+        return new Program(this.gl, {
+            vertex: LAMBERT_VERTEX,
+            fragment: LAMBERT_FRAGMENT,
+            uniforms: {
+                ...LIGHT_UNIFORMS,
+                ...extraUniforms,
+            },
+            cullFace: false,  // DoubleSide
+            ...opts,
+        });
+    }
+
+    _emptyTextureCache = null;
+    _emptyTexture() {
+        if (!this._emptyTextureCache) {
+            this._emptyTextureCache = new Texture(this.gl, {
+                image: new Uint8Array([255, 255, 255, 255]),
+                width: 1,
+                height: 1,
+                generateMipmaps: false,
+            });
+        }
+        return this._emptyTextureCache;
+    }
+
+    /**
+     * Create a single OGL Geometry from mesh data.
      */
     createGeometry(mesh, lod) {
         if (!mesh.polygonIndices || mesh.polygonIndices.length === 0) {
@@ -199,16 +254,16 @@ export class BaseRenderer {
 
                 const gv = packed & 0xFFFF;
                 const v = lod.vertices[gv] || { x: 0, y: 0, z: 0 };
-                meshVertices.push([-v.x, v.y, v.z]);
+                meshVertices.push(-v.x, v.y, v.z);
 
                 const gn = (packed >>> 16) & 0x7fff;
                 const n = lod.normals[gn] || { x: 0, y: 1, z: 0 };
-                meshNormals.push([-n.x, n.y, n.z]);
+                meshNormals.push(-n.x, n.y, n.z);
 
                 if (hasTexture && lod.textureVertices && lod.textureVertices.length > 0) {
                     const tex = textureIndicesFlat[i];
                     const uv = lod.textureVertices[tex] || { u: 0, v: 0 };
-                    meshUvs.push([uv.u, 1 - uv.v]);
+                    meshUvs.push(uv.u, 1 - uv.v);
                 }
             } else {
                 indices.push(packed & 0xFFFF);
@@ -222,53 +277,92 @@ export class BaseRenderer {
             indices[i + 2] = temp;
         }
 
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(meshVertices.flat(), 3));
-        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(meshNormals.flat(), 3));
-        geometry.setIndex(indices);
+        const attrs = {
+            position: { size: 3, data: new Float32Array(meshVertices) },
+            normal: { size: 3, data: new Float32Array(meshNormals) },
+            index: { data: new Uint32Array(indices) },
+        };
 
         if (hasTexture && meshUvs.length > 0) {
-            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(meshUvs.flat(), 2));
+            attrs.uv = { size: 2, data: new Float32Array(meshUvs) };
         }
 
-        return geometry;
+        return new Geometry(this.gl, attrs);
+    }
+
+    /**
+     * Compute axis-aligned bounding box of a Transform hierarchy.
+     * Returns { min: Vec3, max: Vec3, center: Vec3, size: Vec3 }.
+     */
+    computeBoundingBox(transform) {
+        const min = new Vec3(Infinity, Infinity, Infinity);
+        const max = new Vec3(-Infinity, -Infinity, -Infinity);
+
+        // Ensure world matrices are up to date
+        transform.updateMatrixWorld(true);
+
+        transform.traverse((node) => {
+            if (!(node instanceof Mesh) || !node.geometry) return;
+            const posAttr = node.geometry.attributes.position;
+            if (!posAttr) return;
+
+            const data = posAttr.data;
+            const wm = node.worldMatrix;
+
+            for (let i = 0; i < data.length; i += 3) {
+                // Transform vertex to world space
+                const x = data[i], y = data[i + 1], z = data[i + 2];
+                const wx = wm[0] * x + wm[4] * y + wm[8] * z + wm[12];
+                const wy = wm[1] * x + wm[5] * y + wm[9] * z + wm[13];
+                const wz = wm[2] * x + wm[6] * y + wm[10] * z + wm[14];
+
+                if (wx < min[0]) min[0] = wx;
+                if (wy < min[1]) min[1] = wy;
+                if (wz < min[2]) min[2] = wz;
+                if (wx > max[0]) max[0] = wx;
+                if (wy > max[1]) max[1] = wy;
+                if (wz > max[2]) max[2] = wz;
+            }
+        });
+
+        const center = new Vec3(
+            (min[0] + max[0]) / 2,
+            (min[1] + max[1]) / 2,
+            (min[2] + max[2]) / 2,
+        );
+        const size = new Vec3(
+            max[0] - min[0],
+            max[1] - min[1],
+            max[2] - min[2],
+        );
+        return { min, max, center, size };
     }
 
     centerAndScaleModel(scaleFactor) {
         if (!this.modelGroup) return;
 
-        const box = new THREE.Box3().setFromObject(this.modelGroup);
-        const center = box.getCenter(new THREE.Vector3());
-        const size = box.getSize(new THREE.Vector3());
+        const { center, size } = this.computeBoundingBox(this.modelGroup);
 
-        const maxDim = Math.max(size.x, size.y, size.z);
+        const maxDim = Math.max(size[0], size[1], size[2]);
         if (maxDim > 0) {
             const scale = scaleFactor / maxDim;
-            this.modelGroup.scale.setScalar(scale);
-            // Position must account for scale: Three.js applies scale before
-            // translation, so vertex v maps to (position + scale * v).
-            // To center: position = -center * scale → v maps to scale*(v - center).
-            this.modelGroup.position.copy(center).multiplyScalar(-scale);
+            this.modelGroup.scale.set(scale, scale, scale);
+            this.modelGroup.position.set(
+                -center[0] * scale,
+                -center[1] * scale,
+                -center[2] * scale,
+            );
         } else {
-            this.modelGroup.position.sub(center);
+            this.modelGroup.position.set(-center[0], -center[1], -center[2]);
         }
     }
 
     clearModel() {
         if (this.modelGroup) {
-            this.modelGroup.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
-                    child.geometry?.dispose();
-                    child.material?.dispose();
-                }
-            });
-            this.scene.remove(this.modelGroup);
+            this.scene.removeChild(this.modelGroup);
             this.modelGroup = null;
         }
 
-        for (const texture of this.textures.values()) {
-            texture.dispose();
-        }
         this.textures.clear();
     }
 
@@ -287,31 +381,28 @@ export class BaseRenderer {
 
         this.updateAnimation();
 
-        this.renderer.render(this.scene, this.camera);
+        this.glRenderer.render({ scene: this.scene, camera: this.camera });
     }
 
     /**
      * Override in subclasses for custom animation logic.
-     * Called each frame before rendering.
      */
     updateAnimation() {
         this.controls?.update();
     }
 
     resize(width, height) {
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(width, height, false);
+        this.camera.perspective({ aspect: width / height });
+        this.glRenderer.setSize(width, height);
     }
 
     dispose() {
         this.animating = false;
         if (this.controls) {
-            this.controls.dispose();
+            this.controls.remove();
             this.canvas.removeEventListener('pointerdown', this._onPointerDown);
             this.canvas.removeEventListener('pointermove', this._onPointerMove);
         }
         this.clearModel();
-        this.renderer?.dispose();
     }
 }

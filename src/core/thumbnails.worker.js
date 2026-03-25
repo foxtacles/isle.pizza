@@ -1,5 +1,5 @@
 // Web Worker that renders building and actor thumbnails off the main thread.
-// Uses OffscreenCanvas + Three.js WebGLRenderer — no DOM required.
+// Uses OffscreenCanvas + OGL Renderer — no DOM required.
 import { BuildingRenderer } from './rendering/BuildingRenderer.js';
 import { ActorRenderer } from './rendering/ActorRenderer.js';
 import { ActorInfoInit } from './savegame/actorConstants.js';
@@ -83,8 +83,8 @@ async function renderActors(wdbData, globalTextures, actorIndices) {
 
             // Reposition camera to frame the head for a portrait thumbnail
             renderer.camera.position.set(0.6, 0.9, 1.2);
-            renderer.camera.lookAt(0, 0.7, 0);
-            renderer.renderer.render(renderer.scene, renderer.camera);
+            renderer.camera.lookAt([0, 0.7, 0]);
+            renderer.glRenderer.render({ scene: renderer.scene, camera: renderer.camera });
 
             result[i] = await canvasToDataURL(canvas);
         } catch (e) {
