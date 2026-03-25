@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { Vector3, Group, Color, MeshLambertMaterial, Mesh, DoubleSide } from 'three';
 import { LegoColors } from '../savegame/constants.js';
 import { resolveLods } from '../formats/WdbParser.js';
 import { BaseRenderer } from './BaseRenderer.js';
@@ -15,7 +15,7 @@ export class VehiclePartRenderer extends BaseRenderer {
         this.camera.position.set(0, 0, 3);
         this.camera.lookAt(0, 0, 0);
 
-        this.setupControls(new THREE.Vector3(0, 0, 0));
+        this.setupControls(new Vector3(0, 0, 0));
     }
 
     /**
@@ -38,14 +38,14 @@ export class VehiclePartRenderer extends BaseRenderer {
     loadPartWithColor(roiData, colorName, textureList = [], partsMap = new Map()) {
         this.clearModel();
 
-        this.modelGroup = new THREE.Group();
+        this.modelGroup = new Group();
         this.colorableMeshes = [];
         this.partsMap = partsMap;
 
         this.loadTextures(textureList);
 
         const legoColor = LegoColors[colorName] || LegoColors['lego red'];
-        const threeLegoColor = new THREE.Color(legoColor.r / 255, legoColor.g / 255, legoColor.b / 255);
+        const threeLegoColor = new Color(legoColor.r / 255, legoColor.g / 255, legoColor.b / 255);
 
         this.createMeshesFromROI(roiData, threeLegoColor);
 
@@ -84,9 +84,9 @@ export class VehiclePartRenderer extends BaseRenderer {
 
                 if (isColorable) {
                     // Mesh has INH prefix - use the LEGO color
-                    material = new THREE.MeshLambertMaterial({
+                    material = new MeshLambertMaterial({
                         color: legoColor,
-                        side: THREE.DoubleSide,
+                        side: DoubleSide,
                         transparent: isTransparent,
                         opacity: opacity,
                         depthWrite: !isTransparent
@@ -94,9 +94,9 @@ export class VehiclePartRenderer extends BaseRenderer {
                     this.colorableMeshes.push(null); // Placeholder, will set after mesh creation
                 } else if (hasUVs && meshTextureName && this.textures.has(meshTextureName)) {
                     // Mesh has its own texture
-                    material = new THREE.MeshLambertMaterial({
+                    material = new MeshLambertMaterial({
                         map: this.textures.get(meshTextureName),
-                        side: THREE.DoubleSide,
+                        side: DoubleSide,
                         transparent: isTransparent,
                         opacity: opacity,
                         depthWrite: !isTransparent
@@ -104,16 +104,16 @@ export class VehiclePartRenderer extends BaseRenderer {
                 } else {
                     // Fallback to mesh's vertex color
                     const meshColor = mesh.properties?.color || { r: 128, g: 128, b: 128 };
-                    material = new THREE.MeshLambertMaterial({
-                        color: new THREE.Color(meshColor.r / 255, meshColor.g / 255, meshColor.b / 255),
-                        side: THREE.DoubleSide,
+                    material = new MeshLambertMaterial({
+                        color: new Color(meshColor.r / 255, meshColor.g / 255, meshColor.b / 255),
+                        side: DoubleSide,
                         transparent: isTransparent,
                         opacity: opacity,
                         depthWrite: !isTransparent
                     });
                 }
 
-                const threeMesh = new THREE.Mesh(geometry, material);
+                const threeMesh = new Mesh(geometry, material);
                 if (meshTextureName) {
                     threeMesh.userData.textureName = meshTextureName;
                 }
@@ -144,7 +144,7 @@ export class VehiclePartRenderer extends BaseRenderer {
         const targetName = textureName.toLowerCase();
 
         this.modelGroup.traverse((child) => {
-            if (!(child instanceof THREE.Mesh)) return;
+            if (!(child instanceof Mesh)) return;
             if (child.userData.textureName !== targetName) return;
 
             const oldMap = child.material.map;
@@ -165,7 +165,7 @@ export class VehiclePartRenderer extends BaseRenderer {
         if (!this.modelGroup || this.colorableMeshes.length === 0) return;
 
         const legoColor = LegoColors[colorName] || LegoColors['lego red'];
-        const threeColor = new THREE.Color(legoColor.r / 255, legoColor.g / 255, legoColor.b / 255);
+        const threeColor = new Color(legoColor.r / 255, legoColor.g / 255, legoColor.b / 255);
 
         for (const mesh of this.colorableMeshes) {
             if (mesh && mesh.material) {

@@ -1,4 +1,8 @@
-import * as THREE from 'three';
+import {
+    Clock, Raycaster, Quaternion, Matrix4, Vector3, Vector2,
+    AnimationClip, AnimationMixer, QuaternionKeyframeTrack,
+    Mesh, LoopOnce
+} from 'three';
 import { parseAnimation } from '../formats/AnimationParser.js';
 import { fetchAnimation } from '../assetLoader.js';
 import { BaseRenderer } from './BaseRenderer.js';
@@ -11,11 +15,11 @@ import { BaseRenderer } from './BaseRenderer.js';
 export class AnimatedRenderer extends BaseRenderer {
     constructor(canvas, rendererOptions) {
         super(canvas, rendererOptions);
-        this.clock = new THREE.Clock();
+        this.clock = new Clock();
         this.mixer = null;
         this.currentAction = null;
         this.animationCache = new Map();
-        this.raycaster = new THREE.Raycaster();
+        this.raycaster = new Raycaster();
         this._queuedClickAnim = null;
     }
 
@@ -67,13 +71,13 @@ export class AnimatedRenderer extends BaseRenderer {
      */
     evaluateRotation(keys, time) {
         const { before, after } = this.getBeforeAndAfter(keys, time);
-        const toQuat = (key) => new THREE.Quaternion(-key.x, key.y, key.z, key.w);
+        const toQuat = (key) => new Quaternion(-key.x, key.y, key.z, key.w);
 
         if (!after) {
             if (before.flags & 0x01) {
-                return new THREE.Matrix4().makeRotationFromQuaternion(toQuat(before));
+                return new Matrix4().makeRotationFromQuaternion(toQuat(before));
             }
-            return new THREE.Matrix4();
+            return new Matrix4();
         }
 
         if ((before.flags & 0x01) || (after.flags & 0x01)) {
@@ -81,7 +85,7 @@ export class AnimatedRenderer extends BaseRenderer {
 
             // Flag 0x04: skip interpolation, use before value
             if (after.flags & 0x04) {
-                return new THREE.Matrix4().makeRotationFromQuaternion(beforeQ);
+                return new Matrix4().makeRotationFromQuaternion(beforeQ);
             }
 
             let afterQ = toQuat(after);
@@ -91,11 +95,11 @@ export class AnimatedRenderer extends BaseRenderer {
             }
 
             const t = (time - before.time) / (after.time - before.time);
-            const result = new THREE.Quaternion().slerpQuaternions(beforeQ, afterQ, t);
-            return new THREE.Matrix4().makeRotationFromQuaternion(result);
+            const result = new Quaternion().slerpQuaternions(beforeQ, afterQ, t);
+            return new Matrix4().makeRotationFromQuaternion(result);
         }
 
-        return new THREE.Matrix4();
+        return new Matrix4();
     }
 
     /**
@@ -107,8 +111,8 @@ export class AnimatedRenderer extends BaseRenderer {
         const { before, after } = this.getBeforeAndAfter(keys, time);
 
         const toVec = (key) => isTranslation
-            ? new THREE.Vector3(-key.x, key.y, key.z)
-            : new THREE.Vector3(key.x, key.y, key.z);
+            ? new Vector3(-key.x, key.y, key.z)
+            : new Vector3(key.x, key.y, key.z);
 
         if (!after) {
             if (isTranslation && !(before.flags & 0x01)) {
@@ -126,7 +130,7 @@ export class AnimatedRenderer extends BaseRenderer {
         }
 
         const t = (time - before.time) / (after.time - before.time);
-        return new THREE.Vector3().lerpVectors(toVec(before), toVec(after), t);
+        return new Vector3().lerpVectors(toVec(before), toVec(after), t);
     }
 
     /**
@@ -168,10 +172,10 @@ export class AnimatedRenderer extends BaseRenderer {
 
             this.stopAnimation();
 
-            const clip = new THREE.AnimationClip('clickAnim', -1, tracks);
-            this.mixer = new THREE.AnimationMixer(this.modelGroup);
+            const clip = new AnimationClip('clickAnim', -1, tracks);
+            this.mixer = new AnimationMixer(this.modelGroup);
             const action = this.mixer.clipAction(clip);
-            action.setLoop(THREE.LoopOnce);
+            action.setLoop(LoopOnce);
             action.clampWhenFinished = false;
             this.currentAction = action;
             action.play();
@@ -195,7 +199,7 @@ export class AnimatedRenderer extends BaseRenderer {
         if (!this.modelGroup) return false;
 
         const rect = this.canvas.getBoundingClientRect();
-        const mouse = new THREE.Vector2(
+        const mouse = new Vector2(
             ((mouseEvent.clientX - rect.left) / rect.width) * 2 - 1,
             -((mouseEvent.clientY - rect.top) / rect.height) * 2 + 1
         );
@@ -204,7 +208,7 @@ export class AnimatedRenderer extends BaseRenderer {
 
         const meshes = [];
         this.modelGroup.traverse((child) => {
-            if (child instanceof THREE.Mesh) meshes.push(child);
+            if (child instanceof Mesh) meshes.push(child);
         });
 
         return this.raycaster.intersectObjects(meshes).length > 0;
@@ -231,9 +235,9 @@ export class AnimatedRenderer extends BaseRenderer {
 
         for (const time of times) {
             const mat = this.evaluateNodeChain(animData.rootNode, targetNode, time);
-            const position = new THREE.Vector3();
-            const quaternion = new THREE.Quaternion();
-            const scale = new THREE.Vector3();
+            const position = new Vector3();
+            const quaternion = new Quaternion();
+            const scale = new Vector3();
             mat.decompose(position, quaternion, scale);
 
             timesSec.push(time / 1000);
@@ -241,7 +245,7 @@ export class AnimatedRenderer extends BaseRenderer {
         }
 
         return [
-            new THREE.QuaternionKeyframeTrack('.quaternion', timesSec, quatValues)
+            new QuaternionKeyframeTrack('.quaternion', timesSec, quatValues)
         ];
     }
 
@@ -266,10 +270,10 @@ export class AnimatedRenderer extends BaseRenderer {
     evaluateNodeChain(node, targetNode, time) {
         const path = [];
         if (!this.findNodePath(node, targetNode, path)) {
-            return new THREE.Matrix4();
+            return new Matrix4();
         }
 
-        let mat = new THREE.Matrix4();
+        let mat = new Matrix4();
         for (const n of path) {
             const local = this.evaluateLocalTransform(n.data, time);
             mat.multiply(local);
@@ -294,7 +298,7 @@ export class AnimatedRenderer extends BaseRenderer {
      * Evaluate the local transform matrix for an animation node at a given time.
      */
     evaluateLocalTransform(data, time) {
-        let mat = new THREE.Matrix4();
+        let mat = new Matrix4();
 
         if (data.scaleKeys.length > 0) {
             const scale = this.interpolateVertex(data.scaleKeys, time, false);

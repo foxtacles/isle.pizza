@@ -1,4 +1,8 @@
-import * as THREE from 'three';
+import {
+    Vector3, Group, CanvasTexture, Color,
+    MeshLambertMaterial, Mesh, Vector2, Raycaster,
+    DoubleSide, LinearFilter
+} from 'three';
 import { BaseRenderer } from './BaseRenderer.js';
 
 /**
@@ -17,7 +21,7 @@ export class WdbModelRenderer extends BaseRenderer {
 
         this.camera.position.set(0, 0.2, 7);
 
-        this.setupControls(new THREE.Vector3(0, 0.2, 0));
+        this.setupControls(new Vector3(0, 0.2, 0));
     }
 
     /**
@@ -27,7 +31,7 @@ export class WdbModelRenderer extends BaseRenderer {
      */
     loadModel(roiData, textureData) {
         this.palette = textureData.palette;
-        this.modelGroup = new THREE.Group();
+        this.modelGroup = new Group();
 
         if (!roiData.lods || roiData.lods.length === 0) {
             this.scene.add(this.modelGroup);
@@ -37,9 +41,9 @@ export class WdbModelRenderer extends BaseRenderer {
         const lod = roiData.lods[0];
 
         this.textureCanvas = this.createTextureCanvas(textureData);
-        this.texture = new THREE.CanvasTexture(this.textureCanvas);
-        this.texture.minFilter = THREE.LinearFilter;
-        this.texture.magFilter = THREE.LinearFilter;
+        this.texture = new CanvasTexture(this.textureCanvas);
+        this.texture.minFilter = LinearFilter;
+        this.texture.magFilter = LinearFilter;
 
         for (const mesh of lod.meshes) {
             const geometry = this.createGeometry(mesh, lod);
@@ -48,19 +52,19 @@ export class WdbModelRenderer extends BaseRenderer {
             const hasTexture = mesh.textureIndices && mesh.textureIndices.length > 0;
 
             if (hasTexture) {
-                const material = new THREE.MeshLambertMaterial({
+                const material = new MeshLambertMaterial({
                     map: this.texture,
-                    side: THREE.DoubleSide
+                    side: DoubleSide
                 });
-                this.texturedMesh = new THREE.Mesh(geometry, material);
+                this.texturedMesh = new Mesh(geometry, material);
                 this.modelGroup.add(this.texturedMesh);
             } else {
                 const color = mesh.properties?.color || { r: 128, g: 128, b: 128 };
-                const material = new THREE.MeshLambertMaterial({
-                    color: new THREE.Color(color.r / 255, color.g / 255, color.b / 255),
-                    side: THREE.DoubleSide
+                const material = new MeshLambertMaterial({
+                    color: new Color(color.r / 255, color.g / 255, color.b / 255),
+                    side: DoubleSide
                 });
-                this.modelGroup.add(new THREE.Mesh(geometry, material));
+                this.modelGroup.add(new Mesh(geometry, material));
             }
         }
 
@@ -99,18 +103,18 @@ export class WdbModelRenderer extends BaseRenderer {
     /**
      * Raycast and return UV coordinates of hit on textured mesh
      * @param {MouseEvent} event - Mouse event
-     * @returns {{ uv: THREE.Vector2, x: number, y: number } | null}
+     * @returns {{ uv: Vector2, x: number, y: number } | null}
      */
     raycastUV(event) {
         if (!this.texturedMesh) return null;
 
         const rect = this.canvas.getBoundingClientRect();
-        const mouse = new THREE.Vector2(
+        const mouse = new Vector2(
             ((event.clientX - rect.left) / rect.width) * 2 - 1,
             -((event.clientY - rect.top) / rect.height) * 2 + 1
         );
 
-        const raycaster = new THREE.Raycaster();
+        const raycaster = new Raycaster();
         raycaster.setFromCamera(mouse, this.camera);
         const intersects = raycaster.intersectObject(this.texturedMesh);
 

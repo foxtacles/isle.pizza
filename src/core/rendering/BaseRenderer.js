@@ -1,4 +1,11 @@
-import * as THREE from 'three';
+import {
+    Scene, PerspectiveCamera, WebGLRenderer,
+    AmbientLight, DirectionalLight,
+    CanvasTexture, Color, MeshLambertMaterial,
+    BufferGeometry, Float32BufferAttribute,
+    Box3, Vector3, Mesh,
+    DoubleSide, NearestFilter, RepeatWrapping
+} from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 /**
@@ -12,14 +19,14 @@ export class BaseRenderer {
         this.modelGroup = null;
         this.textures = new Map();
 
-        this.scene = new THREE.Scene();
+        this.scene = new Scene();
 
-        this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+        this.camera = new PerspectiveCamera(45, 1, 0.1, 100);
 
         const logicalWidth = canvas.width;
         const logicalHeight = canvas.height;
 
-        this.renderer = new THREE.WebGLRenderer({
+        this.renderer = new WebGLRenderer({
             canvas,
             antialias: true,
             alpha: true,
@@ -37,10 +44,10 @@ export class BaseRenderer {
     }
 
     setupLighting() {
-        const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+        const ambient = new AmbientLight(0xffffff, 0.8);
         this.scene.add(ambient);
 
-        const sunLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        const sunLight = new DirectionalLight(0xffffff, 0.6);
         sunLight.position.set(1, 2, 3);
         this.scene.add(sunLight);
     }
@@ -114,11 +121,11 @@ export class BaseRenderer {
         }
         ctx.putImageData(imageData, 0, 0);
 
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.minFilter = THREE.NearestFilter;
-        texture.magFilter = THREE.NearestFilter;
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
+        const texture = new CanvasTexture(canvas);
+        texture.minFilter = NearestFilter;
+        texture.magFilter = NearestFilter;
+        texture.wrapS = RepeatWrapping;
+        texture.wrapT = RepeatWrapping;
         return texture;
     }
 
@@ -141,26 +148,26 @@ export class BaseRenderer {
     /**
      * Create a material for a mesh using its texture or color properties.
      * @param {object} mesh - Mesh with properties (textureName, color)
-     * @param {THREE.Color} [fallbackColor] - Color when mesh has no texture or color
+     * @param {Color} [fallbackColor] - Color when mesh has no texture or color
      */
     createMeshMaterial(mesh, fallbackColor = null) {
         const meshTexName = mesh.properties?.textureName?.toLowerCase();
         if (meshTexName && this.textures.has(meshTexName)) {
-            return new THREE.MeshLambertMaterial({
+            return new MeshLambertMaterial({
                 map: this.textures.get(meshTexName),
-                side: THREE.DoubleSide,
+                side: DoubleSide,
                 color: 0xffffff
             });
         }
 
         const meshColor = mesh.properties?.color;
         const color = meshColor
-            ? new THREE.Color(meshColor.r / 255, meshColor.g / 255, meshColor.b / 255)
-            : (fallbackColor || new THREE.Color(0.5, 0.5, 0.5));
+            ? new Color(meshColor.r / 255, meshColor.g / 255, meshColor.b / 255)
+            : (fallbackColor || new Color(0.5, 0.5, 0.5));
 
-        return new THREE.MeshLambertMaterial({
+        return new MeshLambertMaterial({
             color,
-            side: THREE.DoubleSide
+            side: DoubleSide
         });
     }
 
@@ -222,13 +229,13 @@ export class BaseRenderer {
             indices[i + 2] = temp;
         }
 
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(meshVertices.flat(), 3));
-        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(meshNormals.flat(), 3));
+        const geometry = new BufferGeometry();
+        geometry.setAttribute('position', new Float32BufferAttribute(meshVertices.flat(), 3));
+        geometry.setAttribute('normal', new Float32BufferAttribute(meshNormals.flat(), 3));
         geometry.setIndex(indices);
 
         if (hasTexture && meshUvs.length > 0) {
-            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(meshUvs.flat(), 2));
+            geometry.setAttribute('uv', new Float32BufferAttribute(meshUvs.flat(), 2));
         }
 
         return geometry;
@@ -237,9 +244,9 @@ export class BaseRenderer {
     centerAndScaleModel(scaleFactor) {
         if (!this.modelGroup) return;
 
-        const box = new THREE.Box3().setFromObject(this.modelGroup);
-        const center = box.getCenter(new THREE.Vector3());
-        const size = box.getSize(new THREE.Vector3());
+        const box = new Box3().setFromObject(this.modelGroup);
+        const center = box.getCenter(new Vector3());
+        const size = box.getSize(new Vector3());
 
         const maxDim = Math.max(size.x, size.y, size.z);
         if (maxDim > 0) {
@@ -257,7 +264,7 @@ export class BaseRenderer {
     clearModel() {
         if (this.modelGroup) {
             this.modelGroup.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
+                if (child instanceof Mesh) {
                     child.geometry?.dispose();
                     child.material?.dispose();
                 }

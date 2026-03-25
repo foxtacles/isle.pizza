@@ -1,4 +1,10 @@
-import * as THREE from 'three';
+import {
+    Vector3, Group, Color, MeshLambertMaterial, Mesh,
+    Box3, Vector2, AnimationClip, AnimationMixer,
+    Matrix4, Quaternion, VectorKeyframeTrack,
+    QuaternionKeyframeTrack, BooleanKeyframeTrack,
+    DoubleSide, LoopOnce
+} from 'three';
 import { ActorLODs, ActorLODFlags, ActorInfoInit } from '../savegame/actorConstants.js';
 import { LegoColors } from '../savegame/constants.js';
 import { AnimatedRenderer } from './AnimatedRenderer.js';
@@ -89,7 +95,7 @@ export class ActorRenderer extends AnimatedRenderer {
         this.camera.position.set(2, 0.8, 3.5);
         this.camera.lookAt(0, 0.2, 0);
 
-        this.setupControls(new THREE.Vector3(0, 0.2, 0));
+        this.setupControls(new Vector3(0, 0.2, 0));
         if (this.controls) {
             this.controls.autoRotate = false;
             this._initialAutoRotate = false;
@@ -116,7 +122,7 @@ export class ActorRenderer extends AnimatedRenderer {
         this.loadTextures(globalTextures);
         if (vehicleInfo) this.loadTextures(vehicleTextures, false);
 
-        this.modelGroup = new THREE.Group();
+        this.modelGroup = new Group();
         this.partGroups = [];
         this.vehicleGroup = null;
         this.vehicleInfo = vehicleInfo || null;
@@ -140,7 +146,7 @@ export class ActorRenderer extends AnimatedRenderer {
             const partData = globalPartsMap.get(partName.toLowerCase());
             if (!partData) continue;
 
-            const partGroup = new THREE.Group();
+            const partGroup = new Group();
             partGroup.userData.partIndex = i;
             partGroup.userData.partName = partName;
             partGroup.userData.lodName = actorLOD.name; // for animation matching
@@ -250,7 +256,7 @@ export class ActorRenderer extends AnimatedRenderer {
         if ((useColor || bodyUsesDefaultGeom) && !partTexture) {
             // Resolve LEGO color
             const colorEntry = LegoColors[resolvedName] || LegoColors['lego white'];
-            partColor = new THREE.Color(colorEntry.r / 255, colorEntry.g / 255, colorEntry.b / 255);
+            partColor = new Color(colorEntry.r / 255, colorEntry.g / 255, colorEntry.b / 255);
         }
 
         for (const mesh of lod.meshes) {
@@ -266,31 +272,31 @@ export class ActorRenderer extends AnimatedRenderer {
 
             let material;
             if (partTexture) {
-                material = new THREE.MeshLambertMaterial({
+                material = new MeshLambertMaterial({
                     map: partTexture,
-                    side: THREE.DoubleSide,
+                    side: DoubleSide,
                     color: 0xffffff
                 });
             } else if (meshTexture) {
-                material = new THREE.MeshLambertMaterial({
+                material = new MeshLambertMaterial({
                     map: meshTexture,
-                    side: THREE.DoubleSide,
+                    side: DoubleSide,
                     color: 0xffffff
                 });
             } else if (partColor) {
-                material = new THREE.MeshLambertMaterial({
+                material = new MeshLambertMaterial({
                     color: partColor,
-                    side: THREE.DoubleSide
+                    side: DoubleSide
                 });
             } else {
                 const meshColor = mesh.properties?.color || { r: 128, g: 128, b: 128 };
-                material = new THREE.MeshLambertMaterial({
-                    color: new THREE.Color(meshColor.r / 255, meshColor.g / 255, meshColor.b / 255),
-                    side: THREE.DoubleSide
+                material = new MeshLambertMaterial({
+                    color: new Color(meshColor.r / 255, meshColor.g / 255, meshColor.b / 255),
+                    side: DoubleSide
                 });
             }
 
-            const threeMesh = new THREE.Mesh(geometry, material);
+            const threeMesh = new Mesh(geometry, material);
             group.add(threeMesh);
         }
     }
@@ -303,7 +309,7 @@ export class ActorRenderer extends AnimatedRenderer {
         const rois = vehiclePartsMap.get(vehicleInfo.vehicleModel.toLowerCase());
         if (!rois || rois.length === 0) return;
 
-        this.vehicleGroup = new THREE.Group();
+        this.vehicleGroup = new Group();
         this.vehicleGroup.name = `vehicle_${vehicleInfo.vehicleModel}`;
 
         for (const roi of rois) {
@@ -314,7 +320,7 @@ export class ActorRenderer extends AnimatedRenderer {
             for (const mesh of lod.meshes) {
                 const geometry = this.createGeometry(mesh, lod);
                 if (!geometry) continue;
-                this.vehicleGroup.add(new THREE.Mesh(geometry, this.createMeshMaterial(mesh)));
+                this.vehicleGroup.add(new Mesh(geometry, this.createMeshMaterial(mesh)));
             }
         }
 
@@ -328,7 +334,7 @@ export class ActorRenderer extends AnimatedRenderer {
     centerAndScaleModel(scaleFactor) {
         if (!this.modelGroup) return;
 
-        const box = new THREE.Box3();
+        const box = new Box3();
         for (let i = 0; i < this.partGroups.length; i++) {
             if (i === 1 || !this.partGroups[i]) continue; // skip hat
             box.expandByObject(this.partGroups[i]);
@@ -342,8 +348,8 @@ export class ActorRenderer extends AnimatedRenderer {
             return;
         }
 
-        const center = box.getCenter(new THREE.Vector3());
-        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new Vector3());
+        const size = box.getSize(new Vector3());
 
         const maxDim = Math.max(size.x, size.y, size.z);
         if (maxDim > 0) {
@@ -374,7 +380,7 @@ export class ActorRenderer extends AnimatedRenderer {
         if (!this.modelGroup) return -1;
 
         const rect = this.canvas.getBoundingClientRect();
-        const mouse = new THREE.Vector2(
+        const mouse = new Vector2(
             ((mouseEvent.clientX - rect.left) / rect.width) * 2 - 1,
             -((mouseEvent.clientY - rect.top) / rect.height) * 2 + 1
         );
@@ -387,7 +393,7 @@ export class ActorRenderer extends AnimatedRenderer {
 
             const meshes = [];
             partGroup.traverse((child) => {
-                if (child instanceof THREE.Mesh) meshes.push(child);
+                if (child instanceof Mesh) meshes.push(child);
             });
 
             const intersects = this.raycaster.intersectObjects(meshes);
@@ -475,8 +481,8 @@ export class ActorRenderer extends AnimatedRenderer {
             const tracks = this.buildHierarchicalTracks(animData, nodeToPartGroup);
             if (tracks.length === 0) return;
 
-            const clip = new THREE.AnimationClip('walk', -1, tracks);
-            this.mixer = new THREE.AnimationMixer(this.modelGroup);
+            const clip = new AnimationClip('walk', -1, tracks);
+            this.mixer = new AnimationMixer(this.modelGroup);
             this.currentAction = this.mixer.clipAction(clip);
             this.currentAction.play();
         } catch (e) {
@@ -553,10 +559,10 @@ export class ActorRenderer extends AnimatedRenderer {
                 return;
             }
 
-            const clip = new THREE.AnimationClip('click', -1, tracks);
-            this.mixer = new THREE.AnimationMixer(this.modelGroup);
+            const clip = new AnimationClip('click', -1, tracks);
+            this.mixer = new AnimationMixer(this.modelGroup);
             const action = this.mixer.clipAction(clip);
-            action.setLoop(THREE.LoopOnce);
+            action.setLoop(LoopOnce);
             action.clampWhenFinished = true;
             this.currentAction = action;
             action.play();
@@ -587,7 +593,7 @@ export class ActorRenderer extends AnimatedRenderer {
 
         // For each time, evaluate the full tree and store world-space transforms
         const valueMap = new Map();
-        const identity = new THREE.Matrix4();
+        const identity = new Matrix4();
 
         for (const time of times) {
             this.evaluateNode(animData.rootNode, time, identity, nodeToPartGroup, valueMap, true);
@@ -598,11 +604,11 @@ export class ActorRenderer extends AnimatedRenderer {
         const tracks = [];
         for (const [name, values] of valueMap) {
             if (name.endsWith('.position')) {
-                tracks.push(new THREE.VectorKeyframeTrack(name, timesSec, values));
+                tracks.push(new VectorKeyframeTrack(name, timesSec, values));
             } else if (name.endsWith('.quaternion')) {
-                tracks.push(new THREE.QuaternionKeyframeTrack(name, timesSec, values));
+                tracks.push(new QuaternionKeyframeTrack(name, timesSec, values));
             } else if (name.endsWith('.visible')) {
-                tracks.push(new THREE.BooleanKeyframeTrack(name, timesSec, values));
+                tracks.push(new BooleanKeyframeTrack(name, timesSec, values));
             }
         }
         return tracks;
@@ -616,7 +622,7 @@ export class ActorRenderer extends AnimatedRenderer {
      */
     evaluateNode(node, time, parentMatrix, nodeToPartGroup, valueMap, isRoot = false) {
         const data = node.data;
-        let mat = new THREE.Matrix4();
+        let mat = new Matrix4();
 
         // Strip XZ translation on the actor root to keep the actor in place (treadmill fix).
         // Walking anims: the root node IS the actor (named "pepper", "mama", "actor_01", etc.)
@@ -660,9 +666,9 @@ export class ActorRenderer extends AnimatedRenderer {
         if (nodeName) {
             const partGroup = nodeToPartGroup.get(nodeName);
             if (partGroup) {
-                const position = new THREE.Vector3();
-                const quaternion = new THREE.Quaternion();
-                const scale = new THREE.Vector3();
+                const position = new Vector3();
+                const quaternion = new Quaternion();
+                const scale = new Vector3();
                 mat.decompose(position, quaternion, scale);
 
                 if (Math.abs(scale.x) < 1e-8 || Math.abs(scale.y) < 1e-8 || Math.abs(scale.z) < 1e-8) {

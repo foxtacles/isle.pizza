@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { Vector3, Group, Color, Mesh } from 'three';
 import { PlantLodNames } from '../savegame/plantConstants.js';
 import { LegoColors } from '../savegame/constants.js';
 import { AnimatedRenderer } from './AnimatedRenderer.js';
@@ -23,7 +23,7 @@ export class PlantRenderer extends AnimatedRenderer {
         this.camera.position.set(1.5, 1.2, 2.5);
         this.camera.lookAt(0, 0.2, 0);
 
-        this.setupControls(new THREE.Vector3(0, 0.2, 0));
+        this.setupControls(new Vector3(0, 0.2, 0));
     }
 
     /**
@@ -44,20 +44,20 @@ export class PlantRenderer extends AnimatedRenderer {
 
         this.loadTextures(textures);
 
-        this.modelGroup = new THREE.Group();
+        this.modelGroup = new Group();
 
         const lods = partData.lods || [];
         if (lods.length === 0) return;
 
         const colorName = PLANT_COLOR_MAP[color] || 'lego green';
         const colorEntry = LegoColors[colorName] || LegoColors['lego green'];
-        const fallbackColor = new THREE.Color(colorEntry.r / 255, colorEntry.g / 255, colorEntry.b / 255);
+        const fallbackColor = new Color(colorEntry.r / 255, colorEntry.g / 255, colorEntry.b / 255);
 
         const lod = lods[lods.length - 1]; // Highest quality
         for (const mesh of lod.meshes) {
             const geometry = this.createGeometry(mesh, lod);
             if (!geometry) continue;
-            this.modelGroup.add(new THREE.Mesh(geometry, this.createMeshMaterial(mesh, fallbackColor)));
+            this.modelGroup.add(new Mesh(geometry, this.createMeshMaterial(mesh, fallbackColor)));
         }
 
         this.centerAndScaleModel(VARIANT_SCALE[variant] ?? 2.0);
