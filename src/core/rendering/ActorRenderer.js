@@ -206,34 +206,14 @@ export class ActorRenderer extends AnimatedRenderer {
 
             let program;
             if (partTexture) {
-                program = this._createLambertProgram({
-                    tMap: { value: partTexture },
-                    uUseTexture: { value: 1 },
-                    uColor: { value: [1, 1, 1] },
-                    uOpacity: { value: 1 },
-                });
+                program = this.createTexturedProgram(partTexture);
             } else if (meshTexture) {
-                program = this._createLambertProgram({
-                    tMap: { value: meshTexture },
-                    uUseTexture: { value: 1 },
-                    uColor: { value: [1, 1, 1] },
-                    uOpacity: { value: 1 },
-                });
+                program = this.createTexturedProgram(meshTexture);
             } else if (partColor) {
-                program = this._createLambertProgram({
-                    tMap: { value: this._emptyTexture() },
-                    uUseTexture: { value: 0 },
-                    uColor: { value: partColor },
-                    uOpacity: { value: 1 },
-                });
+                program = this.createColoredProgram(partColor);
             } else {
                 const meshColor = mesh.properties?.color || { r: 128, g: 128, b: 128 };
-                program = this._createLambertProgram({
-                    tMap: { value: this._emptyTexture() },
-                    uUseTexture: { value: 0 },
-                    uColor: { value: [meshColor.r / 255, meshColor.g / 255, meshColor.b / 255] },
-                    uOpacity: { value: 1 },
-                });
+                program = this.createColoredProgram([meshColor.r / 255, meshColor.g / 255, meshColor.b / 255]);
             }
 
             const oglMesh = new Mesh(this.gl, { geometry, program });
@@ -277,11 +257,11 @@ export class ActorRenderer extends AnimatedRenderer {
 
         for (let i = 0; i < this.partGroups.length; i++) {
             if (i === 1 || !this.partGroups[i]) continue; // skip hat
-            this._expandBounds(this.partGroups[i], min, max);
+            this.expandBounds(this.partGroups[i], min, max);
             hasData = true;
         }
         if (this.vehicleGroup) {
-            this._expandBounds(this.vehicleGroup, min, max);
+            this.expandBounds(this.vehicleGroup, min, max);
             hasData = true;
         }
 
@@ -313,31 +293,6 @@ export class ActorRenderer extends AnimatedRenderer {
         } else {
             this.modelGroup.position.set(-center[0], -center[1], -center[2]);
         }
-    }
-
-    _expandBounds(transform, min, max) {
-        transform.traverse((node) => {
-            if (!(node instanceof Mesh) || !node.geometry) return;
-            const posAttr = node.geometry.attributes.position;
-            if (!posAttr) return;
-
-            const data = posAttr.data;
-            const wm = node.worldMatrix;
-
-            for (let i = 0; i < data.length; i += 3) {
-                const x = data[i], y = data[i + 1], z = data[i + 2];
-                const wx = wm[0] * x + wm[4] * y + wm[8] * z + wm[12];
-                const wy = wm[1] * x + wm[5] * y + wm[9] * z + wm[13];
-                const wz = wm[2] * x + wm[6] * y + wm[10] * z + wm[14];
-
-                if (wx < min[0]) min[0] = wx;
-                if (wy < min[1]) min[1] = wy;
-                if (wz < min[2]) min[2] = wz;
-                if (wx > max[0]) max[0] = wx;
-                if (wy > max[1]) max[1] = wy;
-                if (wz > max[2]) max[2] = wz;
-            }
-        });
     }
 
     applyPartTransform(group, actorLOD) {

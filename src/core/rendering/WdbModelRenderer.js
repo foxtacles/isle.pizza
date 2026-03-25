@@ -50,22 +50,12 @@ export class WdbModelRenderer extends BaseRenderer {
             const hasTexture = mesh.textureIndices && mesh.textureIndices.length > 0;
 
             if (hasTexture) {
-                const program = this._createLambertProgram({
-                    tMap: { value: this.texture },
-                    uUseTexture: { value: 1 },
-                    uColor: { value: [1, 1, 1] },
-                    uOpacity: { value: 1 },
-                });
+                const program = this.createTexturedProgram(this.texture);
                 this.texturedMesh = new Mesh(this.gl, { geometry, program });
                 this.modelGroup.addChild(this.texturedMesh);
             } else {
                 const color = mesh.properties?.color || { r: 128, g: 128, b: 128 };
-                const program = this._createLambertProgram({
-                    tMap: { value: this._emptyTexture() },
-                    uUseTexture: { value: 0 },
-                    uColor: { value: [color.r / 255, color.g / 255, color.b / 255] },
-                    uOpacity: { value: 1 },
-                });
+                const program = this.createColoredProgram([color.r / 255, color.g / 255, color.b / 255]);
                 this.modelGroup.addChild(new Mesh(this.gl, { geometry, program }));
             }
         }
@@ -119,7 +109,4 @@ export class WdbModelRenderer extends BaseRenderer {
         return null;
     }
 
-    dispose() {
-        super.dispose();
-    }
 }

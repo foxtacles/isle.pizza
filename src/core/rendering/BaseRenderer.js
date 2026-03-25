@@ -57,6 +57,11 @@ export class BaseRenderer {
         });
 
         // Wrap with mutable autoRotate
+        // Pre-allocate temporaries for the auto-rotate update to avoid per-frame GC
+        const _rotAxis = new Vec3(0, 1, 0);
+        const _rotQuat = new Quat();
+        const _rotOffset = new Vec3();
+
         this.controls = {
             target: this._orbit.target,
             autoRotate: true,
@@ -65,12 +70,11 @@ export class BaseRenderer {
             remove: () => this._orbit.remove(),
             update: () => {
                 if (this.controls.autoRotate) {
-                    // Rotate camera around target by a small angle per frame
                     const angle = ((2 * Math.PI) / 60 / 60) * this.controls.autoRotateSpeed;
-                    const q = new Quat().fromAxisAngle(new Vec3(0, 1, 0), -angle);
-                    const offset = new Vec3().copy(this.camera.position).sub(this.controls.target);
-                    offset.applyQuaternion(q);
-                    this.camera.position.copy(this.controls.target).add(offset);
+                    _rotQuat.fromAxisAngle(_rotAxis, -angle);
+                    _rotOffset.copy(this.camera.position).sub(this.controls.target);
+                    _rotOffset.applyQuaternion(_rotQuat);
+                    this.camera.position.copy(this.controls.target).add(_rotOffset);
                     this._orbit.forcePosition();
                 }
                 this._orbit.update();
@@ -169,12 +173,7 @@ export class BaseRenderer {
     createMeshProgram(mesh, fallbackColor = null) {
         const meshTexName = mesh.properties?.textureName?.toLowerCase();
         if (meshTexName && this.textures.has(meshTexName)) {
-            return this._createLambertProgram({
-                tMap: { value: this.textures.get(meshTexName) },
-                uUseTexture: { value: 1 },
-                uColor: { value: [1, 1, 1] },
-                uOpacity: { value: 1 },
-            });
+            return this.createTexturedProgram(this.textures.get(meshTexName));
         }
 
         const meshColor = mesh.properties?.color;
@@ -182,12 +181,37 @@ export class BaseRenderer {
             ? [meshColor.r / 255, meshColor.g / 255, meshColor.b / 255]
             : (fallbackColor || [0.5, 0.5, 0.5]);
 
+        return this.createColoredProgram(color);
+    }
+
+    /**
+     * Create a Lambert program with a texture map.
+     * @param {Texture} texture - OGL Texture to use
+     * @param {number} [opacity=1]
+     * @param {object} [opts] - Extra Program options (e.g. transparent, depthWrite)
+     */
+    createTexturedProgram(texture, opacity = 1, opts = {}) {
+        return this._createLambertProgram({
+            tMap: { value: texture },
+            uUseTexture: { value: 1 },
+            uColor: { value: [1, 1, 1] },
+            uOpacity: { value: opacity },
+        }, opts);
+    }
+
+    /**
+     * Create a Lambert program with a solid color.
+     * @param {number[]} color - [r, g, b] normalized
+     * @param {number} [opacity=1]
+     * @param {object} [opts] - Extra Program options
+     */
+    createColoredProgram(color, opacity = 1, opts = {}) {
         return this._createLambertProgram({
             tMap: { value: this._emptyTexture() },
             uUseTexture: { value: 0 },
             uColor: { value: color },
-            uOpacity: { value: 1 },
-        });
+            uOpacity: { value: opacity },
+        }, opts);
     }
 
     /**
@@ -245,12 +269,13 @@ export class BaseRenderer {
         const meshNormals = [];
         const meshUvs = [];
         const indices = [];
+        let vertexCount = 0;
 
         for (let i = 0; i < vertexIndicesPacked.length; i++) {
             const packed = vertexIndicesPacked[i];
 
             if ((packed & 0x80000000) !== 0) {
-                indices.push(meshVertices.length);
+                indices.push(vertexCount++);
 
                 const gv = packed & 0xFFFF;
                 const v = lod.vertices[gv] || { x: 0, y: 0, z: 0 };
@@ -291,16 +316,10 @@ export class BaseRenderer {
     }
 
     /**
-     * Compute axis-aligned bounding box of a Transform hierarchy.
-     * Returns { min: Vec3, max: Vec3, center: Vec3, size: Vec3 }.
+     * Expand axis-aligned bounding box with vertices from a Transform hierarchy.
+     * Vertices are transformed to world space before comparison.
      */
-    computeBoundingBox(transform) {
-        const min = new Vec3(Infinity, Infinity, Infinity);
-        const max = new Vec3(-Infinity, -Infinity, -Infinity);
-
-        // Ensure world matrices are up to date
-        transform.updateMatrixWorld(true);
-
+    expandBounds(transform, min, max) {
         transform.traverse((node) => {
             if (!(node instanceof Mesh) || !node.geometry) return;
             const posAttr = node.geometry.attributes.position;
@@ -310,7 +329,6 @@ export class BaseRenderer {
             const wm = node.worldMatrix;
 
             for (let i = 0; i < data.length; i += 3) {
-                // Transform vertex to world space
                 const x = data[i], y = data[i + 1], z = data[i + 2];
                 const wx = wm[0] * x + wm[4] * y + wm[8] * z + wm[12];
                 const wy = wm[1] * x + wm[5] * y + wm[9] * z + wm[13];
@@ -324,6 +342,18 @@ export class BaseRenderer {
                 if (wz > max[2]) max[2] = wz;
             }
         });
+    }
+
+    /**
+     * Compute axis-aligned bounding box of a Transform hierarchy.
+     * Returns { min: Vec3, max: Vec3, center: Vec3, size: Vec3 }.
+     */
+    computeBoundingBox(transform) {
+        const min = new Vec3(Infinity, Infinity, Infinity);
+        const max = new Vec3(-Infinity, -Infinity, -Infinity);
+
+        transform.updateMatrixWorld(true);
+        this.expandBounds(transform, min, max);
 
         const center = new Vec3(
             (min[0] + max[0]) / 2,

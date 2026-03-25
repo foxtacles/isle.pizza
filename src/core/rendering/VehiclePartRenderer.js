@@ -64,40 +64,21 @@ export class VehiclePartRenderer extends BaseRenderer {
                 const isTransparent = meshAlpha > 0;
                 const opacity = isTransparent ? meshAlpha : 1;
 
+                const transparencyOpts = {
+                    transparent: isTransparent,
+                    depthWrite: !isTransparent,
+                };
+
                 let program;
 
                 if (isColorable) {
-                    program = this._createLambertProgram({
-                        tMap: { value: this._emptyTexture() },
-                        uUseTexture: { value: 0 },
-                        uColor: { value: [...legoColor] },
-                        uOpacity: { value: opacity },
-                    }, {
-                        transparent: isTransparent,
-                        depthWrite: !isTransparent,
-                    });
+                    program = this.createColoredProgram([...legoColor], opacity, transparencyOpts);
                     this.colorableMeshes.push(null);
                 } else if (hasUVs && meshTextureName && this.textures.has(meshTextureName)) {
-                    program = this._createLambertProgram({
-                        tMap: { value: this.textures.get(meshTextureName) },
-                        uUseTexture: { value: 1 },
-                        uColor: { value: [1, 1, 1] },
-                        uOpacity: { value: opacity },
-                    }, {
-                        transparent: isTransparent,
-                        depthWrite: !isTransparent,
-                    });
+                    program = this.createTexturedProgram(this.textures.get(meshTextureName), opacity, transparencyOpts);
                 } else {
                     const meshColor = mesh.properties?.color || { r: 128, g: 128, b: 128 };
-                    program = this._createLambertProgram({
-                        tMap: { value: this._emptyTexture() },
-                        uUseTexture: { value: 0 },
-                        uColor: { value: [meshColor.r / 255, meshColor.g / 255, meshColor.b / 255] },
-                        uOpacity: { value: opacity },
-                    }, {
-                        transparent: isTransparent,
-                        depthWrite: !isTransparent,
-                    });
+                    program = this.createColoredProgram([meshColor.r / 255, meshColor.g / 255, meshColor.b / 255], opacity, transparencyOpts);
                 }
 
                 const oglMesh = new Mesh(this.gl, { geometry, program });
