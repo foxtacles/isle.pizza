@@ -86,6 +86,16 @@
         ? null : $animationState?.currentAnimIndex ?? null;
     $: animPendingInterest = $animationState?.pendingInterest ?? -1;
 
+    // Browsers only synthesize `click` for the primary pointer.  When the user
+    // is already walking (first finger on the canvas) a second touch creates a
+    // non-primary pointer that gets pointerdown/pointerup but never click.
+    // Synthesize the missing click so every <button> in the overlay responds.
+    function handleMultiTouch(e) {
+        if (e.isPrimary || e.pointerType !== 'touch') return;
+        const btn = e.target.closest('button:not(:disabled)');
+        if (btn) btn.click();
+    }
+
     function refocusCanvas() {
         document.getElementById('canvas')?.focus();
     }
@@ -143,7 +153,8 @@
 </script>
 
 {#if $gameRunning && $multiplayerRoom}
-    <div use:keepVisible>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div use:keepVisible onpointerdown={handleMultiTouch}>
         {#if isDesktop}
             <!-- Desktop: hotbar always in DOM so it can animate in/out -->
             <MultiplayerHotbar
