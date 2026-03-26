@@ -40,7 +40,7 @@ export class WdbModelRenderer extends BaseRenderer {
             minFilter: this.gl.LINEAR,
             magFilter: this.gl.LINEAR,
             generateMipmaps: false,
-            flipY: false,
+            flipY: true,
         });
 
         for (const mesh of lod.meshes) {
@@ -83,6 +83,14 @@ export class WdbModelRenderer extends BaseRenderer {
 
         this.baseImageData = ctx.getImageData(0, 0, textureData.width, textureData.height);
         return canvas;
+    }
+
+    dispose() {
+        if (this.texture) {
+            this.gl.deleteTexture(this.texture.texture);
+            this.texture = null;
+        }
+        super.dispose();
     }
 
     raycastUV(event) {

@@ -225,6 +225,9 @@ export class SimpleAnimationMixer {
         const p = target[prop];
         if (size === 1) {
             target[prop] = values[offset];
+        } else if (type === 'quaternion' && p && p.set) {
+            // Set all components atomically to avoid OGL Quat proxy corruption
+            p.set(values[offset], values[offset + 1], values[offset + 2], values[offset + 3]);
         } else if (p && p.length !== undefined) {
             for (let i = 0; i < size; i++) p[i] = values[offset + i];
         }
@@ -256,10 +259,15 @@ export class SimpleAnimationMixer {
             s1 = t;
         }
 
-        q[0] = s0 * ax + s1 * bx;
-        q[1] = s0 * ay + s1 * by;
-        q[2] = s0 * az + s1 * bz;
-        q[3] = s0 * aw + s1 * bw;
+        // Set all components atomically to avoid OGL Quat proxy corruption.
+        // Setting q[0], q[1], ... individually triggers onChange per component,
+        // which round-trips through euler conversion and overwrites the quaternion.
+        q.set(
+            s0 * ax + s1 * bx,
+            s0 * ay + s1 * by,
+            s0 * az + s1 * bz,
+            s0 * aw + s1 * bw,
+        );
     }
 
     _lerpVector(target, prop, values, i0, i1, t, size) {

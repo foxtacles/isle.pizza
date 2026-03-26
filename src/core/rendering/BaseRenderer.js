@@ -22,8 +22,8 @@ export class BaseRenderer {
             antialias: true,
             alpha: true,
             dpr,
-            width: canvas.width / dpr,
-            height: canvas.height / dpr,
+            width: canvas.width,
+            height: canvas.height,
             ...rendererOptions
         });
         this.gl = this.glRenderer.gl;
@@ -145,7 +145,7 @@ export class BaseRenderer {
             wrapS: this.gl.REPEAT,
             wrapT: this.gl.REPEAT,
             generateMipmaps: false,
-            flipY: false,
+            flipY: true,
         });
         return texture;
     }
@@ -310,6 +310,9 @@ export class BaseRenderer {
 
         if (hasTexture && meshUvs.length > 0) {
             attrs.uv = { size: 2, data: new Float32Array(meshUvs) };
+        } else {
+            // OGL requires all shader attributes present; provide zeroed UVs
+            attrs.uv = { size: 2, data: new Float32Array(vertexCount * 2) };
         }
 
         return new Geometry(this.gl, attrs);
@@ -389,10 +392,17 @@ export class BaseRenderer {
 
     clearModel() {
         if (this.modelGroup) {
+            this.modelGroup.traverse((child) => {
+                if (child.geometry) child.geometry.remove();
+                if (child.program) child.program.remove();
+            });
             this.scene.removeChild(this.modelGroup);
             this.modelGroup = null;
         }
 
+        for (const texture of this.textures.values()) {
+            this.gl.deleteTexture(texture.texture);
+        }
         this.textures.clear();
     }
 
@@ -434,5 +444,9 @@ export class BaseRenderer {
             this.canvas.removeEventListener('pointermove', this._onPointerMove);
         }
         this.clearModel();
+        if (this._emptyTextureCache) {
+            this.gl.deleteTexture(this._emptyTextureCache.texture);
+            this._emptyTextureCache = null;
+        }
     }
 }

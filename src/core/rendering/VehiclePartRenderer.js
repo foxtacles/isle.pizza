@@ -101,8 +101,15 @@ export class VehiclePartRenderer extends BaseRenderer {
     updateTexture(textureName, textureData) {
         if (!this.modelGroup) return;
 
-        const newTexture = this.createTexture(textureData);
         const targetName = textureName.toLowerCase();
+        const newTexture = this.createTexture(textureData);
+
+        // Clean up old texture if it exists
+        const oldTexture = this.textures.get(targetName);
+        if (oldTexture) {
+            this.gl.deleteTexture(oldTexture.texture);
+        }
+        this.textures.set(targetName, newTexture);
 
         this.modelGroup.traverse((child) => {
             if (!(child instanceof Mesh)) return;
