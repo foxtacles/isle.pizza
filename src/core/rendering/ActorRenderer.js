@@ -311,6 +311,9 @@ export class ActorRenderer extends AnimatedRenderer {
 
         this.raycaster.castMouse(this.camera, mouse);
 
+        let closestPart = -1;
+        let closestDistance = Infinity;
+
         for (let i = 0; i < this.partGroups.length; i++) {
             const partGroup = this.partGroups[i];
             if (!partGroup) continue;
@@ -321,10 +324,13 @@ export class ActorRenderer extends AnimatedRenderer {
             });
 
             const hits = this.raycaster.intersectMeshes(meshes, { cullFace: false });
-            if (hits.length > 0) return i;
+            if (hits.length > 0 && hits[0].hit.distance < closestDistance) {
+                closestDistance = hits[0].hit.distance;
+                closestPart = i;
+            }
         }
 
-        return -1;
+        return closestPart;
     }
 
     // ─── Animation System ────────────────────────────────────────────
