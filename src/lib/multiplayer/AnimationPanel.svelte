@@ -62,11 +62,17 @@
 
     function formatWaiting(anim) {
         const unfilled = anim.slots.filter(s => !s.filled);
-        if (unfilled.length !== 1) return `Waiting for ${unfilled.length} more...`;
-        const slot = unfilled[0];
-        if (slot.names.length === 1 && slot.names[0] === 'any') return 'Waiting for another player...';
-        const displayNames = slot.names.map(n => CharacterNameMap[n] || n);
-        return `Waiting for ${displayNames.join(' or ')}...`;
+        const parts = [];
+        let anyCount = 0;
+        for (const slot of unfilled) {
+            if (slot.names.length === 1 && slot.names[0] === 'any') {
+                anyCount++;
+            } else {
+                parts.push(slot.names.map(n => CharacterNameMap[n] || n).join(' or '));
+            }
+        }
+        if (anyCount) parts.push(anyCount === 1 ? '1 more player' : `${anyCount} more players`);
+        return `Waiting for ${parts.join(', ')}...`;
     }
 
     function isInterested(anim) {
