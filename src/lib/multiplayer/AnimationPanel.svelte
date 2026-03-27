@@ -60,6 +60,15 @@
         return named.join(', ');
     }
 
+    function formatWaiting(anim) {
+        const unfilled = anim.slots.filter(s => !s.filled);
+        if (unfilled.length !== 1) return `Waiting for ${unfilled.length} more...`;
+        const slot = unfilled[0];
+        if (slot.names.length === 1 && slot.names[0] === 'any') return 'Waiting for another player...';
+        const displayNames = slot.names.map(n => CharacterNameMap[n] || n);
+        return `Waiting for ${displayNames.join(' or ')}...`;
+    }
+
     function isInterested(anim) {
         return currentInterest === anim.animIndex || pendingInterest === anim.animIndex;
     }
@@ -101,8 +110,8 @@
                 disabled={isClickDisabled(anim)}
                 onclick={() => handleClick(anim)}>
                 <div class="row-left">
-                    <span class="anim-name">
-                        {AnimationTitles[anim.objectId] || anim.name}
+                    <span class="anim-name-row">
+                        <span class="anim-name">{AnimationTitles[anim.objectId] || anim.name}</span>
                         {#if $memoryUnlocks.has(anim.objectId)}<span class="unlocked-mark" title="Memory unlocked">&#10003;</span>{/if}
                     </span>
                     {#if anim.sessionState === 3 && anim.localInSession}
@@ -110,8 +119,7 @@
                     {:else if anim.sessionState === 2 && anim.localInSession}
                         <span class="anim-sub countdown-text">Starting...</span>
                     {:else if anim.sessionState === 1 && anim.localInSession}
-                        {@const needed = missingCount(anim)}
-                        <span class="anim-sub gathering-text">Waiting for {needed} more...</span>
+                        <span class="anim-sub gathering-text">{formatWaiting(anim)}</span>
                     {:else if anim.sessionState >= 1 && !anim.canJoin}
                         <span class="anim-sub full-text">Roles filled</span>
                     {:else if anim.sessionState >= 1 && anim.canJoin}
@@ -138,10 +146,14 @@
     .anim-panel {
         width: 300px;
         font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
     }
 
     .anim-list {
-        max-height: 240px;
+        flex: 1;
         overflow-y: auto;
         overscroll-behavior: contain;
         touch-action: pan-y;
@@ -234,6 +246,12 @@
         flex: 1;
     }
 
+    .anim-name-row {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+    }
+
     .anim-name {
         font-size: 12px;
         font-weight: 600;
@@ -241,12 +259,14 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        min-width: 0;
     }
 
     .unlocked-mark {
         color: rgba(76, 175, 80, 0.7);
         font-size: 10px;
         margin-left: 4px;
+        flex-shrink: 0;
     }
 
     .anim-sub {

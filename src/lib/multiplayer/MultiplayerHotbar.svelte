@@ -30,9 +30,27 @@
     export let onToggleInterest = () => {};
     export let animActivity = null;
     export let animsDisabled = false;
+    export let canFastJoin = false;
+    export let onFastJoin = () => {};
+
+    function handleFastJoinClick(e) {
+        e.stopPropagation();
+        onFastJoin();
+    }
 
     let animTab = 'scene';
     let filteredAnims = [];
+    let showLegend = false;
+
+    function toggleLegend() {
+        showLegend = !showLegend;
+        if (!showLegend) {
+            localStorage.setItem('mp_anim_legend_seen', '1');
+        }
+    }
+
+    // Auto-show legend on first open
+    let legendChecked = false;
 
     // Disable hotbar interactions during countdown and playback
     $: animLocked = animations.some(a => (a.sessionState === 2 || a.sessionState === 3) && a.localInSession);
@@ -89,6 +107,12 @@
         if (activePopover === name) { activePopover = null; resetHideTimer(); }
         else {
             activePopover = name; keepAlive();
+            if (name === 'anims' && !legendChecked) {
+                legendChecked = true;
+                if (!localStorage.getItem('mp_anim_legend_seen')) {
+                    showLegend = true;
+                }
+            }
         }
     }
 
@@ -128,12 +152,12 @@
 
             <div class="indicator-wrapper" bind:this={triggerEls.anims}>
                 <button class="indicator-btn"
-                    class:active={activePopover === 'anims'}
-                    class:activity-available={!activePopover && !animsDisabled && animActivity === 'available'}
-                    class:activity-joinable={!activePopover && !animsDisabled && animActivity === 'joinable'}
-                    class:activity-gathering={!activePopover && !animsDisabled && animActivity === 'gathering'}
-                    class:activity-countdown={!activePopover && !animsDisabled && animActivity === 'countdown'}
-                    class:activity-playing={!activePopover && !animsDisabled && animActivity === 'playing'}
+                    class:active={activePopover === 'anims' && !animActivity}
+                    class:activity-available={!animsDisabled && animActivity === 'available'}
+                    class:activity-joinable={!animsDisabled && animActivity === 'joinable'}
+                    class:activity-gathering={!animsDisabled && animActivity === 'gathering'}
+                    class:activity-countdown={!animsDisabled && animActivity === 'countdown'}
+                    class:activity-playing={!animsDisabled && animActivity === 'playing'}
                     class:bounce={animBounce}
                     class:anims-disabled={animsDisabled}
                     disabled={animsDisabled}
@@ -142,10 +166,15 @@
                     <span class="indicator-emoji">&#x1F3AC;</span>
                     <span class="indicator-caret">&#x25BE;</span>
                 </button>
+                {#if canFastJoin}
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                    <span class="join-chip" onclick={handleFastJoinClick}>Join</span>
+                {/if}
                 <HotbarPopover open={activePopover === 'anims'} triggerEl={triggerEls.anims}
                     onClose={closePopover} align="start">
                     <div class="popover-anims">
-                        <AnimationTabs {animations} bind:animTab onFilteredChange={(a) => filteredAnims = a}>
+                        <AnimationTabs {animations} bind:animTab onFilteredChange={(a) => filteredAnims = a}
+                            {showLegend} onToggleLegend={toggleLegend}>
                             {#key animTab}
                                 <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} />
                             {/key}
@@ -288,12 +317,35 @@
     .player-count.bump { animation: badge-bump 0.4s ease; }
     @keyframes badge-bump { 0% { transform: scale(1); } 40% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
+    .join-chip {
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 1px 7px;
+        border-radius: 7px;
+        background: rgba(100, 181, 246, 0.9);
+        color: #000;
+        font-size: 9px;
+        font-weight: 700;
+        line-height: 1.2;
+        white-space: nowrap;
+        pointer-events: auto;
+        animation: join-chip-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes join-chip-pulse {
+        0%, 100% { background: rgba(100, 181, 246, 0.85); }
+        50% { background: rgba(100, 181, 246, 1); }
+    }
+
     .popover-grid { width: 200px; }
     .popover-settings { width: 220px; }
 
     /* === Animations tabbed popover === */
     .popover-anims {
         width: 300px;
+        height: 260px;
         display: flex;
         flex-direction: column;
     }

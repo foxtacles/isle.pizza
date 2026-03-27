@@ -8,11 +8,18 @@
     export let connectionFailed = false;
     export let active;
     export let onclick;
+    export let canFastJoin = false;
+    export let onFastJoin = () => {};
 
     $: title = reconnecting ? 'Reconnecting...'
              : connectionFailed ? 'Disconnected'
              : disabled ? 'Multiplayer (enter Isle world to use)'
              : 'Multiplayer';
+
+    function handleJoinClick(e) {
+        e.stopPropagation();
+        onFastJoin();
+    }
 </script>
 
 <button class="fab" class:active class:disabled class:reconnecting class:failed={connectionFailed}
@@ -27,6 +34,10 @@
     {/if}
     {#if playerCount != null && !reconnecting && !connectionFailed}
         <span class="badge" class:bump={badgeBump}>{playerCount}</span>
+    {/if}
+    {#if canFastJoin}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <span class="join-badge" onclick={handleJoinClick}>Join</span>
     {/if}
 </button>
 
@@ -148,5 +159,27 @@
         0% { transform: scale(1); }
         40% { transform: scale(1.2); }
         100% { transform: scale(1); }
+    }
+
+    .join-badge {
+        position: absolute;
+        bottom: -6px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 2px 8px;
+        border-radius: 8px;
+        background: rgba(100, 181, 246, 0.9);
+        color: #000;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1;
+        white-space: nowrap;
+        pointer-events: auto;
+        animation: join-badge-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes join-badge-pulse {
+        0%, 100% { background: rgba(100, 181, 246, 0.85); }
+        50% { background: rgba(100, 181, 246, 1); }
     }
 </style>

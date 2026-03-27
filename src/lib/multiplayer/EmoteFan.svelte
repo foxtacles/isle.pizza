@@ -33,6 +33,15 @@
     let animTab = 'scene';
     let actsListEl;
     let filteredAnims = [];
+    let showLegend = false;
+    let legendChecked = false;
+
+    function toggleLegend() {
+        showLegend = !showLegend;
+        if (!showLegend) {
+            localStorage.setItem('mp_anim_legend_seen', '1');
+        }
+    }
 
     // Disable strip during countdown and playback
     $: animLocked = animations.some(a => (a.sessionState === 2 || a.sessionState === 3) && a.localInSession);
@@ -52,7 +61,15 @@
 
     function togglePopover(name) {
         if (activePopover === name) { activePopover = null; }
-        else { activePopover = name; }
+        else {
+            activePopover = name;
+            if (name === 'acts' && !legendChecked) {
+                legendChecked = true;
+                if (!localStorage.getItem('mp_anim_legend_seen')) {
+                    showLegend = true;
+                }
+            }
+        }
     }
 
     function closePopover() {
@@ -98,7 +115,7 @@
             disabled={animsDisabled}
             onclick={() => togglePopover('acts')} title="Animations">
             <span class="acts-btn-wrapper">
-                <span class="strip-emoji">&#x1F3AD;</span>
+                <span class="strip-emoji">&#x1F3AC;</span>
                 {#if animActivity && !animsDisabled}
                     <span class="activity-dot"
                         class:available={animActivity === 'available'}
@@ -112,7 +129,8 @@
         </button>
         <HotbarPopover open={activePopover === 'acts'} triggerEl={actsTrigger} onClose={closePopover} align="end">
             <div class="popover-acts">
-                <AnimationTabs {animations} bind:animTab onFilteredChange={(a) => filteredAnims = a}>
+                <AnimationTabs {animations} bind:animTab onFilteredChange={(a) => filteredAnims = a}
+                    {showLegend} onToggleLegend={toggleLegend}>
                     <div class="acts-list" bind:this={actsListEl}>
                         {#key animTab}
                             <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} isMobile={true} scrollContainer={actsListEl} />
@@ -247,7 +265,7 @@
 
     /* Mobile overrides for AnimationPanel inside popover */
     .acts-list :global(.anim-panel) { width: 100%; }
-    .acts-list :global(.anim-list) { max-height: none; overflow-y: visible; overscroll-behavior: auto; touch-action: auto; }
+    .acts-list :global(.anim-list) { height: auto; max-height: none; overflow-y: visible; overscroll-behavior: auto; touch-action: auto; }
     .acts-list :global(.anim-row) { padding: 9px 8px; }
 
     .acts-btn-wrapper {

@@ -57,14 +57,16 @@
     .countdown-overlay {
         position: fixed;
         top: 25%;
-        left: 50%;
-        transform: translateX(-50%);
+        left: 0;
+        right: 0;
         z-index: 1001;
         pointer-events: none;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 4px;
+        padding: 0 16px;
+        box-sizing: border-box;
         user-select: none;
     }
 

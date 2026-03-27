@@ -58,16 +58,28 @@
     }
 
     // Derive aggregate animation activity indicator.
-    // Priority: playing > countdown > gathering > joinable > available.
+    // Priority: playing > countdown > joinable > gathering > available.
     function computeActivity(list) {
         const active = list.find(a => a.localInSession && a.sessionState >= 1);
-        if (active) return active.sessionState === 3 ? 'playing' : active.sessionState === 2 ? 'countdown' : 'gathering';
+        if (active && active.sessionState >= 2) return active.sessionState === 3 ? 'playing' : 'countdown';
         if (list.find(a => a.sessionState >= 1 && a.canJoin)) return 'joinable';
+        if (active) return 'gathering';
         if (list.find(a => a.eligible && a.sessionState === 0)) return 'available';
         return null;
     }
 
     $: animActivity = computeActivity(anims);
+
+    // First joinable animation for fast-join button
+    $: firstJoinable = anims.find(a => a.sessionState >= 1 && a.canJoin && !a.localInSession) || null;
+    $: animLocked = anims.some(a => (a.sessionState === 2 || a.sessionState === 3) && a.localInSession);
+    $: showFastJoin = firstJoinable && !disabled && !animLocked;
+
+    function handleFastJoin() {
+        if (firstJoinable) {
+            window.Module?._mp_set_anim_interest?.(firstJoinable.animIndex);
+        }
+    }
 
     // Badge pulse when player count changes
     $: {
@@ -167,7 +179,9 @@
                 animations={anims} {animCurrentInterest} {animPendingInterest}
                 onToggleInterest={handleToggleInterest}
                 {animActivity}
-                animsDisabled={!$thirdPersonEnabled} />
+                animsDisabled={!$thirdPersonEnabled}
+                canFastJoin={showFastJoin}
+                onFastJoin={handleFastJoin} />
 
             <!-- Minimal badge when hotbar is disabled -->
             {#if disabled}
@@ -192,7 +206,9 @@
                 playerCount={$multiplayerPlayerCount} {badgeBump} {disabled}
                 {reconnecting} {connectionFailed}
                 active={fanOpen}
-                onclick={handleFabClick} />
+                onclick={handleFabClick}
+                canFastJoin={showFastJoin}
+                onFastJoin={handleFastJoin} />
 
             {#if !disabled}
                 <EmoteFan
