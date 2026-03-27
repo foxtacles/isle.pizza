@@ -33,7 +33,6 @@
     let animTab = 'scene';
     let actsListEl;
     let filteredAnims = [];
-    let animTabsRef;
 
     // Disable strip during countdown and playback
     $: animLocked = animations.some(a => (a.sessionState === 2 || a.sessionState === 3) && a.localInSession);
@@ -53,10 +52,7 @@
 
     function togglePopover(name) {
         if (activePopover === name) { activePopover = null; }
-        else {
-            if (name === 'acts') animTabsRef?.selectBestTab();
-            activePopover = name;
-        }
+        else { activePopover = name; }
     }
 
     function closePopover() {
@@ -116,7 +112,7 @@
         </button>
         <HotbarPopover open={activePopover === 'acts'} triggerEl={actsTrigger} onClose={closePopover} align="end">
             <div class="popover-acts">
-                <AnimationTabs bind:this={animTabsRef} {animations} bind:animTab onFilteredChange={(a) => filteredAnims = a}>
+                <AnimationTabs {animations} bind:animTab onFilteredChange={(a) => filteredAnims = a}>
                     <div class="acts-list" bind:this={actsListEl}>
                         {#key animTab}
                             <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} isMobile={true} scrollContainer={actsListEl} />

@@ -1,4 +1,5 @@
 <script>
+    import { onMount } from 'svelte';
     import { bestAnimTab } from './constants.js';
 
     export let animations = [];
@@ -11,10 +12,12 @@
     $: filteredAnims = animTab === 'scene' ? sceneAnims : npcAnims;
     $: onFilteredChange(filteredAnims);
 
-    export function selectBestTab() {
+    function selectBestTab() {
         const best = bestAnimTab(sceneAnims, npcAnims, animTab);
         if (best !== animTab) onTabChange(best);
     }
+
+    onMount(() => selectBestTab());
 </script>
 
 <div class="anim-tabs">
