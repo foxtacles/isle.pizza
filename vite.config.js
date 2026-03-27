@@ -27,7 +27,10 @@ export default defineConfig(({ mode }) => ({
         passes: 2
       }
     },
-    rollupOptions: {
+    rolldownOptions: {
+      checks: {
+        pluginTimings: false
+      },
       output: {
         entryFileNames: 'app.js',
         chunkFileNames: '[name].js',
