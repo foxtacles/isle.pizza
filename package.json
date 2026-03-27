@@ -25,29 +25,7 @@
     "workbox-cli": "^7.4.0"
   },
   "overrides": {
-    "workbox-build": {
-      "rollup": "^2.80.0",
-      "@rollup/plugin-terser": {
-        "serialize-javascript": "^7.0.3"
-      },
-      "@surma/rollup-plugin-off-main-thread": {
-        "ejs": {
-          "jake": {
-            "filelist": {
-              "minimatch": {
-                "brace-expansion": "^5.0.5"
-              }
-            }
-          }
-        }
-      }
-    },
-    "workbox-cli": {
-      "inquirer": {
-        "external-editor": {
-          "tmp": "^0.2.4"
-        }
-      }
-    }
+    "serialize-javascript": "^7.0.3",
+    "tmp": "^0.2.4"
   }
 }
