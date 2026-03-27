@@ -9,6 +9,12 @@
     export let onFilteredChange = () => {};
     export let showLegend = false;
     export let onToggleLegend = () => {};
+    export let clusterProgress = null;
+
+    $: activeProgress = clusterProgress ? clusterProgress[animTab] : null;
+    $: progressPct = activeProgress
+        ? (activeProgress.total > 0 ? (activeProgress.unlocked / activeProgress.total * 100) : 0)
+        : 0;
 
     $: sceneAnims = animations.filter(a => a.category === 1);
     $: npcAnims = animations.filter(a => a.category === 0);
@@ -27,7 +33,7 @@
     <div class="anim-tabs">
         <button class="anim-tab" class:active={animTab === 'scene' && !showLegend}
             onclick={() => { if (showLegend) onToggleLegend(); onTabChange('scene'); }}>
-            Scene{#if sceneAnims.length}&nbsp;({sceneAnims.length}){/if}
+            {clusterProgress ? clusterProgress.scene.label : 'Scene'}{#if sceneAnims.length}&nbsp;({sceneAnims.length}){/if}
         </button>
         <button class="anim-tab" class:active={animTab === 'act' && !showLegend}
             onclick={() => { if (showLegend) onToggleLegend(); onTabChange('act'); }}>
@@ -42,6 +48,15 @@
     {#if showLegend}
         <AnimationLegend onDismiss={onToggleLegend} />
     {:else}
+        {#if activeProgress}
+            <div class="cluster-progress-row"
+                 title="{activeProgress.unlocked}/{activeProgress.total} memories unlocked">
+                <div class="cluster-progress">
+                    <div class="cluster-progress-fill" style="width: {progressPct}%"></div>
+                </div>
+                <span class="cluster-count">{activeProgress.unlocked}/{activeProgress.total}</span>
+            </div>
+        {/if}
         <slot {filteredAnims} />
     {/if}
 </div>
@@ -59,6 +74,37 @@
         gap: 2px;
         margin-bottom: 6px;
         flex-shrink: 0;
+    }
+
+    .cluster-progress-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+        margin-top: -2px;
+        margin-bottom: 4px;
+    }
+
+    .cluster-progress {
+        flex: 1;
+        height: 2px;
+        background: var(--color-border-dark);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+
+    .cluster-progress-fill {
+        height: 100%;
+        background: var(--color-primary);
+        border-radius: 2px;
+        transition: width 0.4s ease;
+    }
+
+    .cluster-count {
+        font-family: 'Consolas', 'Menlo', monospace;
+        font-size: 9px;
+        color: var(--color-text-muted);
+        white-space: nowrap;
     }
 
     .anim-tab {

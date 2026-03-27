@@ -280,7 +280,7 @@ export const AnimationTitles = Object.freeze({
  * Maps animation object IDs to their in-game location ID.
  * Animations not listed here have no fixed location (NPC animations).
  */
-export const AnimationLocations = Object.freeze({
+const AnimationLocations = Object.freeze({
     500: 1,
     501: 1,
     502: 1,
@@ -539,7 +539,7 @@ export const AnimationLocations = Object.freeze({
  * Maps in-game location IDs to human-readable area labels.
  * Multiple location IDs can map to the same area (different camera angles).
  */
-export const LocationLabels = Object.freeze({
+const LocationLabels = Object.freeze({
     1: "Bank",
     2: "Bank",
     3: "Bank",
@@ -605,3 +605,34 @@ export const CATALOG_OBJECT_IDS = Object.freeze([
 ]);
 
 export const TOTAL_ANIMATIONS = CATALOG_OBJECT_IDS.length;
+
+/** Pre-computed map: cluster label → array of objectIds belonging to that cluster. */
+export const ClusterObjectIds = (() => {
+    const map = new Map();
+    for (const objectId of CATALOG_OBJECT_IDS) {
+        const locId = AnimationLocations[objectId];
+        const label = locId != null ? (LocationLabels[locId] || `Location ${locId}`) : 'Island';
+        if (!map.has(label)) map.set(label, []);
+        map.get(label).push(objectId);
+    }
+    return map;
+})();
+
+/**
+ * Resolve an array of location IDs (from the backend) to a single cluster label.
+ * Returns the label string, or null if no valid locations / multiple clusters.
+ */
+export function resolveCluster(locations) {
+    if (!locations || locations.length === 0) return null;
+    const labels = new Set();
+    for (const locId of locations) {
+        const label = LocationLabels[locId];
+        if (label) labels.add(label);
+    }
+    if (labels.size === 0) return null;
+    if (labels.size > 1) {
+        console.error('[Cluster] Multiple cluster labels resolved:', [...labels]);
+        return null;
+    }
+    return labels.values().next().value;
+}

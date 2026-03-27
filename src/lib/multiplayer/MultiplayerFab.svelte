@@ -36,8 +36,7 @@
         <span class="badge" class:bump={badgeBump}>{playerCount}</span>
     {/if}
     {#if canFastJoin}
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <span class="join-badge" onclick={handleJoinClick}>Join</span>
+        <span class="join-badge" role="button" tabindex="-1" onclick={handleJoinClick} onkeydown={(e) => e.key === 'Enter' && handleJoinClick(e)}>Join</span>
     {/if}
 </button>
 

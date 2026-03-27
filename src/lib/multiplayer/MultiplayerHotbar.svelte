@@ -32,6 +32,7 @@
     export let animsDisabled = false;
     export let canFastJoin = false;
     export let onFastJoin = () => {};
+    export let clusterProgress = null;
 
     function handleFastJoinClick(e) {
         e.stopPropagation();
@@ -167,14 +168,13 @@
                     <span class="indicator-caret">&#x25BE;</span>
                 </button>
                 {#if canFastJoin}
-                    <!-- svelte-ignore a11y_no_static_element_interactions -->
-                    <span class="join-chip" onclick={handleFastJoinClick}>Join</span>
+                    <button type="button" class="join-chip" onclick={handleFastJoinClick}>Join</button>
                 {/if}
                 <HotbarPopover open={activePopover === 'anims'} triggerEl={triggerEls.anims}
                     onClose={closePopover} align="start">
                     <div class="popover-anims">
                         <AnimationTabs {animations} bind:animTab onFilteredChange={(a) => filteredAnims = a}
-                            {showLegend} onToggleLegend={toggleLegend}>
+                            {showLegend} onToggleLegend={toggleLegend} {clusterProgress}>
                             {#key animTab}
                                 <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} />
                             {/key}
@@ -323,13 +323,16 @@
         left: 50%;
         transform: translateX(-50%);
         padding: 1px 7px;
+        border: none;
         border-radius: 7px;
         background: rgba(100, 181, 246, 0.9);
         color: #000;
         font-size: 9px;
         font-weight: 700;
+        font-family: inherit;
         line-height: 1.2;
         white-space: nowrap;
+        cursor: pointer;
         pointer-events: auto;
         animation: join-chip-pulse 2s ease-in-out infinite;
     }

@@ -1,7 +1,7 @@
 <script>
     import { memoryUnlocks, memoryCompletions } from '../stores.js';
     import { buildingThumbnails, actorThumbnails } from '../core/thumbnails.js';
-    import { AnimationTitles, AnimationLocations, LocationLabels, CATALOG_OBJECT_IDS, TOTAL_ANIMATIONS } from './multiplayer/animationCatalog.js';
+    import { AnimationTitles, ClusterObjectIds, TOTAL_ANIMATIONS } from './multiplayer/animationCatalog.js';
     import { ActorDisplayNames } from '../core/savegame/actorConstants.js';
     import BackButton from './BackButton.svelte';
 
@@ -27,15 +27,8 @@
     $: locationGroups = buildLocationGroups(completionsByAnim);
 
     function buildLocationGroups(comps) {
-        const groups = {};
-        for (const objectId of CATALOG_OBJECT_IDS) {
-            const locId = AnimationLocations[objectId];
-            const label = locId != null ? (LocationLabels[locId] || `Location ${locId}`) : 'Island';
-            if (!groups[label]) groups[label] = [];
-            groups[label].push(buildEntry(objectId, comps));
-        }
-        return Object.keys(groups).map(label => {
-            const anims = groups[label];
+        return [...ClusterObjectIds.entries()].map(([label, objectIds]) => {
+            const anims = objectIds.map(id => buildEntry(id, comps));
             const unlocked = anims.filter(a => a.unlocked).length;
             return { label, anims, unlocked, total: anims.length };
         }).sort((a, b) => a.label.localeCompare(b.label));

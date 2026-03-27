@@ -24,6 +24,7 @@
     export let onToggleInterest = () => {};
     export let animActivity = null;
     export let animsDisabled = false;
+    export let clusterProgress = null;
     export let visible = false;
 
     let activePopover = null;
@@ -130,7 +131,7 @@
         <HotbarPopover open={activePopover === 'acts'} triggerEl={actsTrigger} onClose={closePopover} align="end">
             <div class="popover-acts">
                 <AnimationTabs {animations} bind:animTab onFilteredChange={(a) => filteredAnims = a}
-                    {showLegend} onToggleLegend={toggleLegend}>
+                    {showLegend} onToggleLegend={toggleLegend} {clusterProgress}>
                     <div class="acts-list" bind:this={actsListEl}>
                         {#key animTab}
                             <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} isMobile={true} scrollContainer={actsListEl} />

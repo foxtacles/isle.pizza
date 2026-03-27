@@ -1,6 +1,7 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
-    import { gameRunning, multiplayerRoom, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus, animationState } from '../../stores.js';
+    import { gameRunning, multiplayerRoom, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus, animationState, memoryUnlocks } from '../../stores.js';
+    import { resolveCluster, ClusterObjectIds } from './animationCatalog.js';
     import { keepVisible } from '../../core/keep-visible.js';
     import { emoteOptions, walkOptions, idleOptions, settingsItems } from './constants.js';
     import MultiplayerHotbar from './MultiplayerHotbar.svelte';
@@ -97,6 +98,17 @@
     $: animCurrentInterest = $animationState?.currentAnimIndex === 65535
         ? null : $animationState?.currentAnimIndex ?? null;
     $: animPendingInterest = $animationState?.pendingInterest ?? -1;
+    $: animCluster = resolveCluster($animationState?.locations) || 'Island';
+    $: clusterProgress = (() => {
+        function calc(label) {
+            const ids = ClusterObjectIds.get(label);
+            if (!ids) return { label, unlocked: 0, total: 0 };
+            const total = ids.length;
+            const unlocked = ids.filter(id => $memoryUnlocks.has(id)).length;
+            return { label, unlocked, total };
+        }
+        return { scene: calc(animCluster), act: calc('Island') };
+    })();
 
     // Browsers only synthesize `click` for the primary pointer.  When the user
     // is already walking (first finger on the canvas) a second touch creates a
@@ -181,7 +193,8 @@
                 {animActivity}
                 animsDisabled={!$thirdPersonEnabled}
                 canFastJoin={showFastJoin}
-                onFastJoin={handleFastJoin} />
+                onFastJoin={handleFastJoin}
+                {clusterProgress} />
 
             <!-- Minimal badge when hotbar is disabled -->
             {#if disabled}
@@ -222,7 +235,8 @@
                     {animActivity}
                     animations={anims} {animCurrentInterest} {animPendingInterest}
                     onToggleInterest={handleToggleInterest}
-                    animsDisabled={!$thirdPersonEnabled} />
+                    animsDisabled={!$thirdPersonEnabled}
+                    {clusterProgress} />
             {/if}
         {/if}
         <CountdownOverlay animations={anims} />

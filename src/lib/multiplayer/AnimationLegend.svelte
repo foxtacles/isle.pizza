@@ -6,12 +6,12 @@
     <div class="legend-body">
         <div class="legend-header">
             <img class="legend-avatar" src="images/infoface.webp" alt="Infomaniac" />
-            <span class="legend-intro">Animations are scenes you perform with other players. Completed ones are saved to Nick Brick's Memories!</span>
+            <span class="legend-intro">Animations are scenes you perform with other players. Completed ones are saved to <a href="#memories" target="_blank" class="legend-link">Nick Brick's Memories</a> &mdash; the progress bar tracks your area completion.</span>
         </div>
 
         <div class="legend-section desktop-only">
             <div class="legend-row">
-                <span class="row-desc"><strong>Scene</strong> = camera animations at locations. <strong>Act</strong> = character interactions.</span>
+                <span class="row-desc">Tabs: <strong>area</strong> = location scenes, <strong>act</strong> = character interactions.</span>
             </div>
         </div>
 
@@ -89,11 +89,22 @@
         line-height: 1.3;
     }
 
+    .legend-link {
+        color: var(--color-primary);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
     .legend-section {
         margin-bottom: 5px;
     }
 
+
     @media (max-width: 480px) {
+        .legend {
+            padding: 4px 10px;
+        }
+
         .desktop-only {
             display: none;
         }
