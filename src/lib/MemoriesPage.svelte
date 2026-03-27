@@ -90,9 +90,9 @@
         showAllComps = toggleSet(showAllComps, objectId);
     }
 
-    function visibleCompletions(anim) {
+    function visibleCompletions(anim, showAll) {
         if (!anim.completions) return [];
-        if (showAllComps.has(anim.objectId)) return anim.completions;
+        if (showAll.has(anim.objectId)) return anim.completions;
         return anim.completions.slice(0, COMP_CAP);
     }
 
@@ -276,7 +276,7 @@
                             <!-- Expanded completion rows -->
                             {#if anim.completions && expandedAnims.has(anim.objectId)}
                                 <div class="completions">
-                                    {#each visibleCompletions(anim) as comp}
+                                    {#each visibleCompletions(anim, showAllComps) as comp}
                                         <div class="comp-row">
                                             {@render avatarStack(comp.participants)}
                                             <div class="comp-names">
