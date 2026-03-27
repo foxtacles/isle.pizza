@@ -17,11 +17,37 @@
     "ogl": "^1.0.11"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@sveltejs/vite-plugin-svelte": "^6.0.0",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "typescript": "^5.0.0",
-    "vite": "^5.4.0",
-    "workbox-cli": "^7.3.0"
+    "vite": "^6.4.0",
+    "workbox-cli": "^7.4.0"
+  },
+  "overrides": {
+    "workbox-build": {
+      "rollup": "^2.80.0",
+      "@rollup/plugin-terser": {
+        "serialize-javascript": "^7.0.3"
+      },
+      "@surma/rollup-plugin-off-main-thread": {
+        "ejs": {
+          "jake": {
+            "filelist": {
+              "minimatch": {
+                "brace-expansion": "^5.0.5"
+              }
+            }
+          }
+        }
+      }
+    },
+    "workbox-cli": {
+      "inquirer": {
+        "external-editor": {
+          "tmp": "^0.2.4"
+        }
+      }
+    }
   }
 }
