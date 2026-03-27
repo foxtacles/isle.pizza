@@ -33,7 +33,6 @@
 
     let animTab = 'scene';
     let filteredAnims = [];
-    let animTabsRef;
 
     // Disable hotbar interactions during countdown and playback
     $: animLocked = animations.some(a => (a.sessionState === 2 || a.sessionState === 3) && a.localInSession);
@@ -89,7 +88,6 @@
         if (justRevealed()) return;
         if (activePopover === name) { activePopover = null; resetHideTimer(); }
         else {
-            if (name === 'anims') animTabsRef?.selectBestTab();
             activePopover = name; keepAlive();
         }
     }
@@ -147,7 +145,7 @@
                 <HotbarPopover open={activePopover === 'anims'} triggerEl={triggerEls.anims}
                     onClose={closePopover} align="start">
                     <div class="popover-anims">
-                        <AnimationTabs bind:this={animTabsRef} {animations} bind:animTab onFilteredChange={(a) => filteredAnims = a}>
+                        <AnimationTabs {animations} bind:animTab onFilteredChange={(a) => filteredAnims = a}>
                             {#key animTab}
                                 <AnimationPanel animations={filteredAnims} currentInterest={animCurrentInterest} pendingInterest={animPendingInterest} {onToggleInterest} />
                             {/key}

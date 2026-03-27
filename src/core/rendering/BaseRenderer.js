@@ -82,6 +82,7 @@ export class BaseRenderer {
         };
 
         this._onPointerDown = (e) => {
+            if (e.button !== 0) return;
             this._didDrag = false;
             this._pointerStart = { x: e.clientX, y: e.clientY };
             // Stop auto-rotate on user interaction
@@ -93,9 +94,38 @@ export class BaseRenderer {
             const dy = e.clientY - this._pointerStart.y;
             if (dx * dx + dy * dy > 9) this._didDrag = true;
         };
+        this._onPointerUp = (e) => {
+            if (e.button !== 0) return;
+            if (this._pointerStart && !this._didDrag) {
+                // OGL Orbit calls preventDefault() on touchstart, which
+                // suppresses the browser's synthesized click event on mobile.
+                // Dispatch a synthetic click so canvas onclick handlers work.
+                const syntheticClick = new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: e.clientX,
+                    clientY: e.clientY,
+                    screenX: e.screenX,
+                    screenY: e.screenY,
+                    button: 0,
+                });
+                syntheticClick._synthetic = true;
+                this.canvas.dispatchEvent(syntheticClick);
+            }
+            this._pointerStart = null;
+        };
+        // Suppress native click events so only our synthetic clicks reach handlers.
+        // This prevents double-firing on desktop where native clicks still work.
+        this._onNativeClickCapture = (e) => {
+            if (!e._synthetic) {
+                e.stopImmediatePropagation();
+            }
+        };
 
         this.canvas.addEventListener('pointerdown', this._onPointerDown);
         this.canvas.addEventListener('pointermove', this._onPointerMove);
+        this.canvas.addEventListener('pointerup', this._onPointerUp);
+        this.canvas.addEventListener('click', this._onNativeClickCapture, true);
 
         this._initialAutoRotate = true;
         this._savedCameraPos = new Vec3().copy(this.camera.position);
@@ -442,6 +472,8 @@ export class BaseRenderer {
             this.controls.remove();
             this.canvas.removeEventListener('pointerdown', this._onPointerDown);
             this.canvas.removeEventListener('pointermove', this._onPointerMove);
+            this.canvas.removeEventListener('pointerup', this._onPointerUp);
+            this.canvas.removeEventListener('click', this._onNativeClickCapture, true);
         }
         this.clearModel();
         if (this._emptyTextureCache) {
