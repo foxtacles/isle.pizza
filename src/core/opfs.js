@@ -169,33 +169,28 @@ export async function listFiles(pattern) {
 // ============================================================================
 
 export async function loadConfig(form) {
-    const handle = await getFileHandle(CONFIG_FILE, true);
+    const handle = await getFileHandle(CONFIG_FILE, false);
     if (!handle) return null;
 
-    try {
-        const file = await handle.getFile();
-        const text = await file.text();
-        if (!text) {
-            console.log('No existing config file found, using defaults.');
-            return null;
-        }
-
-        const config = {};
-        const lines = text.split('\n');
-        for (const line of lines) {
-            if (line.startsWith('[') || !line.includes('=')) continue;
-            const [key, ...valueParts] = line.split('=');
-            const value = valueParts.join('=').trim();
-            config[key.trim()] = value;
-        }
-
-        applyConfigToForm(form, config);
-        console.log('Config loaded from', CONFIG_FILE);
-        return config;
-    } catch (e) {
-        console.error('Failed to load config:', e);
+    const file = await handle.getFile();
+    const text = await file.text();
+    if (!text) {
+        console.log('No existing config file found, using defaults.');
         return null;
     }
+
+    const config = {};
+    const lines = text.split('\n');
+    for (const line of lines) {
+        if (line.startsWith('[') || !line.includes('=')) continue;
+        const [key, ...valueParts] = line.split('=');
+        const value = valueParts.join('=').trim();
+        config[key.trim()] = value;
+    }
+
+    applyConfigToForm(form, config);
+    console.log('Config loaded from', CONFIG_FILE);
+    return config;
 }
 
 function applyConfigToForm(form, config) {

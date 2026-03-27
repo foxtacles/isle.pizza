@@ -123,13 +123,17 @@ export function startUninstall(language) {
     });
 }
 
-async function requestPersistentStorage() {
-    if (navigator.storage && navigator.storage.persist) {
-        const isPersisted = await navigator.storage.persisted();
-        if (!isPersisted) {
-            const wasGranted = await navigator.storage.persist();
-            console.log(wasGranted ? 'Persistent storage was granted.' : 'Persistent storage request was denied.');
+export async function requestPersistentStorage() {
+    try {
+        if (navigator.storage && navigator.storage.persist) {
+            const isPersisted = await navigator.storage.persisted();
+            if (!isPersisted) {
+                const wasGranted = await navigator.storage.persist();
+                console.log(wasGranted ? 'Persistent storage was granted.' : 'Persistent storage request was denied.');
+            }
         }
+    } catch (e) {
+        console.warn('Failed to request persistent storage:', e);
     }
 }
 

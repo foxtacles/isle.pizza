@@ -3,7 +3,7 @@
     import { computePosition, flip, shift, offset } from '@floating-ui/dom';
     import { currentPage, debugEnabled, gameRunning, multiplayerRoom, parseHash, initialInvalidRoom } from './stores.js';
     import { showToast } from './core/toast.js';
-    import { registerServiceWorker, checkCacheStatus } from './core/service-worker.js';
+    import { registerServiceWorker, checkCacheStatus, requestPersistentStorage } from './core/service-worker.js';
     import { setupCanvasEvents } from './core/emscripten.js';
     import { initMemories } from './core/memories.js';
     import { initAuth } from './core/auth.js';
@@ -96,6 +96,9 @@
         if (registration) {
             checkCacheStatus();
         }
+
+        // Request persistent storage to protect OPFS data from browser eviction
+        requestPersistentStorage();
 
         // Setup canvas events
         setupCanvasEvents();

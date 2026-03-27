@@ -63,10 +63,15 @@
         if (!handle) {
             opfsDisabled.set(true);
         } else {
-            const config = await loadConfig(configForm);
-            if (!config) {
-                // Save defaults silently (no toast on initial creation)
-                await saveConfig(configForm, getSiFiles, true);
+            try {
+                const config = await loadConfig(configForm);
+                if (!config) {
+                    // Save defaults silently (no toast on initial creation)
+                    await saveConfig(configForm, getSiFiles, true);
+                }
+            } catch (e) {
+                // Read error — do NOT overwrite config with defaults
+                console.error('Config read failed, keeping existing data:', e);
             }
             showOrHideGraphicsOptions();
         }
