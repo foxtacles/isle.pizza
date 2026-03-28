@@ -6,6 +6,7 @@
     import BackButton from './BackButton.svelte';
 
     let filter = 'all';
+    let sort = 'default';
     let selectedLocation = null;
     let introOpen = false;
     let expandedAnims = new Set();
@@ -56,15 +57,46 @@
         ? locationGroups.find(g => g.label === selectedLocation)
         : null;
 
-    // Reactive so filter changes trigger re-evaluation
-    $: displayAnims = selectedGroup ? filterAnims(selectedGroup.anims, filter) : [];
+    // Reactive so filter/sort changes trigger re-evaluation
+    $: displayAnims = selectedGroup ? filterAndSort(selectedGroup.anims, filter, sort) : [];
 
-    function filterAnims(anims, currentFilter) {
+    function filterAndSort(anims, currentFilter, currentSort) {
         let result = anims;
         if (currentFilter === 'unlocked') result = anims.filter(a => a.unlocked);
         else if (currentFilter === 'locked') result = anims.filter(a => !a.unlocked);
-        return [...result].sort((a, b) => (b.unlocked ? 1 : 0) - (a.unlocked ? 1 : 0));
+        result = [...result];
+        if (currentSort === 'latest-desc') {
+            result.sort((a, b) => {
+                const ta = a.completions?.[0]?.timestamp ?? 0;
+                const tb = b.completions?.[0]?.timestamp ?? 0;
+                return tb - ta;
+            });
+        } else if (currentSort === 'latest-asc') {
+            result.sort((a, b) => {
+                const ta = a.completions?.[0]?.timestamp ?? Infinity;
+                const tb = b.completions?.[0]?.timestamp ?? Infinity;
+                return ta - tb;
+            });
+        } else if (currentSort === 'alpha-asc') {
+            result.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        } else if (currentSort === 'alpha-desc') {
+            result.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+        } else {
+            result.sort((a, b) => (b.unlocked ? 1 : 0) - (a.unlocked ? 1 : 0));
+        }
+        return result;
     }
+
+    function cycleSort(field) {
+        const desc = field + '-desc';
+        const asc = field + '-asc';
+        if (sort === desc) sort = asc;
+        else if (sort === asc) sort = 'default';
+        else sort = desc;
+    }
+
+    $: latestDir = sort === 'latest-desc' ? 'desc' : sort === 'latest-asc' ? 'asc' : null;
+    $: alphaDir = sort === 'alpha-desc' ? 'desc' : sort === 'alpha-asc' ? 'asc' : null;
 
     function selectLocation(label) {
         if (selectedLocation === label) {
@@ -72,6 +104,7 @@
         } else {
             selectedLocation = label;
             filter = 'all';
+            sort = 'default';
         }
     }
 
@@ -238,6 +271,15 @@
                     <button class="filter-btn" class:active={filter === 'all'} onclick={() => filter = 'all'}>All</button>
                     <button class="filter-btn" class:active={filter === 'unlocked'} onclick={() => filter = 'unlocked'}>Unlocked</button>
                     <button class="filter-btn" class:active={filter === 'locked'} onclick={() => filter = 'locked'}>Locked</button>
+                    <span class="filter-sep"></span>
+                    <button class="sort-btn" class:active={latestDir} onclick={() => cycleSort('latest')}>
+                        Latest
+                        <svg class="sort-arrow" class:visible={latestDir} class:flipped={latestDir === 'desc'} width="8" height="8" viewBox="0 0 8 8"><path d="M4 6L1 2h6z" fill="currentColor"/></svg>
+                    </button>
+                    <button class="sort-btn" class:active={alphaDir} onclick={() => cycleSort('alpha')}>
+                        Name
+                        <svg class="sort-arrow" class:visible={alphaDir} class:flipped={alphaDir === 'asc'} width="8" height="8" viewBox="0 0 8 8"><path d="M4 6L1 2h6z" fill="currentColor"/></svg>
+                    </button>
                 </div>
             </div>
 
@@ -267,7 +309,9 @@
                                 {#if anim.completions}
                                     <div class="anim-preview">
                                         {@render avatarStack(anim.completions[0].participants)}
-                                        <span class="anim-meta">{anim.completions.length}x &middot; {formatDateShort(anim.completions[0].timestamp, now)}</span>
+                                        <span class="anim-count">{anim.completions.length}x</span>
+                                        <span class="anim-sep">&middot;</span>
+                                        <span class="anim-time">{formatDateShort(anim.completions[0].timestamp, now)}</span>
                                     </div>
                                     <span class="anim-chevron" class:open={expandedAnims.has(anim.objectId)}></span>
                                 {/if}
@@ -643,7 +687,15 @@
         margin-left: auto;
     }
 
-    .filter-btn {
+    .filter-sep {
+        width: 1px;
+        height: 12px;
+        background: var(--color-border-dark);
+        align-self: center;
+    }
+
+    .filter-btn,
+    .sort-btn {
         padding: 2px 0;
         border: none;
         background: none;
@@ -655,13 +707,38 @@
         border-bottom: 1.5px solid transparent;
     }
 
-    .filter-btn:hover {
+    .sort-btn {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .filter-btn:hover,
+    .sort-btn:hover {
         color: var(--color-text-medium);
     }
 
-    .filter-btn.active {
+    .filter-btn.active,
+    .sort-btn.active {
         color: var(--color-primary);
         border-bottom-color: var(--color-primary);
+    }
+
+    .sort-arrow {
+        width: 0;
+        margin-left: 0;
+        opacity: 0;
+        overflow: hidden;
+        transition: width 0.15s, margin-left 0.15s, opacity 0.15s, transform 0.15s;
+    }
+
+    .sort-arrow.visible {
+        width: 8px;
+        margin-left: 3px;
+        opacity: 1;
+    }
+
+    .sort-arrow.flipped {
+        transform: rotate(180deg);
     }
 
     .empty {
@@ -742,11 +819,24 @@
         gap: 8px;
     }
 
-    .anim-meta {
+    .anim-count {
         font-size: 0.7em;
         color: var(--color-text-muted);
         white-space: nowrap;
-        min-width: 6.0em;
+        min-width: 2.5em;
+        text-align: right;
+    }
+
+    .anim-sep {
+        font-size: 0.7em;
+        color: var(--color-text-muted);
+    }
+
+    .anim-time {
+        font-size: 0.7em;
+        color: var(--color-text-muted);
+        white-space: nowrap;
+        min-width: 4.5em;
         text-align: right;
     }
 
@@ -968,7 +1058,7 @@
             gap: 8px;
         }
 
-        .anim-meta {
+        .anim-count, .anim-sep, .anim-time {
             display: none;
         }
     }
