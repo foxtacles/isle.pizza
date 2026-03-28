@@ -800,13 +800,13 @@
     }
 
     .anim-title {
-        flex: 1;
+        flex: 1 1 0px;
+        width: 0;
         font-size: 0.8em;
         color: var(--color-text-muted);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        min-width: 0;
     }
 
     .anim-group.unlocked .anim-title {
