@@ -45,9 +45,10 @@
         </button>
     </div>
 
-    {#if showLegend}
+    <div class="legend-panel" class:hidden={!showLegend}>
         <AnimationLegend onDismiss={onToggleLegend} />
-    {:else}
+    </div>
+    <div class="content-panel" class:hidden={showLegend}>
         {#if activeProgress}
             <div class="cluster-progress-row"
                  title="{activeProgress.unlocked}/{activeProgress.total} memories unlocked">
@@ -58,7 +59,7 @@
             </div>
         {/if}
         <slot {filteredAnims} />
-    {/if}
+    </div>
 </div>
 
 <style>
@@ -67,6 +68,17 @@
         flex-direction: column;
         flex: 1;
         min-height: 0;
+    }
+
+    .legend-panel, .content-panel {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .hidden {
+        display: none;
     }
 
     .anim-tabs {
