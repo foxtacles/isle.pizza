@@ -311,50 +311,45 @@
                                     <div class="anim-preview">
                                         {@render avatarStack(anim.completions[0].participants)}
                                         <span class="anim-count">{anim.completions.length}x</span>
-                                        <span class="anim-sep">&middot;</span>
-                                        <span class="anim-time">{formatDateShort(anim.completions[0].timestamp, now)}</span>
                                     </div>
                                     <span class="anim-chevron" class:open={expandedAnims.has(anim.animIndex)}></span>
                                 {/if}
                             </button>
 
                             <!-- Expanded completion rows -->
-                            {#if anim.completions && expandedAnims.has(anim.animIndex)}
-                                <div class="completions">
-                                    {#each visibleCompletions(anim, showAllComps) as comp}
-                                        <div class="comp-row">
-                                            {@render avatarStack(comp.participants)}
-                                            <div class="comp-names">
-                                                {#each comp.participants as p, idx}
-                                                    {#if idx < 3}
-                                                        {#if idx > 0}<span class="comp-sep">&middot;</span>{/if}
-                                                        <span class="comp-name" class:self={idx === 0}>
-                                                            {p.displayName}
-                                                            {#if idx === 0}
-                                                                <span class="comp-char">as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}</span>
+                            {#if anim.completions}
+                                <div class="completions" class:open={expandedAnims.has(anim.animIndex)}>
+                                    <div class="completions-inner">
+                                        {#each visibleCompletions(anim, showAllComps) as comp}
+                                            <a class="comp-row" href="#memory/{comp.eventId}" onclick={e => { e.preventDefault(); navigateToMemory(comp.eventId); }}>
+                                                {@render avatarStack(comp.participants)}
+                                                <div class="comp-detail">
+                                                    <div class="comp-names">
+                                                        {#each comp.participants as p, idx}
+                                                            {#if idx < 3}
+                                                                {#if idx > 0}<span class="comp-sep">&middot;</span>{/if}
+                                                                <span class="comp-name" class:self={idx === 0}>
+                                                                    {p.displayName}
+                                                                    {#if idx === 0}
+                                                                        <span class="comp-char">as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}</span>
+                                                                    {/if}
+                                                                </span>
                                                             {/if}
-                                                        </span>
-                                                    {/if}
-                                                {/each}
-                                                {#if comp.participants.length > 3}
-                                                    <span class="comp-more">+{comp.participants.length - 3}</span>
-                                                {/if}
-                                            </div>
-                                            <div class="comp-end">
-                                                <span class="comp-time" title={formatDateFull(comp.timestamp)}>{formatDateShort(comp.timestamp, now)}</span>
-                                                <a class="comp-link" href="#memory/{comp.eventId}" title="View scene" onclick={e => { e.preventDefault(); e.stopPropagation(); navigateToMemory(comp.eventId); }}>
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                                        <polygon points="5,3 19,12 5,21"/>
-                                                    </svg>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    {/each}
-                                    {#if anim.completions.length > COMP_CAP && !showAllComps.has(anim.animIndex)}
-                                        <button class="comp-show-more" onclick={() => toggleShowAll(anim.animIndex)}>
-                                            Show {anim.completions.length - COMP_CAP} more
-                                        </button>
-                                    {/if}
+                                                        {/each}
+                                                        {#if comp.participants.length > 3}
+                                                            <span class="comp-more">+{comp.participants.length - 3}</span>
+                                                        {/if}
+                                                    </div>
+                                                    <span class="comp-time" title={formatDateFull(comp.timestamp)}>{formatDateShort(comp.timestamp, now)}</span>
+                                                </div>
+                                            </a>
+                                        {/each}
+                                        {#if anim.completions.length > COMP_CAP && !showAllComps.has(anim.animIndex)}
+                                            <button class="comp-show-more" onclick={() => toggleShowAll(anim.animIndex)}>
+                                                Show {anim.completions.length - COMP_CAP} more
+                                            </button>
+                                        {/if}
+                                    </div>
                                 </div>
                             {/if}
                         </div>
@@ -762,6 +757,11 @@
         border-bottom: none;
     }
 
+    .anim-group:has(.completions.open) {
+        background: var(--color-surface-subtle);
+        border-radius: 4px;
+    }
+
     .anim-header {
         display: flex;
         align-items: center;
@@ -820,24 +820,15 @@
     }
 
     .anim-count {
-        font-size: 0.7em;
+        font-size: 0.65em;
+        font-family: 'Consolas', 'Menlo', monospace;
         color: var(--color-text-muted);
         white-space: nowrap;
-        min-width: 2.5em;
-        text-align: right;
-    }
-
-    .anim-sep {
-        font-size: 0.7em;
-        color: var(--color-text-muted);
-    }
-
-    .anim-time {
-        font-size: 0.7em;
-        color: var(--color-text-muted);
-        white-space: nowrap;
-        min-width: 4.5em;
-        text-align: right;
+        padding: 1px 6px;
+        border-radius: 8px;
+        background: var(--color-surface-subtle);
+        min-width: 3em;
+        text-align: center;
     }
 
     .anim-chevron {
@@ -900,26 +891,55 @@
 
     /* --- Completion Rows --- */
     .completions {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.25s ease;
+        padding-left: 28px;
+    }
+
+    .completions.open {
+        grid-template-rows: 1fr;
+    }
+
+    .completions-inner {
         display: flex;
         flex-direction: column;
-        padding: 0 0 6px 28px;
+        gap: 2px;
+        overflow: hidden;
+        padding-bottom: 0;
+        transition: padding-bottom 0.25s ease;
+    }
+
+    .completions.open .completions-inner {
+        padding-bottom: 6px;
     }
 
     .comp-row {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 5px 0;
+        padding: 5px 4px;
         min-height: 32px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.12s;
+        text-decoration: none;
+        color: inherit;
     }
 
-    .comp-row + .comp-row {
-        border-top: 1px solid rgba(255, 255, 255, 0.04);
+    .comp-row:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .comp-detail {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
     }
 
     .comp-names {
-        flex: 1;
-        min-width: 0;
         display: flex;
         align-items: baseline;
         overflow: hidden;
@@ -959,37 +979,10 @@
         flex-shrink: 0;
     }
 
-    .comp-end {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-shrink: 0;
-        margin-left: auto;
-    }
-
     .comp-time {
         font-size: 0.65em;
         color: var(--color-text-muted);
         white-space: nowrap;
-    }
-
-    .comp-link {
-        color: var(--color-text-muted);
-        opacity: 0;
-        transition: opacity 0.15s;
-        display: flex;
-        align-items: center;
-        padding: 4px;
-    }
-
-    .comp-row:hover .comp-link {
-        opacity: 0.5;
-    }
-
-    .comp-link:hover {
-        opacity: 1;
-        color: var(--color-primary);
-        text-decoration: none;
     }
 
     .comp-show-more {
@@ -1050,15 +1043,11 @@
             display: none;
         }
 
-        .comp-link {
-            opacity: 0.4;
-        }
-
         .comp-row {
             gap: 8px;
         }
 
-        .anim-count, .anim-sep, .anim-time {
+        .anim-count {
             display: none;
         }
     }
