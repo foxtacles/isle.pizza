@@ -205,15 +205,23 @@ export class ActorRenderer extends AnimatedRenderer {
             }
 
             let program;
-            if (partTexture) {
+            if (partTexture && mesh.properties?.textureName) {
                 program = this.createTexturedProgram(partTexture);
             } else if (meshTexture) {
                 program = this.createTexturedProgram(meshTexture);
             } else if (partColor) {
                 program = this.createColoredProgram(partColor);
             } else {
-                const meshColor = mesh.properties?.color || { r: 128, g: 128, b: 128 };
-                program = this.createColoredProgram([meshColor.r / 255, meshColor.g / 255, meshColor.b / 255]);
+                let color = null;
+                if (mesh.properties?.useAlias && mesh.properties?.materialName) {
+                    const alias = LegoColors[mesh.properties.materialName.toLowerCase()];
+                    if (alias) color = [alias.r / 255, alias.g / 255, alias.b / 255];
+                }
+                if (!color) {
+                    const meshColor = mesh.properties?.color || { r: 128, g: 128, b: 128 };
+                    color = [meshColor.r / 255, meshColor.g / 255, meshColor.b / 255];
+                }
+                program = this.createColoredProgram(color);
             }
 
             const oglMesh = new Mesh(this.gl, { geometry, program });

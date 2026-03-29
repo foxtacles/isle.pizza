@@ -1,6 +1,6 @@
 // Navigation utilities
 import { get } from 'svelte/store';
-import { currentPage, multiplayerRoom } from '../stores.js';
+import { currentPage, multiplayerRoom, scenePlayerEventId, scenePlayerData } from '../stores.js';
 
 export function navigateTo(page) {
     if (get(currentPage) === page) return;
@@ -24,4 +24,20 @@ export function navigateToMultiplayer() {
     multiplayerRoom.set(null);
     currentPage.set('multiplayer');
     history.pushState({ page: 'multiplayer' }, '', '#multiplayer');
+}
+
+export function navigateToMemory(eventId) {
+    scenePlayerEventId.set(eventId);
+    scenePlayerData.set(null);
+    currentPage.set('scene-player');
+    history.pushState({ page: 'scene-player', eventId }, '', '#memory/' + eventId);
+}
+
+export function navigateToScene(animIndex, participants) {
+    const data = { animIndex, participants };
+    const encoded = btoa(JSON.stringify(data));
+    scenePlayerEventId.set(null);
+    scenePlayerData.set(data);
+    currentPage.set('scene-player');
+    history.pushState({ page: 'scene-player', sceneData: encoded }, '', '#scene/' + encoded);
 }

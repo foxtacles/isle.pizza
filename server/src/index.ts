@@ -27,6 +27,36 @@ app.all("/api/auth/*", async (c) => {
 	return auth.handler(c.req.raw);
 });
 
+// Public endpoint: look up a memory completion by eventId (no auth needed)
+app.get("/api/memory/:eventId", async (c) => {
+	const eventId = c.req.param("eventId");
+	if (!eventId || eventId.length > 16) {
+		return c.json({ error: "Invalid eventId" }, 400);
+	}
+
+	const result = await c.env.DB.prepare(
+		"SELECT anim_index, event_id, completed_at, participants FROM memory_completions WHERE event_id = ? LIMIT 1"
+	)
+		.bind(eventId)
+		.first<{
+			anim_index: number;
+			event_id: string;
+			completed_at: number;
+			participants: string;
+		}>();
+
+	if (!result) {
+		return c.json({ error: "Not found" }, 404);
+	}
+
+	return c.json({
+		animIndex: result.anim_index,
+		eventId: result.event_id,
+		completedAt: result.completed_at,
+		participants: JSON.parse(result.participants || "[]"),
+	});
+});
+
 // Auth middleware for protected /api/memories routes
 const memoriesAuth = async (c: any, next: any) => {
 	const auth = createAuth(c.env);

@@ -1,7 +1,7 @@
 <script>
     import { onMount } from 'svelte';
     import { computePosition, flip, shift, offset } from '@floating-ui/dom';
-    import { currentPage, debugEnabled, gameRunning, multiplayerRoom, parseHash, initialInvalidRoom } from './stores.js';
+    import { currentPage, debugEnabled, gameRunning, multiplayerRoom, scenePlayerEventId, scenePlayerData, parseHash, initialInvalidRoom } from './stores.js';
     import { showToast } from './core/toast.js';
     import { registerServiceWorker, checkCacheStatus, requestPersistentStorage } from './core/service-worker.js';
     import { setupCanvasEvents } from './core/emscripten.js';
@@ -21,6 +21,7 @@
     import GoodbyePopup from './lib/GoodbyePopup.svelte';
     import ConfigToast from './lib/ConfigToast.svelte';
     import DebugPanel from './lib/DebugPanel.svelte';
+    import ScenePlayerPage from './lib/ScenePlayerPage.svelte';
     import MultiplayerOverlay from './lib/multiplayer/MultiplayerOverlay.svelte';
     import WhatsNewBanner from './lib/WhatsNewBanner.svelte';
     import CanvasWrapper from './lib/CanvasWrapper.svelte';
@@ -119,6 +120,15 @@
             if (initialHash.startsWith('#r/') && $multiplayerRoom) {
                 state.room = $multiplayerRoom;
             }
+            if (initialHash.startsWith('#memory/')) {
+                state.eventId = initialHash.slice(8);
+                scenePlayerEventId.set(state.eventId);
+            }
+            if (initialHash.startsWith('#scene/')) {
+                state.sceneData = initialHash.slice(7);
+                try { scenePlayerData.set(JSON.parse(atob(state.sceneData))); }
+                catch { /* invalid data, page will show error */ }
+            }
             history.pushState(state, '', initialInvalidRoom ? '#multiplayer' : initialHash);
         } else {
             history.replaceState({ page: 'main' }, '', window.location.pathname);
@@ -134,12 +144,26 @@
             if (e.state && e.state.page === 'multiplayer') {
                 multiplayerRoom.set(e.state.room || null);
                 currentPage.set('multiplayer');
+            } else if (e.state && e.state.page === 'scene-player') {
+                scenePlayerEventId.set(e.state.eventId || null);
+                if (e.state.sceneData) {
+                    try { scenePlayerData.set(JSON.parse(atob(e.state.sceneData))); }
+                    catch { scenePlayerData.set(null); }
+                } else {
+                    scenePlayerData.set(null);
+                }
+                currentPage.set('scene-player');
             } else if (e.state && e.state.page && e.state.page !== 'main') {
                 currentPage.set(e.state.page);
             } else {
                 // No state (e.g. URL pasted in address bar) — parse hash directly
                 const result = parseHash(window.location.hash);
                 multiplayerRoom.set(result.room);
+                if (result.eventId) scenePlayerEventId.set(result.eventId);
+                if (result.sceneData) {
+                    try { scenePlayerData.set(JSON.parse(atob(result.sceneData))); }
+                    catch { scenePlayerData.set(null); }
+                }
                 currentPage.set(result.page);
                 if (result.invalidRoom) {
                     showToast('Invalid island URL', { error: true, duration: 3000 });
@@ -188,6 +212,9 @@
     </div>
     <div class="page-wrapper" class:active={$currentPage === 'memories'}>
         <MemoriesPage />
+    </div>
+    <div class="page-wrapper" class:active={$currentPage === 'scene-player'}>
+        <ScenePlayerPage />
     </div>
 
     <div class="footer-disclaimer">

@@ -10,7 +10,7 @@ const PAGE_MAP = {
     '#memories': 'memories'
 };
 
-// Parse a hash string into { page, room, invalidRoom }
+// Parse a hash string into { page, room, invalidRoom, eventId, sceneData }
 export function parseHash(hash) {
     if (hash.startsWith('#r/')) {
         const room = hash.slice(3);
@@ -18,6 +18,12 @@ export function parseHash(hash) {
             return { page: 'multiplayer', room };
         }
         return { page: 'multiplayer', room: null, invalidRoom: true };
+    }
+    if (hash.startsWith('#memory/')) {
+        return { page: 'scene-player', room: null, eventId: hash.slice(8) };
+    }
+    if (hash.startsWith('#scene/')) {
+        return { page: 'scene-player', room: null, sceneData: hash.slice(7) };
     }
     return { page: PAGE_MAP[hash] || 'main', room: null };
 }
@@ -34,6 +40,10 @@ export const currentPage = writable(initial.page);
 export const multiplayerRoom = writable(initial.room);
 // Set on startup if the initial URL had an invalid room
 export const initialInvalidRoom = initial.invalidRoom || false;
+
+// Initialize scene player stores from URL hash if applicable
+export const _initialEventId = initial.eventId || null;
+export const _initialSceneData = initial.sceneData || null;
 
 // Debug mode
 export const debugEnabled = writable(false);
@@ -95,6 +105,13 @@ export const memoryUnlocks = writable(new Set());
 
 // All completion records from IndexedDB (null = not loaded yet)
 export const memoryCompletions = writable(null);
+
+// Scene player state (set when navigating to #memory/ or #scene/ URLs)
+// Initialize from URL hash so they're available before onMount runs
+export const scenePlayerEventId = writable(_initialEventId);
+export const scenePlayerData = writable(
+    _initialSceneData ? (() => { try { return JSON.parse(atob(_initialSceneData)); } catch { return null; } })() : null
+);
 
 // Crash state — set when game aborts/crashes
 export const gameCrashed = writable(null);
