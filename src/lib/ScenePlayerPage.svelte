@@ -3,7 +3,6 @@
     import { currentPage, scenePlayerEventId, scenePlayerData, memoryCompletions } from '../stores.js';
     import { AnimationTitles, AnimationObjectIds } from './multiplayer/animationCatalog.js';
     import { ActorDisplayNames } from '../core/savegame/actorConstants.js';
-    import { navigateBack } from '../core/navigation.js';
     import { API_URL } from '../core/config.js';
     import { getWdb } from '../core/wdbCache.js';
     import { getSIReader, decodeAnimIndex } from '../core/formats/SIParser.js';
@@ -12,13 +11,13 @@
     import { SceneAudioPlayer } from '../core/sceneAudio.js';
     import { PhonemePlayer } from '../core/rendering/PhonemePlayer.js';
     import BackButton from './BackButton.svelte';
+    import ShareLinkButton from './ShareLinkButton.svelte';
 
     let loading = true;
     let error = null;
     let animIndex = null;
     let participants = [];
     let title = '';
-    let status = 'Resolving memory...';
 
     // Playback state
     let renderer = null;
@@ -75,7 +74,6 @@
         animIndex = null;
         participants = [];
         title = '';
-        status = 'Resolving memory...';
 
         try {
             // Step 1: Resolve the completion record
@@ -88,7 +86,6 @@
                 if (local) {
                     record = { animIndex: local.animIndex, participants: local.participants };
                 } else {
-                    status = 'Fetching memory from server...';
                     const res = await fetch(`${API_URL}/api/memory/${encodeURIComponent($scenePlayerEventId)}`);
                     if (gen !== loadGeneration) return;
                     if (res.ok) {
@@ -118,7 +115,6 @@
             }
 
             // Step 3: Load SI and WDB in parallel
-            status = 'Loading scene data...';
             const [siReader, wdbData] = await Promise.all([
                 getSIReader(worldSlot),
                 getWdb(),
@@ -126,7 +122,6 @@
             if (gen !== loadGeneration) return;
 
             // Step 4: Read the composite object from SI
-            status = 'Extracting animation...';
             const siObject = await siReader.readObjectWithData(objectId);
             if (gen !== loadGeneration) return;
             if (!siObject) {
@@ -146,7 +141,6 @@
             duration = sceneData.duration;
 
             // Step 6: Show canvas, wait for layout
-            status = 'Building scene...';
             loading = false;
             ready = false;
 
@@ -248,37 +242,34 @@
         return `${m}:${sec.toString().padStart(2, '0')}`;
     }
 
-    function goBack() {
-        navigateBack();
-    }
+    $: shareUrl = $scenePlayerEventId
+        ? `${window.location.origin}${window.location.pathname}#memory/${$scenePlayerEventId}`
+        : null;
 </script>
 
 <div class="page-content">
-    <div class="scene-player-page">
-    <div class="scene-header">
-        <BackButton onclick={goBack} />
-        <div class="scene-title-area">
-            {#if title}
-                <h2 class="scene-title">{title}</h2>
-            {/if}
-            {#if participants.length > 0}
-                <div class="scene-participants">
-                    {#each participants as p, idx}
-                        {#if idx > 0}<span class="sep">&middot;</span>{/if}
-                        <span class="participant">{p.displayName}
-                            <span class="char-name">as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}</span>
-                        </span>
-                    {/each}
-                </div>
-            {/if}
-        </div>
+    <BackButton />
+    <div class="page-inner-content scene-player-inner">
+    <div class="scene-title-area">
+        {#if title}
+            <h2 class="scene-title">{title}</h2>
+        {/if}
+        {#if participants.length > 0}
+            <div class="scene-participants">
+                {#each participants as p, idx}
+                    {#if idx > 0}<span class="sep">&middot;</span>{/if}
+                    <span class="participant">{p.displayName}
+                        <span class="char-name">as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}</span>
+                    </span>
+                {/each}
+            </div>
+        {/if}
     </div>
 
     <div class="scene-canvas-area">
         {#if loading}
             <div class="scene-loading">
                 <div class="spinner"></div>
-                <p>{status}</p>
             </div>
         {:else if error}
             <div class="scene-error">
@@ -313,27 +304,23 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
                 {/if}
             </button>
+
+            {#if shareUrl}
+                <span class="controls-spacer"></span>
+                <ShareLinkButton url={shareUrl} />
+            {/if}
         </div>
     {/if}
     </div>
 </div>
 
 <style>
-    .scene-player-page {
-        width: 100%;
-        max-width: 700px;
-    }
-
-    .scene-header {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
+    .scene-player-inner {
+        text-align: left;
     }
 
     .scene-title-area {
-        flex: 1;
-        min-width: 0;
+        margin-bottom: 1rem;
     }
 
     .scene-title {
@@ -459,5 +446,12 @@
         white-space: nowrap;
         min-width: 5em;
         text-align: center;
+    }
+
+    .controls-spacer {
+        flex: 0 0 1px;
+        height: 16px;
+        background: #333;
+        margin: 0 0.25rem;
     }
 </style>

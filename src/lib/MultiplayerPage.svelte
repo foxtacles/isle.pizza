@@ -12,6 +12,7 @@
     import { saveConfigFromDOM, getOpfsRoot } from '../core/opfs.js';
     import { showToast } from '../core/toast.js';
     import { ActorInfoInit } from '../core/savegame/actorConstants.js';
+    import ShareLinkButton from './ShareLinkButton.svelte';
 
     const RELAY_URL = __RELAY_URL__;
     const RELAY_HTTP = RELAY_URL.replace('wss://', 'https://').replace('ws://', 'http://');
@@ -178,15 +179,7 @@
         launchGame();
     }
 
-    async function handleCopyLink() {
-        const url = `${window.location.origin}${window.location.pathname}#r/${roomName}`;
-        try {
-            await navigator.clipboard.writeText(url);
-            showToast('Link copied to clipboard');
-        } catch {
-            showToast('Could not copy link');
-        }
-    }
+    $: roomShareUrl = `${window.location.origin}${window.location.pathname}#r/${roomName}`;
 
     onDestroy(() => {
         stopPolling();
@@ -345,13 +338,7 @@
                                 {/if}
                             </span>
                         </span>
-                        <button class="mp-share-btn" onclick={handleCopyLink} title="Copy island link">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                            </svg>
-                            Copy
-                        </button>
+                        <ShareLinkButton url={roomShareUrl} shareText="Let's play LEGO Island together!" compact />
                     </div>
 
                     {#if !$gameRunning}
@@ -493,27 +480,6 @@
     .mp-room-sep {
         color: var(--color-text-muted);
         font-size: 0.75em;
-    }
-
-    .mp-share-btn {
-        flex-shrink: 0;
-        background: none;
-        border: 1px solid var(--color-border-medium);
-        color: var(--color-text-muted);
-        cursor: pointer;
-        padding: 3px 8px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        font-family: inherit;
-        font-size: 0.7em;
-        transition: color 0.2s ease, border-color 0.2s ease;
-    }
-
-    .mp-share-btn:hover {
-        color: var(--color-primary);
-        border-color: var(--color-primary);
     }
 
     .mp-room-players {
