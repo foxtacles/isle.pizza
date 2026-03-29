@@ -90,7 +90,7 @@ export const opfsDisabled = writable(false);
 // { location, state, currentAnimIndex, animations[] }
 export const animationState = writable(null);
 
-// Set of objectId values the player has completed at least once (from IndexedDB)
+// Set of animIndex values the player has completed at least once (from IndexedDB)
 export const memoryUnlocks = writable(new Set());
 
 // All completion records from IndexedDB (null = not loaded yet)

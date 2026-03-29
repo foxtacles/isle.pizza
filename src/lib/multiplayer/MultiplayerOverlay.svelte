@@ -1,7 +1,7 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
     import { gameRunning, multiplayerRoom, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus, animationState, memoryUnlocks } from '../../stores.js';
-    import { resolveCluster, ClusterObjectIds } from './animationCatalog.js';
+    import { resolveCluster, ClusterAnimIndices } from './animationCatalog.js';
     import { keepVisible } from '../../core/keep-visible.js';
     import { emoteOptions, walkOptions, idleOptions, settingsItems } from './constants.js';
     import MultiplayerHotbar from './MultiplayerHotbar.svelte';
@@ -101,7 +101,7 @@
     $: animCluster = resolveCluster($animationState?.locations) || 'Island';
     $: clusterProgress = (() => {
         function calc(label) {
-            const ids = ClusterObjectIds.get(label);
+            const ids = ClusterAnimIndices.get(label);
             if (!ids) return { label, unlocked: 0, total: 0 };
             const total = ids.length;
             const unlocked = ids.filter(id => $memoryUnlocks.has(id)).length;

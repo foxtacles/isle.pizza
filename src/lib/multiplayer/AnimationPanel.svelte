@@ -117,8 +117,8 @@
                 onclick={() => handleClick(anim)}>
                 <div class="row-left">
                     <span class="anim-name-row">
-                        <span class="anim-name">{AnimationTitles[anim.objectId] || anim.name}</span>
-                        {#if $memoryUnlocks.has(anim.objectId)}<span class="unlocked-mark" title="Memory unlocked">&#10003;</span>{/if}
+                        <span class="anim-name">{AnimationTitles[anim.animIndex] || anim.name}</span>
+                        {#if $memoryUnlocks.has(anim.animIndex)}<span class="unlocked-mark" title="Memory unlocked">&#10003;</span>{/if}
                     </span>
                     {#if anim.sessionState === 3 && anim.localInSession}
                         <span class="anim-sub playing-text">Playing...</span>

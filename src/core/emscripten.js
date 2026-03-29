@@ -110,7 +110,7 @@ export function setupCanvasEvents() {
     canvas.addEventListener('animationCompleted', function (event) {
         try {
             const data = JSON.parse(event.detail.json);
-            recordCompletion(data.objectId, data.eventId, data.participants);
+            recordCompletion(data.animIndex, data.eventId, data.participants);
         } catch (e) {
             console.error('[Memory] Failed to process completion:', e);
         }

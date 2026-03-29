@@ -17,7 +17,7 @@ export async function initMemories() {
             req.onupgradeneeded = (e) => {
                 const database = e.target.result;
                 const store = database.createObjectStore(STORE_NAME, { autoIncrement: true });
-                store.createIndex('objectId', 'objectId', { unique: false });
+                store.createIndex('animIndex', 'animIndex', { unique: false });
                 store.createIndex('eventId', 'eventId', { unique: true });
             };
             req.onsuccess = (e) => resolve(e.target.result);
@@ -51,14 +51,14 @@ export async function initMemories() {
     }
 }
 
-export async function recordCompletion(objectId, eventId, participants) {
+export async function recordCompletion(animIndex, eventId, participants) {
     if (!db) return;
     try {
         let wasDuplicate = false;
         await new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
             const req = tx.objectStore(STORE_NAME).add({
-                objectId,
+                animIndex,
                 eventId,
                 t: Math.floor(Date.now() / 1000),
                 participants
@@ -78,7 +78,7 @@ export async function recordCompletion(objectId, eventId, participants) {
         await rebuildStores();
 
         if (currentSession && participants.length > 0) {
-            reportToServer(objectId, eventId, participants);
+            reportToServer(animIndex, eventId, participants);
         }
     } catch (e) {
         console.error('[Memory] Failed to record completion:', e);
@@ -97,7 +97,7 @@ async function rebuildStores() {
         req.onsuccess = (e) => resolve(e.target.result);
         req.onerror = (e) => reject(e.target.error);
     });
-    memoryUnlocks.set(new Set(records.map(r => r.objectId)));
+    memoryUnlocks.set(new Set(records.map(r => r.animIndex)));
     memoryCompletions.set(records);
     return records;
 }
@@ -128,13 +128,13 @@ export async function clearLocalMemories() {
 
 // --- Server sync ---
 
-async function reportToServer(objectId, eventId, participants) {
+async function reportToServer(animIndex, eventId, participants) {
     try {
         await fetch(`${API_URL}/api/memories`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ objectId, eventId, participants })
+            body: JSON.stringify({ animIndex, eventId, participants })
         });
     } catch (e) {
         console.warn('[Memory] Failed to report to server:', e);
@@ -166,7 +166,7 @@ async function syncWithServer() {
         for (const sc of serverCompletions) {
             if (!localEventIds.has(sc.event_id)) {
                 store.add({
-                    objectId: sc.object_id,
+                    animIndex: sc.anim_index,
                     eventId: sc.event_id,
                     t: sc.completed_at,
                     participants: JSON.parse(sc.participants || '[]')

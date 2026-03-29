@@ -38,7 +38,7 @@
     onDestroy(() => clearInterval(tickInterval));
 
     $: animName = countdownAnim
-        ? (AnimationTitles[countdownAnim.objectId] || countdownAnim.name || '')
+        ? (AnimationTitles[countdownAnim.animIndex] || countdownAnim.name || '')
         : '';
 </script>
 

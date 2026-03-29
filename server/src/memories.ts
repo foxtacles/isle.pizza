@@ -12,7 +12,7 @@ type Variables = {
 /** Row shape returned by queries on memory_completions */
 interface CompletionRow {
 	user_id: string;
-	object_id: number;
+	anim_index: number;
 	event_id: string;
 	completed_at: number;
 	participants: string;
@@ -21,20 +21,20 @@ interface CompletionRow {
 function getUserCompletions(db: D1Database, userId: string) {
 	return db
 		.prepare(
-			"SELECT object_id, event_id, completed_at, participants FROM memory_completions WHERE user_id = ? ORDER BY completed_at DESC"
+			"SELECT anim_index, event_id, completed_at, participants FROM memory_completions WHERE user_id = ? ORDER BY completed_at DESC"
 		)
 		.bind(userId)
 		.all<CompletionRow>();
 }
 
 function isValidCompletion(c: {
-	objectId: unknown;
+	animIndex: unknown;
 	eventId: unknown;
 }): boolean {
 	if (
-		typeof c.objectId !== "number" ||
-		!Number.isInteger(c.objectId) ||
-		c.objectId < 0
+		typeof c.animIndex !== "number" ||
+		!Number.isInteger(c.animIndex) ||
+		c.animIndex < 0
 	)
 		return false;
 	if (typeof c.eventId !== "string" || c.eventId.length > 16) return false;
@@ -48,7 +48,7 @@ const memories = new Hono<{ Bindings: Env; Variables: Variables }>();
 memories.post("/", async (c) => {
 	const session = c.get("session");
 	const body = await c.req.json<{
-		objectId: number;
+		animIndex: number;
 		eventId: string;
 		participants: Array<{ charIndex: number; displayName: string }>;
 	}>();
@@ -64,11 +64,11 @@ memories.post("/", async (c) => {
 	const participantsJson = JSON.stringify(body.participants);
 
 	await c.env.DB.prepare(
-		"INSERT OR IGNORE INTO memory_completions (user_id, object_id, event_id, completed_at, participants) VALUES (?, ?, ?, ?, ?)"
+		"INSERT OR IGNORE INTO memory_completions (user_id, anim_index, event_id, completed_at, participants) VALUES (?, ?, ?, ?, ?)"
 	)
 		.bind(
 			session.user.id,
-			body.objectId,
+			body.animIndex,
 			body.eventId,
 			Math.floor(Date.now() / 1000),
 			participantsJson
@@ -83,7 +83,7 @@ memories.post("/sync", async (c) => {
 	const session = c.get("session");
 	const body = await c.req.json<{
 		completions: Array<{
-			objectId: number;
+			animIndex: number;
 			eventId: string;
 			t: number;
 			participants?: Array<{ charIndex: number; displayName: string }>;
@@ -95,7 +95,7 @@ memories.post("/sync", async (c) => {
 	}
 
 	const stmt = c.env.DB.prepare(
-		"INSERT OR IGNORE INTO memory_completions (user_id, object_id, event_id, completed_at, participants) VALUES (?, ?, ?, ?, ?)"
+		"INSERT OR IGNORE INTO memory_completions (user_id, anim_index, event_id, completed_at, participants) VALUES (?, ?, ?, ?, ?)"
 	);
 
 	// Find existing event_ids for this user to avoid duplicates
@@ -122,7 +122,7 @@ memories.post("/sync", async (c) => {
 		batch.push(
 			stmt.bind(
 				session.user.id,
-				completion.objectId,
+				completion.animIndex,
 				completion.eventId,
 				completion.t || Math.floor(Date.now() / 1000),
 				JSON.stringify(completion.participants)

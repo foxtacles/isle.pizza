@@ -1,7 +1,7 @@
 <script>
     import { memoryUnlocks, memoryCompletions } from '../stores.js';
     import { buildingThumbnails, actorThumbnails } from '../core/thumbnails.js';
-    import { AnimationTitles, ClusterObjectIds, TOTAL_ANIMATIONS } from './multiplayer/animationCatalog.js';
+    import { AnimationTitles, ClusterAnimIndices, TOTAL_ANIMATIONS } from './multiplayer/animationCatalog.js';
     import { ActorDisplayNames } from '../core/savegame/actorConstants.js';
     import BackButton from './BackButton.svelte';
 
@@ -17,10 +17,10 @@
     $: loaded = $memoryCompletions !== null;
     $: progressPct = TOTAL_ANIMATIONS > 0 ? Math.round((unlockCount / TOTAL_ANIMATIONS) * 100) : 0;
 
-    // Group completions by objectId for lookup
+    // Group completions by animIndex for lookup
     $: completionsByAnim = ($memoryCompletions || []).reduce((map, c) => {
-        if (!map[c.objectId]) map[c.objectId] = [];
-        map[c.objectId].push(c);
+        if (!map[c.animIndex]) map[c.animIndex] = [];
+        map[c.animIndex].push(c);
         return map;
     }, {});
 
@@ -28,20 +28,20 @@
     $: locationGroups = buildLocationGroups(completionsByAnim);
 
     function buildLocationGroups(comps) {
-        return [...ClusterObjectIds.entries()].map(([label, objectIds]) => {
-            const anims = objectIds.map(id => buildEntry(id, comps));
+        return [...ClusterAnimIndices.entries()].map(([label, animIndices]) => {
+            const anims = animIndices.map(id => buildEntry(id, comps));
             const unlocked = anims.filter(a => a.unlocked).length;
             return { label, anims, unlocked, total: anims.length };
         }).sort((a, b) => a.label.localeCompare(b.label));
     }
 
-    function buildEntry(objectId, comps) {
-        const c = comps[objectId];
+    function buildEntry(animIndex, comps) {
+        const c = comps[animIndex];
         if (c && c.length > 0) {
             const sorted = [...c].sort((a, b) => b.t - a.t); // newest first
             return {
-                objectId,
-                title: AnimationTitles[objectId] || null,
+                animIndex,
+                title: AnimationTitles[animIndex] || null,
                 unlocked: true,
                 completions: sorted.map(comp => ({
                     eventId: comp.eventId,
@@ -50,7 +50,7 @@
                 }))
             };
         }
-        return { objectId, title: AnimationTitles[objectId] || null, unlocked: false };
+        return { animIndex, title: AnimationTitles[animIndex] || null, unlocked: false };
     }
 
     $: selectedGroup = selectedLocation
@@ -115,17 +115,17 @@
         return next;
     }
 
-    function toggleAnim(objectId) {
-        expandedAnims = toggleSet(expandedAnims, objectId);
+    function toggleAnim(animIndex) {
+        expandedAnims = toggleSet(expandedAnims, animIndex);
     }
 
-    function toggleShowAll(objectId) {
-        showAllComps = toggleSet(showAllComps, objectId);
+    function toggleShowAll(animIndex) {
+        showAllComps = toggleSet(showAllComps, animIndex);
     }
 
     function visibleCompletions(anim, showAll) {
         if (!anim.completions) return [];
-        if (showAll.has(anim.objectId)) return anim.completions;
+        if (showAll.has(anim.animIndex)) return anim.completions;
         return anim.completions.slice(0, COMP_CAP);
     }
 
@@ -302,10 +302,10 @@
                             <button
                                 class="anim-header"
                                 class:expandable={anim.unlocked}
-                                onclick={() => anim.unlocked && toggleAnim(anim.objectId)}
+                                onclick={() => anim.unlocked && toggleAnim(anim.animIndex)}
                             >
                                 <span class="anim-icon">{anim.unlocked ? '\u2713' : '?'}</span>
-                                <span class="anim-title">{anim.title || `Animation #${anim.objectId}`}</span>
+                                <span class="anim-title">{anim.title || `Animation #${anim.animIndex}`}</span>
                                 {#if anim.completions}
                                     <div class="anim-preview">
                                         {@render avatarStack(anim.completions[0].participants)}
@@ -313,12 +313,12 @@
                                         <span class="anim-sep">&middot;</span>
                                         <span class="anim-time">{formatDateShort(anim.completions[0].timestamp, now)}</span>
                                     </div>
-                                    <span class="anim-chevron" class:open={expandedAnims.has(anim.objectId)}></span>
+                                    <span class="anim-chevron" class:open={expandedAnims.has(anim.animIndex)}></span>
                                 {/if}
                             </button>
 
                             <!-- Expanded completion rows -->
-                            {#if anim.completions && expandedAnims.has(anim.objectId)}
+                            {#if anim.completions && expandedAnims.has(anim.animIndex)}
                                 <div class="completions">
                                     {#each visibleCompletions(anim, showAllComps) as comp}
                                         <div class="comp-row">
@@ -350,8 +350,8 @@
                                             </div>
                                         </div>
                                     {/each}
-                                    {#if anim.completions.length > COMP_CAP && !showAllComps.has(anim.objectId)}
-                                        <button class="comp-show-more" onclick={() => toggleShowAll(anim.objectId)}>
+                                    {#if anim.completions.length > COMP_CAP && !showAllComps.has(anim.animIndex)}
+                                        <button class="comp-show-more" onclick={() => toggleShowAll(anim.animIndex)}>
                                             Show {anim.completions.length - COMP_CAP} more
                                         </button>
                                     {/if}
