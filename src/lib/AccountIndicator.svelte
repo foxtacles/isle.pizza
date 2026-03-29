@@ -108,6 +108,7 @@
             onclick={handleAuthClick}
             disabled={$authSession === undefined}
             title={$authSession ? displayName : ($authSession === null ? 'Sign in' : '')}
+            aria-label={$authSession ? displayName : 'Sign in'}
         >
             <svg class="avatar-placeholder" class:hidden={imgLoaded} class:signed-out={!$authSession} viewBox="0 0 32 32" fill="none">
                 <circle cx="16" cy="12" r="5" fill="currentColor"/>
