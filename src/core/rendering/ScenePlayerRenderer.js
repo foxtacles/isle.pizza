@@ -2,30 +2,35 @@
  * Multi-actor scene renderer for scene animation playback.
  *
  * Directly applies animation transforms per-frame, matching the backend's
- * AnimUtils::ApplyTree → LegoROI::ApplyAnimationTransformation pipeline.
- * No decompose/recompose round-trip — matrices are set directly on OGL Transforms.
+ * AnimUtils::ApplyTree -> LegoROI::ApplyAnimationTransformation pipeline.
+ * No decompose/recompose round-trip -- matrices are set directly on OGL Transforms.
  */
 
 import { Transform, Mesh } from 'ogl';
 import { Vec3 } from 'ogl/src/math/Vec3.js';
-import { Quat } from 'ogl/src/math/Quat.js';
 import { Mat4 } from 'ogl/src/math/Mat4.js';
-import { ActorInfoInit, ActorLODs, ActorLODFlags } from '../savegame/actorConstants.js';
-import { LegoColors } from '../savegame/constants.js';
 import { BaseRenderer } from './BaseRenderer.js';
-import { resolveLods, buildGlobalPartsMap, buildPartsMap } from '../formats/WdbParser.js';
+import { buildGlobalPartsMap } from '../formats/WdbParser.js';
+import { evaluateLocalTransform, getVisibility } from '../animation/keyframeEval.js';
+import { trimLODSuffix, stripStar } from '../animation/stringUtils.js';
 
-const ANIM_NODE_TO_PART = (() => {
-    const m = {};
-    const MAP = { 'body':'BODY','infohat':'INFOHAT','infogron':'INFOGRON','head':'HEAD',
-        'arm-lft':'ARM-LFT','arm-rt':'ARM-RT','claw-lft':'CLAW-LFT','claw-rt':'CLAW-RT',
-        'leg-lft':'LEG-LFT','leg-rt':'LEG-RT' };
-    for (const [k, v] of Object.entries(MAP)) m[v.toLowerCase()] = `part_${k}`;
-    return m;
-})();
-
-function trimLODSuffix(n) { let s=n; while(s.length>1&&((s[s.length-1]>='0'&&s[s.length-1]<='9')||s[s.length-1]==='_')) s=s.slice(0,-1); return s; }
-function stripStar(n) { return n.startsWith('*')?n.slice(1):n; }
+/**
+ * Map from animation node names (lowercased) to character part group names.
+ * Used to resolve animation tree nodes to the OGL Transform groups created
+ * by assembleCharacterParts().
+ */
+const ANIM_NODE_TO_PART = {
+    'body': 'part_body',
+    'infohat': 'part_infohat',
+    'infogron': 'part_infogron',
+    'head': 'part_head',
+    'arm-lft': 'part_arm-lft',
+    'arm-rt': 'part_arm-rt',
+    'claw-lft': 'part_claw-lft',
+    'claw-rt': 'part_claw-rt',
+    'leg-lft': 'part_leg-lft',
+    'leg-rt': 'part_leg-rt',
+};
 
 
 export class ScenePlayerRenderer extends BaseRenderer {
@@ -34,6 +39,7 @@ export class ScenePlayerRenderer extends BaseRenderer {
         canvas.width = Math.floor(rect.width);
         canvas.height = Math.floor(rect.height);
         super(canvas);
+
         this._lastTime = 0;
         this._elapsed = 0;
         this._playing = false;
@@ -42,8 +48,28 @@ export class ScenePlayerRenderer extends BaseRenderer {
         this._animData = null;
     }
 
+    /** @returns {Map<string, Map<string, Transform>>} Actor name -> part map */
+    get actorContainers() {
+        return this._actorContainers;
+    }
+
+    /**
+     * Load and initialize the scene from parsed animation data.
+     *
+     * Pipeline:
+     *   1. Load textures and build global parts map
+     *   2. Assemble character and prop actors from the animation's actor list
+     *   3. Resolve animation tree nodes to OGL Transforms
+     *   4. Create props found in the tree but not in the actor list
+     *   5. Apply frame 0, center/scale, set up camera and controls
+     *
+     * @param {import('../formats/SICompositeParser.js').SceneAnimData} sceneAnimData
+     * @param {Array} participants - Participant records with charIndex
+     * @param {{ wdbParser, wdbData }} wdbBundle
+     */
     loadScene(sceneAnimData, participants, wdbBundle) {
         this.clearModel();
+
         const { wdbParser: parser, wdbData: wdb } = wdbBundle;
         this.loadTextures(wdb.globalTextures);
 
@@ -57,39 +83,27 @@ export class ScenePlayerRenderer extends BaseRenderer {
 
         const animData = sceneAnimData.anim;
         this._animData = animData;
-        const globalPartsMap = buildGlobalPartsMap(wdb.globalParts);
+        this._globalPartsMap = buildGlobalPartsMap(wdb.globalParts);
 
-        // Phase 1: Assemble actors from the actors list
+        // Phase 1: Assemble actors from the animation's actor list
         for (const actor of animData.actors) {
             if (!actor.name) continue;
-            const cn = stripStar(actor.name).toLowerCase();
+
+            const canonicalName = stripStar(actor.name).toLowerCase();
+
             if (actor.actorType === 2) {
-                const ci = this._findCharacterIndex(cn);
-                if (ci >= 0) {
-                    const parts = this._assembleCharacterParts(ci, globalPartsMap);
-                    const pm = new Map();
-                    for (const [pn, pg] of parts) { this.modelGroup.addChild(pg); pm.set(pn, pg); }
-                    this._actorContainers.set(cn, pm);
-                    console.log(`[SP] Character: ${cn} (${parts.length} parts)`);
-                }
+                // Character actor (e_managedLegoActor)
+                this._assembleCharacter(canonicalName, this._globalPartsMap);
             } else {
-                const tr = trimLODSuffix(cn);
-                let g = this._assemblePropHierarchical(tr);
-                if (!g && tr !== cn) g = this._assemblePropHierarchical(cn);
-                if (g) {
-                    g.name = cn;
-                    this.modelGroup.addChild(g);
-                    console.log(`[SP] Prop: ${cn} (model: ${tr})`);
-                } else {
-                    console.warn(`[SP] Prop not found: ${cn} (trimmed: ${tr})`);
-                }
+                // Prop actor
+                this._assembleProp(canonicalName);
             }
         }
 
-        // Phase 2: Annotate animation tree nodes with their resolved OGL Transforms
+        // Phase 2: Resolve animation tree nodes to OGL Transforms
         this._resolveAnimTree(animData.rootNode, this.modelGroup);
 
-        // Phase 3: Create props found in the tree but not yet in the scene
+        // Phase 3: Create props found in the tree but not in the scene
         this._createMissingTreeProps(animData.rootNode);
 
         // Phase 4: Apply frame 0 to position everything for bounding box
@@ -104,41 +118,97 @@ export class ScenePlayerRenderer extends BaseRenderer {
         this.glRenderer.render({ scene: this.scene, camera: this.camera });
     }
 
+    // ── Actor Assembly ──────────────────────────────────────────────
+
+    /**
+     * Assemble a character actor from its parts and add to the scene.
+     */
+    _assembleCharacter(canonicalName, globalPartsMap) {
+        const characterIndex = this.findCharacterIndex(canonicalName);
+        if (characterIndex < 0) return;
+
+        const parts = this.assembleCharacterParts(characterIndex, globalPartsMap);
+        const partMap = new Map();
+
+        for (const [partName, partGroup] of parts) {
+            this.modelGroup.addChild(partGroup);
+            partMap.set(partName, partGroup);
+        }
+
+        this._actorContainers.set(canonicalName, partMap);
+    }
+
+    /**
+     * Assemble a prop actor and add to the scene.
+     * Tries trimmed LOD suffix first, then the original name.
+     */
+    _assembleProp(canonicalName) {
+        const trimmedName = trimLODSuffix(canonicalName);
+        let group = this.assemblePropHierarchical(
+            trimmedName, this._parser, this._wdb, this._worldPartsMaps, this._globalPartsMap
+        );
+        if (!group && trimmedName !== canonicalName) {
+            group = this.assemblePropHierarchical(
+                canonicalName, this._parser, this._wdb, this._worldPartsMaps, this._globalPartsMap
+            );
+        }
+
+        if (group) {
+            group.name = canonicalName;
+            this.modelGroup.addChild(group);
+        }
+    }
+
+    // ── Animation Tree Resolution ───────────────────────────────────
+
     /**
      * Walk the animation tree and annotate each node.data with _transform
-     * pointing to the resolved OGL Transform. Uses parent context to handle
-     * duplicate names (e.g. BIRDBEAK under both BIRD and BIRD01).
+     * pointing to the resolved OGL Transform.
+     *
+     * Uses parent context to handle duplicate names (e.g. BIRDBEAK under
+     * both BIRD and BIRD01). Matches the backend's FindChildROI behavior
+     * where the search context is the direct parent's scope.
      */
     _resolveAnimTree(animNode, parentOGL) {
-        const raw = animNode.data?.name;
-        if (!raw) {
-            for (const c of animNode.children) this._resolveAnimTree(c, parentOGL);
+        const rawName = animNode.data?.name;
+        if (!rawName) {
+            for (const child of animNode.children) {
+                this._resolveAnimTree(child, parentOGL);
+            }
             return;
         }
 
-        const cn = stripStar(raw).toLowerCase();
+        const canonicalName = stripStar(rawName).toLowerCase();
         let matched = null;
 
         // 1. Character body part?
-        const partName = ANIM_NODE_TO_PART[cn];
+        const partName = ANIM_NODE_TO_PART[canonicalName];
         if (partName) {
-            for (const ch of this.modelGroup.children) {
-                if (ch.name === partName) { matched = ch; break; }
+            for (const child of this.modelGroup.children) {
+                if (child.name === partName) {
+                    matched = child;
+                    break;
+                }
             }
         }
 
         // 2. Child of parent OGL Transform? (handles duplicate names via context)
-        // Matches backend FindChildROI which searches direct children of the prop root.
         if (!matched && parentOGL) {
-            for (const ch of parentOGL.children) {
-                if (ch.name === cn && !(ch instanceof Mesh)) { matched = ch; break; }
+            for (const child of parentOGL.children) {
+                if (child.name === canonicalName && !(child instanceof Mesh)) {
+                    matched = child;
+                    break;
+                }
             }
         }
 
         // 3. Direct child of modelGroup?
         if (!matched) {
-            for (const ch of this.modelGroup.children) {
-                if (ch.name === cn && !(ch instanceof Mesh)) { matched = ch; break; }
+            for (const child of this.modelGroup.children) {
+                if (child.name === canonicalName && !(child instanceof Mesh)) {
+                    matched = child;
+                    break;
+                }
             }
         }
 
@@ -147,135 +217,114 @@ export class ScenePlayerRenderer extends BaseRenderer {
         // Backend behavior: the search context only changes at the top level (props/characters
         // that are direct children of modelGroup). For nested sub-parts, the search context
         // stays at the top-level prop so siblings can be found.
-        // e.g., CHTRSHLD is under CHTRBODY in the anim tree but under CHPTR in the WDB.
         const nextParent = (matched && matched.parent === this.modelGroup) ? matched : parentOGL;
-        for (const c of animNode.children) {
-            this._resolveAnimTree(c, nextParent);
+        for (const child of animNode.children) {
+            this._resolveAnimTree(child, nextParent);
         }
     }
 
-    /** Create props for tree nodes that still have no _transform. */
+    /**
+     * Create props for tree nodes that still have no _transform after resolution.
+     */
     _createMissingTreeProps(node) {
-        const raw = node.data?.name;
-        if (raw && !node.data._transform) {
-            const cn = stripStar(raw).toLowerCase();
-            const tr = trimLODSuffix(cn);
-            let g = this._assemblePropHierarchical(tr);
-            if (!g && tr !== cn) g = this._assemblePropHierarchical(cn);
-            if (g) {
-                g.name = cn;
-                this.modelGroup.addChild(g);
-                node.data._transform = g;
-                console.log(`[SP] Tree prop: ${cn} (model: ${tr})`);
-                for (const c of node.children) this._resolveAnimTree(c, g);
+        const rawName = node.data?.name;
+        if (rawName && !node.data._transform) {
+            const canonicalName = stripStar(rawName).toLowerCase();
+            const trimmedName = trimLODSuffix(canonicalName);
+
+            let group = this.assemblePropHierarchical(
+                trimmedName, this._parser, this._wdb, this._worldPartsMaps, this._globalPartsMap
+            );
+            if (!group && trimmedName !== canonicalName) {
+                group = this.assemblePropHierarchical(
+                    canonicalName, this._parser, this._wdb, this._worldPartsMaps, this._globalPartsMap
+                );
+            }
+
+            if (group) {
+                group.name = canonicalName;
+                this.modelGroup.addChild(group);
+                node.data._transform = group;
+
+                // Re-resolve children now that this prop exists
+                for (const child of node.children) {
+                    this._resolveAnimTree(child, group);
+                }
                 return;
             }
         }
-        for (const c of node.children) this._createMissingTreeProps(c);
-    }
 
-    // ── Prop assembly ──
-
-    _assemblePropHierarchical(name) {
-        const { _parser: p, _wdb: w } = this;
-        if (!p || !w) return null;
-        for (const world of w.worlds || []) {
-            for (const model of world.models || []) {
-                if (model.name.toLowerCase() !== name) continue;
-                try {
-                    const md = p.parseModelData(model.dataOffset);
-                    if (!md?.roi) continue;
-                    if (md.textures) this.loadTextures(md.textures, false);
-                    let wp = this._worldPartsMaps.get(world.name);
-                    if (!wp) { wp = buildPartsMap(p, world.parts); this._worldPartsMaps.set(world.name, wp); }
-                    return this._buildROITree(md.roi, wp);
-                } catch (e) { console.warn(`[SP] Prop error (${name}):`, e); }
-            }
+        for (const child of node.children) {
+            this._createMissingTreeProps(child);
         }
-        const gp = buildGlobalPartsMap(w.globalParts);
-        const part = gp.get(name);
-        if (part?.lods?.length) { const g = new Transform(); g.name = name; this._addLodMeshes(part.lods, g); return g.children.length ? g : null; }
-        return null;
     }
 
-    _buildROITree(roi, pm) {
-        const g = new Transform(); g.name = roi.name.toLowerCase();
-        this._addLodMeshes(resolveLods(roi, pm), g);
-        for (const c of roi.children || []) { const cg = this._buildROITree(c, pm); if (cg) g.addChild(cg); }
-        return g;
+    // ── Playback Control ────────────────────────────────────────────
+
+    play() {
+        this._playing = true;
+        this._lastTime = performance.now();
+        if (!this.animating) this.start();
     }
 
-    _addLodMeshes(lods, g) {
-        if (!lods?.length) return;
-        const lod = lods[lods.length - 1];
-        for (const m of lod.meshes) { const geo = this.createGeometry(m, lod); if (geo) g.addChild(new Mesh(this.gl, { geometry: geo, program: this.createMeshProgram(m) })); }
+    pause() {
+        this._playing = false;
     }
 
-    // ── Character ──
-
-    _findCharacterIndex(n) { for (let i = 0; i < ActorInfoInit.length; i++) if (ActorInfoInit[i].name.toLowerCase() === n) return i; return -1; }
-
-    _assembleCharacterParts(ci, gpm) {
-        const info = ActorInfoInit[ci]; const res = [];
-        for (let i = 0; i < 10; i++) {
-            const lod = ActorLODs[i+1]; const part = info.parts[i];
-            let pn; if (i===0||i===1) { if (!part.partNameIndices||!part.partNames) continue; pn = part.partNames[part.partNameIndices[part.partNameIndex]]; } else { pn = lod.parentName; }
-            if (!pn) continue; const pd = gpm.get(pn.toLowerCase()); if (!pd) continue;
-            const pg = new Transform(); const fn = `part_${lod.name}`; pg.name = fn;
-            if (pd.lods?.length) this._cpM(pd.lods[pd.lods.length-1], lod, part, i, pg);
-            pg.position.set(-lod.position[0], lod.position[1], lod.position[2]);
-            res.push([fn, pg]);
-        }
-        return res;
+    /** Reset elapsed time to zero for replay. */
+    resetPlayback() {
+        this._elapsed = 0;
     }
 
-    _cpM(lod, aLOD, part, pi, g) {
-        const uT=(aLOD.flags&ActorLODFlags.USE_TEXTURE)!==0, uC=(aLOD.flags&ActorLODFlags.USE_COLOR)!==0;
-        let rn=null; if(part.nameIndices&&part.names) rn=part.names[part.nameIndices[part.nameIndex]];
-        let pC=null,pT=null;
-        const bd=pi===0&&part.partNameIndices&&part.partNameIndices[part.partNameIndex]===0;
-        if(uT&&!bd){const tn=rn?.toLowerCase();if(tn&&this.textures.has(tn)) pT=this.textures.get(tn);}
-        if((uC||bd)&&!pT){const ce=LegoColors[rn]||LegoColors['lego white'];if(ce) pC=[ce.r/255,ce.g/255,ce.b/255];}
-        for(const m of lod.meshes){const geo=this.createGeometry(m,lod);if(!geo) continue;let mt=null;const mtn=m.properties?.textureName?.toLowerCase();if(mtn&&this.textures.has(mtn)) mt=this.textures.get(mtn);let pr;if(pT&&m.properties?.textureName) pr=this.createTexturedProgram(pT);else if(mt) pr=this.createTexturedProgram(mt);else if(pC) pr=this.createColoredProgram(pC);else{let c=null;if(m.properties?.useAlias&&m.properties?.materialName){const a=LegoColors[m.properties.materialName.toLowerCase()];if(a) c=[a.r/255,a.g/255,a.b/255];}if(!c){const mc=m.properties?.color||{r:128,g:128,b:128};c=[mc.r/255,mc.g/255,mc.b/255];}pr=this.createColoredProgram(c);}g.addChild(new Mesh(this.gl,{geometry:geo,program:pr}));}
-    }
-
-    // ── Playback ──
-
-    play() { this._playing = true; this._lastTime = performance.now(); if (!this.animating) this.start(); }
-    pause() { this._playing = false; }
     get playing() { return this._playing; }
     get elapsed() { return this._elapsed * 1000; }
     get duration() { return this._duration; }
     get finished() { return this._duration > 0 && this._elapsed * 1000 >= this._duration; }
-    start() { this.animating = true; this._lastTime = performance.now(); this._animate(); }
 
-    _animate() {
-        if (!this.animating) return;
-        requestAnimationFrame(() => this._animate());
-        const now = performance.now(); const dt = (now - this._lastTime) / 1000; this._lastTime = now;
+    /**
+     * Override BaseRenderer's updateAnimation for the scene playback loop.
+     * Called each frame by BaseRenderer.animate().
+     */
+    updateAnimation() {
+        const now = performance.now();
+        const dt = (now - this._lastTime) / 1000;
+        this._lastTime = now;
+
         if (this._playing) {
             this._elapsed += dt;
-            if (this._elapsed * 1000 >= this._duration) { this._elapsed = this._duration / 1000; this._playing = false; }
+            if (this._elapsed * 1000 >= this._duration) {
+                this._elapsed = this._duration / 1000;
+                this._playing = false;
+            }
             this._applyFrame(this._elapsed * 1000);
         }
+
         this.controls?.update();
-        this.glRenderer.render({ scene: this.scene, camera: this.camera });
     }
 
-    // ── Direct frame application (mirrors backend ApplyTree → ApplyAnimationTransformation) ──
+    // ── Per-Frame Animation (mirrors ApplyTree -> ApplyAnimationTransformation) ──
 
+    /**
+     * Apply all animation transforms at the given time.
+     * Mirrors AnimUtils::ApplyTree which iterates root's children
+     * with the rebase matrix (identity here -- no game world positioning).
+     */
     _applyFrame(timeMs) {
         if (!this._animData) return;
+
         const root = this._animData.rootNode;
-        const id = new Mat4();
-        // Map of OGL Transform → its animation world matrix, for computing relative matrices
+        const identity = new Mat4();
+
+        // Map of OGL Transform -> its animation world matrix, for computing relative matrices
         this._animWorldMap = new Map();
-        // Backend ApplyTree starts from root's children, passing the rebase matrix.
-        // We pass identity — centering is handled by modelGroup transform.
-        for (const c of root.children) this._applyNode(c, timeMs, id);
+
+        for (const child of root.children) {
+            this._applyNode(child, timeMs, identity);
+        }
     }
 
     /**
+     * Apply animation transforms to a single tree node and recurse.
      * Mirrors LegoROI::ApplyAnimationTransformation.
      *
      * For OGL transforms that are direct children of modelGroup (characters, top-level props),
@@ -286,136 +335,69 @@ export class ScenePlayerRenderer extends BaseRenderer {
      * This way OGL's parent-child composition produces the correct final world transform.
      */
     _applyNode(node, time, parentMat) {
-        const d = node.data; if (!d) return;
+        const data = node.data;
+        if (!data) return;
 
-        // Build local transform: Scale → Rotation → Translation
-        // Matches CreateLocalTransform in legoanim.cpp:742
-        let localMat = new Mat4();
-        if (d.scaleKeys.length) {
-            const s = this._iv(d.scaleKeys, time);
-            if (s) localMat.scale(s);
-            if (d.rotationKeys.length) localMat = this._er(d.rotationKeys, time).multiply(localMat);
-        } else if (d.rotationKeys.length) {
-            localMat = this._er(d.rotationKeys, time);
-        }
-        if (d.translationKeys.length) {
-            const v = this._ivT(d.translationKeys, time);
-            if (v) { localMat[12] += v[0]; localMat[13] += v[1]; localMat[14] += v[2]; }
-        }
+        // Build local transform: Scale -> Rotation -> Translation
+        const localMat = evaluateLocalTransform(data, time);
 
         // World = parent * local (matches roi->m_local2world.Product(mat, p_matrix))
         const worldMat = new Mat4().copy(parentMat).multiply(localMat);
 
-        const tgt = d._transform;
-        if (tgt) {
+        const target = data._transform;
+        if (target) {
             let useMat;
-            if (tgt.parent === this.modelGroup) {
+            if (target.parent === this.modelGroup) {
                 // Direct child of modelGroup: use animation world matrix
                 useMat = worldMat;
             } else {
                 // Sub-part within a prop: compute matrix relative to OGL parent
                 // so that OGL's parent.worldMatrix * child.matrix = child.animWorldMatrix
-                const parentAnimWorld = this._animWorldMap.get(tgt.parent);
+                const parentAnimWorld = this._animWorldMap.get(target.parent);
                 if (parentAnimWorld) {
                     const inv = new Mat4().copy(parentAnimWorld).inverse();
                     useMat = inv.multiply(worldMat);
                 } else {
-                    // OGL parent not animated — use world matrix directly
                     useMat = worldMat;
                 }
             }
 
-            for (let i = 0; i < 16; i++) tgt.matrix[i] = useMat[i];
-            tgt.matrixAutoUpdate = false;
-            tgt.worldMatrixNeedsUpdate = true;
+            for (let i = 0; i < 16; i++) target.matrix[i] = useMat[i];
+            target.matrixAutoUpdate = false;
+            target.worldMatrixNeedsUpdate = true;
 
             // Store this target's animation world matrix for sub-parts
-            this._animWorldMap.set(tgt, worldMat);
+            this._animWorldMap.set(target, worldMat);
 
-            // Visibility from morph keys (matches GetVisibility in legoanim.cpp:937)
-            if (d.morphKeys.length) {
-                const r = this._findKeys(d.morphKeys, time);
-                tgt.visible = (r.n === 0) ? true : d.morphKeys[r.i].visible;
+            // Visibility from morph keys
+            if (data.morphKeys.length) {
+                target.visible = getVisibility(data.morphKeys, time);
             }
-
         }
 
-        // Recurse — always pass worldMat, matching backend behavior for unresolved nodes
-        for (const c of node.children) this._applyNode(c, time, worldMat);
-    }
-
-    // ── Keyframe evaluation (matches backend FindKeys / GetRotation / GetTranslation / GetScale) ──
-
-    /** Matches FindKeys in legoanim.cpp:960. n=0: no-op, n=1: use key[i], n=2: interpolate keys[i]..keys[i+1] */
-    _findKeys(keys, t) {
-        if (keys.length === 0) return { n: 0 };
-        if (t < keys[0].time) return { n: 0 };
-        if (t > keys[keys.length - 1].time) return { n: 1, i: keys.length - 1 };
-        let idx = 0;
-        for (let j = 0; j < keys.length - 1; j++) {
-            if (t >= keys[j + 1].time) { idx = j + 1; continue; }
-            break;
+        // Recurse -- always pass worldMat, matching backend behavior for unresolved nodes
+        for (const child of node.children) {
+            this._applyNode(child, time, worldMat);
         }
-        if (t === keys[idx].time) return { n: 1, i: idx };
-        if (idx < keys.length - 1) return { n: 2, i: idx };
-        return { n: 0 };
     }
 
-    /** Matches GetRotation in legoanim.cpp:843. Returns Mat4 rotation matrix.
-     *  Matches ActorRenderer: negate quaternion X to match vertex X-negation in BaseRenderer. */
-    _er(keys, t) {
-        const r = this._findKeys(keys, t);
-        const Q = k => new Quat(-k.x, k.y, k.z, k.w);
-        if (r.n === 0) return new Mat4();
-        if (r.n === 1) return (keys[r.i].flags & 1) ? new Mat4().fromQuaternion(Q(keys[r.i])) : new Mat4();
-        const b = keys[r.i], a = keys[r.i + 1];
-        if ((b.flags & 1) || (a.flags & 1)) {
-            const bQ = Q(b);
-            if (a.flags & 4) return new Mat4().fromQuaternion(bQ);
-            const aQ = Q(a);
-            if (a.flags & 2) aQ.set(-aQ[0], -aQ[1], -aQ[2], -aQ[3]);
-            return new Mat4().fromQuaternion(new Quat().copy(bQ).slerp(aQ, (t - b.time) / (a.time - b.time)));
-        }
-        return new Mat4();
-    }
-
-    /** Matches GetTranslation in legoanim.cpp:779. Returns Vec3 or null. Checks IsActive flag.
-     *  Matches ActorRenderer: negate X to match vertex X-negation in BaseRenderer. */
-    _ivT(keys, t) {
-        const r = this._findKeys(keys, t);
-        if (r.n === 0) return null;
-        if (r.n === 1) {
-            if (!(keys[r.i].flags & 1)) return null;
-            return new Vec3(-keys[r.i].x, keys[r.i].y, keys[r.i].z);
-        }
-        const b = keys[r.i], a = keys[r.i + 1];
-        if (!(b.flags & 1) && !(a.flags & 1)) return null;
-        const f = (t - b.time) / (a.time - b.time);
-        const x = b.x + f * (a.x - b.x), y = b.y + f * (a.y - b.y), z = b.z + f * (a.z - b.z);
-        return new Vec3(-x, y, z);
-    }
-
-    /** Matches GetScale in legoanim.cpp:906. Returns Vec3 or null. No active check (backend doesn't check for scale). */
-    _iv(keys, t) {
-        const r = this._findKeys(keys, t);
-        if (r.n === 0) return null;
-        if (r.n === 1) return new Vec3(keys[r.i].x, keys[r.i].y, keys[r.i].z);
-        const b = keys[r.i], a = keys[r.i + 1];
-        const f = (t - b.time) / (a.time - b.time);
-        return new Vec3(b.x + f * (a.x - b.x), b.y + f * (a.y - b.y), b.z + f * (a.z - b.z));
-    }
-
-    // ── Debug ──
-
-    _dumpTree(n, d = 0) { const dd=n.data;if(dd?.name){console.log(`[SP]${'  '.repeat(d)}${dd.name} [T:${dd.translationKeys.length} R:${dd.rotationKeys.length} S:${dd.scaleKeys.length} M:${dd.morphKeys.length}] ${dd._transform?'✓ →'+dd._transform.name:'✗'}`);}for(const c of n.children) this._dumpTree(c,d+1); }
-    _dumpSG(n, d = 0) { if(!(n instanceof Mesh)) console.log(`[SP]${'  '.repeat(d)}${n.name||'(anon)'} (${n.children?.length||0} ch)`);for(const c of n.children||[]) this._dumpSG(c,d+1); }
-
-    // ── Cleanup ──
+    // ── Cleanup ─────────────────────────────────────────────────────
 
     clearModel() {
         this._animData = null;
-        this._actorContainers.clear(); this._elapsed = 0; this._playing = false; this._parser = null; this._wdb = null; this._worldPartsMaps = null;
+        this._actorContainers.clear();
+        this._elapsed = 0;
+        this._playing = false;
+        this._parser = null;
+        this._wdb = null;
+        this._worldPartsMaps = null;
+        this._globalPartsMap = null;
         super.clearModel();
     }
-    dispose() { this.animating = false; this.clearModel(); super.dispose(); }
+
+    dispose() {
+        this.animating = false;
+        this.clearModel();
+        super.dispose();
+    }
 }

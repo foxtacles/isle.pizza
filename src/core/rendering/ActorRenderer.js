@@ -2,13 +2,13 @@ import { Transform, Mesh } from 'ogl';
 import { Vec3 } from 'ogl/src/math/Vec3.js';
 import { Quat } from 'ogl/src/math/Quat.js';
 import { Mat4 } from 'ogl/src/math/Mat4.js';
-import { ActorLODs, ActorLODFlags, ActorInfoInit } from '../savegame/actorConstants.js';
-import { LegoColors } from '../savegame/constants.js';
+import { ActorLODs, ActorInfoInit } from '../savegame/actorConstants.js';
 import { AnimatedRenderer } from './AnimatedRenderer.js';
 import {
     SimpleAnimationMixer, AnimationClip,
     VectorTrack, QuaternionTrack, BooleanTrack, LoopOnce,
 } from './AnimationMixer.js';
+import { getVisibility } from '../animation/keyframeEval.js';
 
 /**
  * Map actor index to animation suffix index (from g_characters[].m_unk0x16).
@@ -172,62 +172,7 @@ export class ActorRenderer extends AnimatedRenderer {
         return part.names[part.nameIndices[nameIdx]];
     }
 
-    createPartMeshes(lod, actorLOD, part, resolvedName, partIdx, group) {
-        const useTexture = (actorLOD.flags & ActorLODFlags.USE_TEXTURE) !== 0;
-        const useColor = (actorLOD.flags & ActorLODFlags.USE_COLOR) !== 0;
-
-        const bodyUsesDefaultGeom = partIdx === 0 && part.partNameIndices &&
-            part.partNameIndices[part.partNameIndex] === 0;
-
-        let partColor = null;
-        let partTexture = null;
-
-        if (useTexture && !bodyUsesDefaultGeom) {
-            const texName = resolvedName?.toLowerCase();
-            if (texName && this.textures.has(texName)) {
-                partTexture = this.textures.get(texName);
-            }
-        }
-
-        if ((useColor || bodyUsesDefaultGeom) && !partTexture) {
-            const colorEntry = LegoColors[resolvedName] || LegoColors['lego white'];
-            partColor = [colorEntry.r / 255, colorEntry.g / 255, colorEntry.b / 255];
-        }
-
-        for (const mesh of lod.meshes) {
-            const geometry = this.createGeometry(mesh, lod);
-            if (!geometry) continue;
-
-            let meshTexture = null;
-            const meshTexName = mesh.properties?.textureName?.toLowerCase();
-            if (meshTexName && this.textures.has(meshTexName)) {
-                meshTexture = this.textures.get(meshTexName);
-            }
-
-            let program;
-            if (partTexture && mesh.properties?.textureName) {
-                program = this.createTexturedProgram(partTexture);
-            } else if (meshTexture) {
-                program = this.createTexturedProgram(meshTexture);
-            } else if (partColor) {
-                program = this.createColoredProgram(partColor);
-            } else {
-                let color = null;
-                if (mesh.properties?.useAlias && mesh.properties?.materialName) {
-                    const alias = LegoColors[mesh.properties.materialName.toLowerCase()];
-                    if (alias) color = [alias.r / 255, alias.g / 255, alias.b / 255];
-                }
-                if (!color) {
-                    const meshColor = mesh.properties?.color || { r: 128, g: 128, b: 128 };
-                    color = [meshColor.r / 255, meshColor.g / 255, meshColor.b / 255];
-                }
-                program = this.createColoredProgram(color);
-            }
-
-            const oglMesh = new Mesh(this.gl, { geometry, program });
-            group.addChild(oglMesh);
-        }
-    }
+    // createPartMeshes is inherited from BaseRenderer
 
     createVehicleMesh(vehicleInfo, vehiclePartsMap) {
         const rois = vehiclePartsMap.get(vehicleInfo.vehicleModel.toLowerCase());
@@ -566,15 +511,7 @@ export class ActorRenderer extends AnimatedRenderer {
     }
 
     getVisibility(morphKeys, time) {
-        let lastKey = null;
-        for (const key of morphKeys) {
-            if (key.time <= time) {
-                lastKey = key;
-            } else {
-                break;
-            }
-        }
-        return lastKey ? lastKey.visible : true;
+        return getVisibility(morphKeys, time);
     }
 
     pushValues(map, key, values) {

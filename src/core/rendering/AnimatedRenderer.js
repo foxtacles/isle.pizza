@@ -10,6 +10,10 @@ import {
     SimpleAnimationMixer, AnimationClip,
     QuaternionTrack, LoopOnce,
 } from './AnimationMixer.js';
+import {
+    evaluateRotation, evaluateTranslation, evaluateScale,
+    evaluateLocalTransform,
+} from '../animation/keyframeEval.js';
 
 /**
  * Intermediate renderer for LEGO models with animation support.
@@ -66,79 +70,22 @@ export class AnimatedRenderer extends BaseRenderer {
 
     /**
      * Evaluate rotation keyframes at a given time.
-     * Returns a Mat4 rotation matrix.
+     * Delegates to the shared keyframe evaluation module.
+     * @returns {Mat4} Rotation matrix
      */
     evaluateRotation(keys, time) {
-        const { before, after } = this.getBeforeAndAfter(keys, time);
-        const toQuat = (key) => new Quat(-key.x, key.y, key.z, key.w);
-
-        if (!after) {
-            if (before.flags & 0x01) {
-                return new Mat4().fromQuaternion(toQuat(before));
-            }
-            return new Mat4();
-        }
-
-        if ((before.flags & 0x01) || (after.flags & 0x01)) {
-            const beforeQ = toQuat(before);
-
-            if (after.flags & 0x04) {
-                return new Mat4().fromQuaternion(beforeQ);
-            }
-
-            const afterQ = toQuat(after);
-            if (after.flags & 0x02) {
-                afterQ.set(-afterQ[0], -afterQ[1], -afterQ[2], -afterQ[3]);
-            }
-
-            const t = (time - before.time) / (after.time - before.time);
-            const result = new Quat().copy(beforeQ).slerp(afterQ, t);
-            return new Mat4().fromQuaternion(result);
-        }
-
-        return new Mat4();
+        return evaluateRotation(keys, time);
     }
 
     /**
      * Interpolate translation or scale keyframes at a given time.
+     * Delegates to the shared keyframe evaluation module.
+     * @returns {Vec3|null}
      */
     interpolateVertex(keys, time, isTranslation) {
-        const { before, after } = this.getBeforeAndAfter(keys, time);
-
-        const toVec = (key) => isTranslation
-            ? new Vec3(-key.x, key.y, key.z)
-            : new Vec3(key.x, key.y, key.z);
-
-        if (!after) {
-            if (isTranslation && !(before.flags & 0x01)) {
-                if (Math.abs(before.x) < 1e-5 && Math.abs(before.y) < 1e-5 && Math.abs(before.z) < 1e-5) {
-                    return null;
-                }
-            }
-            return toVec(before);
-        }
-
-        if (isTranslation && !(before.flags & 0x01) && !(after.flags & 0x01)) {
-            const bNonZero = Math.abs(before.x) > 1e-5 || Math.abs(before.y) > 1e-5 || Math.abs(before.z) > 1e-5;
-            const aNonZero = Math.abs(after.x) > 1e-5 || Math.abs(after.y) > 1e-5 || Math.abs(after.z) > 1e-5;
-            if (!bNonZero && !aNonZero) return null;
-        }
-
-        const t = (time - before.time) / (after.time - before.time);
-        const a = toVec(before);
-        const b = toVec(after);
-        return new Vec3(
-            a[0] + t * (b[0] - a[0]),
-            a[1] + t * (b[1] - a[1]),
-            a[2] + t * (b[2] - a[2]),
-        );
-    }
-
-    getBeforeAndAfter(keys, time) {
-        let idx = keys.findIndex(k => k.time > time);
-        if (idx < 0) idx = keys.length;
-        const before = keys[Math.max(0, idx - 1)];
-        return { before, after: keys[idx] || null };
+        return isTranslation
+            ? evaluateTranslation(keys, time)
+            : evaluateScale(keys, time);
     }
 
     // ─── Click Animation ─────────────────────────────────────────────
@@ -268,28 +215,7 @@ export class AnimatedRenderer extends BaseRenderer {
     }
 
     evaluateLocalTransform(data, time) {
-        let mat = new Mat4();
-
-        if (data.scaleKeys.length > 0) {
-            const scale = this.interpolateVertex(data.scaleKeys, time, false);
-            if (scale) mat.scale(scale);
-        }
-
-        if (data.rotationKeys.length > 0) {
-            const rotMat = this.evaluateRotation(data.rotationKeys, time);
-            mat = rotMat.multiply(mat);
-        }
-
-        if (data.translationKeys.length > 0) {
-            const vertex = this.interpolateVertex(data.translationKeys, time, true);
-            if (vertex) {
-                mat[12] += vertex[0];
-                mat[13] += vertex[1];
-                mat[14] += vertex[2];
-            }
-        }
-
-        return mat;
+        return evaluateLocalTransform(data, time);
     }
 
     // ─── Scene Management ────────────────────────────────────────────

@@ -3,6 +3,9 @@ import { Orbit } from 'ogl/src/extras/Orbit.js';
 import { Vec3 } from 'ogl/src/math/Vec3.js';
 import { Quat } from 'ogl/src/math/Quat.js';
 import { LAMBERT_VERTEX, LAMBERT_FRAGMENT, LIGHT_UNIFORMS } from './LambertShader.js';
+import { ActorInfoInit, ActorLODs, ActorLODFlags } from '../savegame/actorConstants.js';
+import { LegoColors } from '../savegame/constants.js';
+import { resolveLods, buildGlobalPartsMap, buildPartsMap } from '../formats/WdbParser.js';
 
 /**
  * Base renderer providing shared OGL setup, texture creation,
@@ -418,6 +421,235 @@ export class BaseRenderer {
         } else {
             this.modelGroup.position.set(-center[0], -center[1], -center[2]);
         }
+    }
+
+    // ─── Shared Character/Prop Assembly ─────────────────────────────
+
+    /**
+     * Assemble the default 10-part character model for a given actor index.
+     * Uses default part/name indices (no character state customization).
+     *
+     * Shared by ScenePlayerRenderer (scene character assembly) and ActorRenderer
+     * (character preview with customization via resolvePartName/resolveNameValue overrides).
+     *
+     * @param {number} characterIndex - Index into ActorInfoInit
+     * @param {Map} globalPartsMap - From buildGlobalPartsMap()
+     * @returns {Array<[string, Transform]>} Pairs of [partName, transformGroup]
+     */
+    assembleCharacterParts(characterIndex, globalPartsMap) {
+        const actorInfo = ActorInfoInit[characterIndex];
+        const result = [];
+
+        for (let i = 0; i < 10; i++) {
+            const actorLOD = ActorLODs[i + 1];
+            const part = actorInfo.parts[i];
+
+            // Resolve the geometry part name
+            let partName;
+            if (i === 0 || i === 1) {
+                if (!part.partNameIndices || !part.partNames) continue;
+                partName = part.partNames[part.partNameIndices[part.partNameIndex]];
+            } else {
+                partName = actorLOD.parentName;
+            }
+            if (!partName) continue;
+
+            const partData = globalPartsMap.get(partName.toLowerCase());
+            if (!partData) continue;
+
+            const partGroup = new Transform();
+            const groupName = `part_${actorLOD.name}`;
+            partGroup.name = groupName;
+
+            // Resolve the texture/color name (default index, no charState)
+            let resolvedName = null;
+            if (part.nameIndices && part.names) {
+                resolvedName = part.names[part.nameIndices[part.nameIndex]];
+            }
+
+            const lods = partData.lods || [];
+            if (lods.length > 0) {
+                this.createPartMeshes(lods[lods.length - 1], actorLOD, part, resolvedName, i, partGroup);
+            }
+
+            // Apply LOD position offset with X-negation for coordinate system conversion
+            partGroup.position.set(-actorLOD.position[0], actorLOD.position[1], actorLOD.position[2]);
+
+            result.push([groupName, partGroup]);
+        }
+
+        return result;
+    }
+
+    /**
+     * Create meshes for one character part, selecting the appropriate
+     * texture or color program based on LOD flags.
+     *
+     * Mirrors the rendering portion of ActorRenderer's original createPartMeshes.
+     *
+     * @param {object} lod - LOD data with meshes, vertices, normals, etc.
+     * @param {object} actorLOD - ActorLODs entry with flags
+     * @param {object} part - ActorInfoInit part entry
+     * @param {string|null} resolvedName - Texture or color name to use
+     * @param {number} partIdx - Part index (0-9)
+     * @param {Transform} group - Parent transform to add meshes to
+     */
+    createPartMeshes(lod, actorLOD, part, resolvedName, partIdx, group) {
+        const useTexture = (actorLOD.flags & ActorLODFlags.USE_TEXTURE) !== 0;
+        const useColor = (actorLOD.flags & ActorLODFlags.USE_COLOR) !== 0;
+
+        const bodyUsesDefaultGeom = partIdx === 0 && part.partNameIndices &&
+            part.partNameIndices[part.partNameIndex] === 0;
+
+        let partColor = null;
+        let partTexture = null;
+
+        if (useTexture && !bodyUsesDefaultGeom) {
+            const texName = resolvedName?.toLowerCase();
+            if (texName && this.textures.has(texName)) {
+                partTexture = this.textures.get(texName);
+            }
+        }
+
+        if ((useColor || bodyUsesDefaultGeom) && !partTexture) {
+            const colorEntry = LegoColors[resolvedName] || LegoColors['lego white'];
+            if (colorEntry) {
+                partColor = [colorEntry.r / 255, colorEntry.g / 255, colorEntry.b / 255];
+            }
+        }
+
+        for (const mesh of lod.meshes) {
+            const geometry = this.createGeometry(mesh, lod);
+            if (!geometry) continue;
+
+            // Check for mesh-level texture
+            let meshTexture = null;
+            const meshTexName = mesh.properties?.textureName?.toLowerCase();
+            if (meshTexName && this.textures.has(meshTexName)) {
+                meshTexture = this.textures.get(meshTexName);
+            }
+
+            let program;
+            if (partTexture && mesh.properties?.textureName) {
+                program = this.createTexturedProgram(partTexture);
+            } else if (meshTexture) {
+                program = this.createTexturedProgram(meshTexture);
+            } else if (partColor) {
+                program = this.createColoredProgram(partColor);
+            } else {
+                // Fallback: material alias color or mesh default color
+                let color = null;
+                if (mesh.properties?.useAlias && mesh.properties?.materialName) {
+                    const alias = LegoColors[mesh.properties.materialName.toLowerCase()];
+                    if (alias) color = [alias.r / 255, alias.g / 255, alias.b / 255];
+                }
+                if (!color) {
+                    const meshColor = mesh.properties?.color || { r: 128, g: 128, b: 128 };
+                    color = [meshColor.r / 255, meshColor.g / 255, meshColor.b / 255];
+                }
+                program = this.createColoredProgram(color);
+            }
+
+            group.addChild(new Mesh(this.gl, { geometry, program }));
+        }
+    }
+
+    /**
+     * Assemble a hierarchical prop model from WDB data.
+     * Searches all worlds for a matching model name, parses its model data,
+     * and builds a Transform tree with meshes.
+     *
+     * @param {string} name - Lowercased model name to search for
+     * @param {object} parser - WDB parser instance
+     * @param {object} wdb - Parsed WDB data
+     * @param {Map} worldPartsMaps - Cache of per-world parts maps
+     * @param {Map} [globalPartsMap] - Global parts map (fallback)
+     * @returns {Transform|null}
+     */
+    assemblePropHierarchical(name, parser, wdb, worldPartsMaps, globalPartsMap) {
+        for (const world of wdb.worlds || []) {
+            for (const model of world.models || []) {
+                if (model.name.toLowerCase() !== name) continue;
+                try {
+                    const modelData = parser.parseModelData(model.dataOffset);
+                    if (!modelData?.roi) continue;
+
+                    if (modelData.textures) {
+                        this.loadTextures(modelData.textures, false);
+                    }
+
+                    let worldPartsMap = worldPartsMaps.get(world.name);
+                    if (!worldPartsMap) {
+                        worldPartsMap = buildPartsMap(parser, world.parts);
+                        worldPartsMaps.set(world.name, worldPartsMap);
+                    }
+
+                    return this.buildROITree(modelData.roi, worldPartsMap);
+                } catch (e) {
+                    console.warn(`[BaseRenderer] Prop error (${name}):`, e);
+                }
+            }
+        }
+
+        // Fallback: check global parts
+        if (globalPartsMap) {
+            const part = globalPartsMap.get(name);
+            if (part?.lods?.length) {
+                const group = new Transform();
+                group.name = name;
+                this.addLodMeshes(part.lods, group);
+                return group.children.length ? group : null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Recursively build a Transform hierarchy from ROI data with resolved LODs.
+     *
+     * @param {object} roi - ROI node with name, children, and LOD references
+     * @param {Map} partsMap - Parts map for resolving LODs
+     * @returns {Transform}
+     */
+    buildROITree(roi, partsMap) {
+        const group = new Transform();
+        group.name = roi.name.toLowerCase();
+        this.addLodMeshes(resolveLods(roi, partsMap), group);
+
+        for (const child of roi.children || []) {
+            const childGroup = this.buildROITree(child, partsMap);
+            if (childGroup) group.addChild(childGroup);
+        }
+        return group;
+    }
+
+    /**
+     * Create meshes from the highest-detail LOD and add them to a group.
+     *
+     * @param {Array} lods - Array of LOD data
+     * @param {Transform} group - Parent transform
+     */
+    addLodMeshes(lods, group) {
+        if (!lods?.length) return;
+        const lod = lods[lods.length - 1];
+        for (const mesh of lod.meshes) {
+            const geometry = this.createGeometry(mesh, lod);
+            if (!geometry) continue;
+            group.addChild(new Mesh(this.gl, { geometry, program: this.createMeshProgram(mesh) }));
+        }
+    }
+
+    /**
+     * Find a character index by name (case-insensitive).
+     * @param {string} name - Lowercased character name
+     * @returns {number} Index into ActorInfoInit, or -1 if not found
+     */
+    findCharacterIndex(name) {
+        for (let i = 0; i < ActorInfoInit.length; i++) {
+            if (ActorInfoInit[i].name.toLowerCase() === name) return i;
+        }
+        return -1;
     }
 
     clearModel() {

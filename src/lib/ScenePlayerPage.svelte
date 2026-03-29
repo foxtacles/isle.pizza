@@ -165,7 +165,7 @@
 
             // Step 9: Initialize phoneme player
             phonemePlayer = new PhonemePlayer();
-            phonemePlayer.init(sceneData.phonemeTracks, renderer._actorContainers, renderer.gl);
+            phonemePlayer.init(sceneData.phonemeTracks, renderer.actorContainers, renderer.gl);
 
             ready = true;
 
@@ -185,7 +185,7 @@
         if (!renderer) return;
         playing = true;
         elapsed = 0;
-        renderer._elapsed = 0;
+        renderer.resetPlayback();
         renderer.play();
         audioPlayer?.resume();
         startTick();
@@ -201,16 +201,10 @@
         } else {
             // If finished, restart from beginning
             if (renderer.finished) {
-                renderer._elapsed = 0;
+                renderer.resetPlayback();
                 elapsed = 0;
                 audioPlayer?.stop();
                 phonemePlayer?.stop();
-                // Reset phoneme decoder state
-                if (phonemePlayer) {
-                    for (const state of phonemePlayer.states) {
-                        state.currentFrame = -1;
-                    }
-                }
             }
             playing = true;
             renderer.play();
