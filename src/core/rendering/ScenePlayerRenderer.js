@@ -106,6 +106,10 @@ export class ScenePlayerRenderer extends BaseRenderer {
         // Phase 3: Create props found in the tree but not in the scene
         this._createMissingTreeProps(animData.rootNode);
 
+        // Phase 3.5: Compute rebase rotation (face viewer) and resolve PTATCAM
+        this._rebaseMatrix = this._computeRebaseMatrix();
+        this._resolvePtAtCam(sceneAnimData.ptAtCamNames);
+
         // Phase 4: Apply frame 0 to position everything for bounding box
         this._applyFrame(0);
 
@@ -259,6 +263,179 @@ export class ScenePlayerRenderer extends BaseRenderer {
         }
     }
 
+    // ── Rebase Matrix (Face Viewer) ────────────────────────────────
+
+    /**
+     * Compute a Y-axis rotation that makes the root character face the camera.
+     *
+     * Walks the animation tree at t=0 to find the first character actor's world
+     * matrix, extracts its forward direction (XZ plane), and returns a rotation
+     * that aligns it with the direction from origin toward the default camera.
+     */
+    _computeRebaseMatrix() {
+        const animData = this._animData;
+
+        // Collect character actor names
+        const characterNames = new Set();
+        for (const actor of animData.actors) {
+            if (actor.actorType === 2 && actor.name) {
+                characterNames.add(stripStar(actor.name).toLowerCase());
+            }
+        }
+        if (characterNames.size === 0) return new Mat4();
+
+        // Find the first character's world matrix at t=0.
+        // Start from root's children to match _applyFrame's iteration.
+        let animPose0 = null;
+        for (const child of animData.rootNode.children) {
+            animPose0 = this._findFirstCharacterPose(child, new Mat4(), characterNames);
+            if (animPose0) break;
+        }
+        if (!animPose0) return new Mat4();
+
+        // Forward direction = column 2 of OGL column-major matrix
+        const fwdX = animPose0[8];
+        const fwdZ = animPose0[10];
+        const fwdLen = Math.sqrt(fwdX * fwdX + fwdZ * fwdZ);
+        if (fwdLen < 1e-6) return new Mat4();
+
+        // Current forward angle (from +Z axis)
+        const currentAngle = Math.atan2(fwdX, fwdZ);
+
+        // Character models face -Z in local space (see ActorRenderer: modelGroup.rotation.y = π).
+        // Column 2 points behind the character, so the visual forward is -column2.
+        // To make -column2 point toward the camera, column2 must point AWAY from camera.
+        const desiredAngle = Math.atan2(-3, -5);
+
+        const rebase = new Mat4();
+        rebase.rotate(desiredAngle - currentAngle, [0, 1, 0]);
+        return rebase;
+    }
+
+    /**
+     * Recursively walk the animation tree at t=0, accumulating world matrices,
+     * and return the world matrix of the first node that matches a character actor.
+     */
+    _findFirstCharacterPose(node, parentMat, characterNames) {
+        const data = node.data;
+        if (!data) return null;
+
+        const localMat = evaluateLocalTransform(data, 0);
+        const worldMat = new Mat4().copy(parentMat).multiply(localMat);
+
+        if (data.name) {
+            const canonicalName = stripStar(data.name).toLowerCase();
+            if (characterNames.has(canonicalName)) {
+                return worldMat;
+            }
+        }
+
+        for (const child of node.children) {
+            const result = this._findFirstCharacterPose(child, worldMat, characterNames);
+            if (result) return result;
+        }
+        return null;
+    }
+
+    // ── PTATCAM (Point At Camera) ──────────────────────────────────
+
+    /**
+     * Resolve PTATCAM ROI names to OGL Transforms by searching the animation tree.
+     * @param {string[]} ptAtCamNames - ROI names from the SI extra directives
+     */
+    _resolvePtAtCam(ptAtCamNames) {
+        this._ptAtCamTransforms = [];
+        if (!ptAtCamNames || ptAtCamNames.length === 0) return;
+
+        const targetNames = new Set(ptAtCamNames.map(n => n.toLowerCase()));
+        this._collectPtAtCamNodes(this._animData.rootNode, targetNames);
+    }
+
+    /** Recursively collect transforms for nodes matching PTATCAM target names. */
+    _collectPtAtCamNodes(node, targetNames) {
+        if (node.data?.name) {
+            const canonicalName = stripStar(node.data.name).toLowerCase();
+            if (targetNames.has(canonicalName) && node.data._transform) {
+                this._ptAtCamTransforms.push(node.data._transform);
+            }
+        }
+        for (const child of node.children) {
+            this._collectPtAtCamNodes(child, targetNames);
+        }
+    }
+
+    /**
+     * Apply PTATCAM post-processing: reorient target ROIs so their forward
+     * direction points toward the camera.
+     *
+     * Mirrors LegoAnimPresenter::PutFrame / ScenePlayer::ApplyPtAtCam from the
+     * original game. Keeps the up vector, recomputes right and forward based on
+     * the camera-to-ROI direction.
+     */
+    _applyPtAtCam() {
+        if (!this._ptAtCamTransforms || this._ptAtCamTransforms.length === 0) return;
+
+        // Camera position in animation world space:
+        // modelGroup transform is uniform scale + translation (from centerAndScaleModel)
+        const s = this.modelGroup.scale.x;
+        const p = this.modelGroup.position;
+        const camX = (this.camera.position.x - p.x) / s;
+        const camY = (this.camera.position.y - p.y) / s;
+        const camZ = (this.camera.position.z - p.z) / s;
+
+        for (const target of this._ptAtCamTransforms) {
+            const wm = this._animWorldMap.get(target);
+            if (!wm) continue;
+
+            // Column magnitudes (preserve scale)
+            const rightMag = Math.sqrt(wm[0] * wm[0] + wm[1] * wm[1] + wm[2] * wm[2]);
+            const upMag = Math.sqrt(wm[4] * wm[4] + wm[5] * wm[5] + wm[6] * wm[6]);
+            const fwdMag = Math.sqrt(wm[8] * wm[8] + wm[9] * wm[9] + wm[10] * wm[10]);
+            if (rightMag < 1e-6 || upMag < 1e-6 || fwdMag < 1e-6) continue;
+
+            // ROI position (column 3)
+            const posX = wm[12], posY = wm[13], posZ = wm[14];
+
+            // Vector from camera to ROI
+            const ctX = posX - camX, ctY = posY - camY, ctZ = posZ - camZ;
+
+            // Normalized up (column 1)
+            const nuX = wm[4] / upMag, nuY = wm[5] / upMag, nuZ = wm[6] / upMag;
+
+            // newRight = normalize(cross(up, camToROI))
+            let nrX = nuY * ctZ - nuZ * ctY;
+            let nrY = nuZ * ctX - nuX * ctZ;
+            let nrZ = nuX * ctY - nuY * ctX;
+            const nrLen = Math.sqrt(nrX * nrX + nrY * nrY + nrZ * nrZ);
+            if (nrLen < 1e-6) continue; // camera aligned with up vector
+            nrX /= nrLen; nrY /= nrLen; nrZ /= nrLen;
+
+            // newFwd = cross(newRight, up)
+            const nfX = nrY * nuZ - nrZ * nuY;
+            const nfY = nrZ * nuX - nrX * nuZ;
+            const nfZ = nrX * nuY - nrY * nuX;
+
+            // Write columns back with restored magnitudes
+            wm[0] = nrX * rightMag; wm[1] = nrY * rightMag; wm[2] = nrZ * rightMag;
+            wm[4] = nuX * upMag;    wm[5] = nuY * upMag;    wm[6] = nuZ * upMag;
+            wm[8] = nfX * fwdMag;   wm[9] = nfY * fwdMag;   wm[10] = nfZ * fwdMag;
+
+            // Apply to OGL transform
+            if (target.parent === this.modelGroup) {
+                for (let i = 0; i < 16; i++) target.matrix[i] = wm[i];
+            } else {
+                const parentAnimWorld = this._animWorldMap.get(target.parent);
+                if (parentAnimWorld) {
+                    const relMat = new Mat4().copy(parentAnimWorld).inverse().multiply(wm);
+                    for (let i = 0; i < 16; i++) target.matrix[i] = relMat[i];
+                } else {
+                    for (let i = 0; i < 16; i++) target.matrix[i] = wm[i];
+                }
+            }
+            target.worldMatrixNeedsUpdate = true;
+        }
+    }
+
     // ── Playback Control ────────────────────────────────────────────
 
     play() {
@@ -307,20 +484,21 @@ export class ScenePlayerRenderer extends BaseRenderer {
     /**
      * Apply all animation transforms at the given time.
      * Mirrors AnimUtils::ApplyTree which iterates root's children
-     * with the rebase matrix (identity here -- no game world positioning).
+     * with the rebase matrix, then applies PTATCAM post-processing.
      */
     _applyFrame(timeMs) {
         if (!this._animData) return;
 
         const root = this._animData.rootNode;
-        const identity = new Mat4();
 
         // Map of OGL Transform -> its animation world matrix, for computing relative matrices
         this._animWorldMap = new Map();
 
         for (const child of root.children) {
-            this._applyNode(child, timeMs, identity);
+            this._applyNode(child, timeMs, this._rebaseMatrix);
         }
+
+        this._applyPtAtCam();
     }
 
     /**
@@ -392,6 +570,8 @@ export class ScenePlayerRenderer extends BaseRenderer {
         this._wdb = null;
         this._worldPartsMaps = null;
         this._globalPartsMap = null;
+        this._rebaseMatrix = null;
+        this._ptAtCamTransforms = null;
         super.clearModel();
     }
 
