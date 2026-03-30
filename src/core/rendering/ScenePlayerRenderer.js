@@ -132,13 +132,21 @@ export class ScenePlayerRenderer extends BaseRenderer {
         if (characterIndex < 0) return;
 
         const parts = this.assembleCharacterParts(characterIndex, globalPartsMap);
-        const partMap = new Map();
 
+        // Group parts under a container Transform named after the character.
+        // Mirrors the backend's ROI hierarchy where each character is a parent
+        // ROI with body parts as children, preventing name collisions when
+        // multiple characters share part names (body, head, arm-lft, etc.).
+        const container = new Transform();
+        container.name = canonicalName;
+
+        const partMap = new Map();
         for (const [partName, partGroup] of parts) {
-            this.modelGroup.addChild(partGroup);
+            container.addChild(partGroup);
             partMap.set(partName, partGroup);
         }
 
+        this.modelGroup.addChild(container);
         this._actorContainers.set(canonicalName, partMap);
     }
 
@@ -165,6 +173,14 @@ export class ScenePlayerRenderer extends BaseRenderer {
 
     // ── Animation Tree Resolution ───────────────────────────────────
 
+    /** Find the first direct child of `parent` whose name matches. */
+    _findChildByName(parent, name, excludeMesh = false) {
+        for (const child of parent.children) {
+            if (child.name === name && (!excludeMesh || !(child instanceof Mesh))) return child;
+        }
+        return null;
+    }
+
     /**
      * Walk the animation tree and annotate each node.data with _transform
      * pointing to the resolved OGL Transform.
@@ -185,35 +201,21 @@ export class ScenePlayerRenderer extends BaseRenderer {
         const canonicalName = stripStar(rawName).toLowerCase();
         let matched = null;
 
-        // 1. Character body part?
+        // 1. Character body part? Scoped to parent context (character container),
+        //    matching the backend's FindChildROI.
         const partName = ANIM_NODE_TO_PART[canonicalName];
         if (partName) {
-            for (const child of this.modelGroup.children) {
-                if (child.name === partName) {
-                    matched = child;
-                    break;
-                }
-            }
+            matched = this._findChildByName(parentOGL, partName);
         }
 
         // 2. Child of parent OGL Transform? (handles duplicate names via context)
-        if (!matched && parentOGL) {
-            for (const child of parentOGL.children) {
-                if (child.name === canonicalName && !(child instanceof Mesh)) {
-                    matched = child;
-                    break;
-                }
-            }
+        if (!matched) {
+            matched = this._findChildByName(parentOGL, canonicalName, true);
         }
 
         // 3. Direct child of modelGroup?
         if (!matched) {
-            for (const child of this.modelGroup.children) {
-                if (child.name === canonicalName && !(child instanceof Mesh)) {
-                    matched = child;
-                    break;
-                }
-            }
+            matched = this._findChildByName(this.modelGroup, canonicalName, true);
         }
 
         animNode.data._transform = matched || null;
