@@ -38,6 +38,7 @@
     let loadGeneration = 0; // guard against stale async callbacks
     let seeking = false;
     let wasPlayingBeforeSeek = false;
+    let audioBlocked = false;
 
     $: if ($currentPage === 'scene-player') {
         startLoad();
@@ -68,6 +69,7 @@
         sceneLanguage = 'en';
         sceneTimestamp = null;
         loadedFromServer = false;
+        audioBlocked = false;
     }
 
     function startLoad() {
@@ -166,8 +168,7 @@
 
             duration = sceneData.duration;
 
-            // Step 6: Show canvas, wait for layout
-            loading = false;
+            // Step 6: Wait for canvas layout (loading stays true to keep overlay visible)
             ready = false;
 
             await new Promise(r => requestAnimationFrame(r));
@@ -196,8 +197,16 @@
 
             ready = true;
 
-            // Step 10: Auto-play
-            doPlay();
+            // Step 10: Check if audio is allowed, then auto-play or show overlay
+            // Don't call resume() here — without a user gesture the promise hangs.
+            // AudioContext.state is 'running' when autoplay is allowed, 'suspended' when blocked.
+            loading = false;
+            if (audioPlayer.canAutoplay) {
+                doPlay();
+            } else {
+                audioPlayer.blocked = true;
+                audioBlocked = true;
+            }
 
         } catch (e) {
             console.error('[ScenePlayer] Load failed:', e);
@@ -208,14 +217,19 @@
         }
     }
 
-    function doPlay() {
+    async function doPlay() {
         if (!renderer) return;
         playing = true;
         elapsed = 0;
         renderer.resetPlayback();
         renderer.play();
-        audioPlayer?.resume();
+        await audioPlayer?.resume();
         startTick();
+    }
+
+    function handleOverlayClick() {
+        audioBlocked = false;
+        doPlay();
     }
 
     function togglePlay() {
@@ -375,11 +389,7 @@
     {/if}
 
     <div class="scene-canvas-area" class:has-error={error}>
-        {#if loading}
-            <div class="scene-loading">
-                <div class="spinner"></div>
-            </div>
-        {:else if error}
+        {#if error}
             <div class="scene-error">
                 <img src="images/callfail.webp" alt="" class="scene-error-image" />
                 <p class="scene-error-title">{error}</p>
@@ -387,12 +397,25 @@
                 <a href="#memories" class="scene-error-back">Back to Memories</a>
             </div>
         {:else if $currentPage === 'scene-player'}
-            <canvas bind:this={canvasEl} class="scene-canvas"></canvas>
+            <canvas bind:this={canvasEl} class="scene-canvas" class:dimmed={loading || audioBlocked}></canvas>
+            {#if loading || audioBlocked}
+                <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+                <div class="scene-overlay" onclick={audioBlocked ? handleOverlayClick : undefined}
+                     class:clickable={audioBlocked}>
+                    {#if audioBlocked}
+                        <div class="play-overlay-btn">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor" style="margin-left: 3px"><polygon points="5,3 19,12 5,21"/></svg>
+                        </div>
+                    {:else}
+                        <div class="spinner"></div>
+                    {/if}
+                </div>
+            {/if}
         {/if}
     </div>
 
     {#if !error}
-    <div class="scene-controls" class:disabled={!ready}>
+    <div class="scene-controls" class:disabled={!ready || audioBlocked}>
         <button class="ctrl-btn" onclick={togglePlay} title={playing ? 'Pause' : 'Play'}>
             {#if playing}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
@@ -484,16 +507,46 @@
         display: block;
     }
 
-    .scene-loading {
+    .scene-canvas.dimmed {
+        opacity: 0.3;
+    }
+
+    .scene-overlay {
         position: absolute;
         inset: 0;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        color: #999;
-        gap: 1rem;
-        z-index: 1;
+        z-index: 2;
+    }
+
+    .scene-overlay.clickable {
+        cursor: pointer;
+    }
+
+    .play-overlay-btn {
+        width: 68px;
+        height: 68px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.12);
+        border: 2px solid rgba(255, 255, 255, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(255, 255, 255, 0.85);
+        transition: all 0.2s ease;
+        backdrop-filter: blur(4px);
+    }
+
+    .scene-overlay.clickable:hover .play-overlay-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.4);
+        color: #fff;
+        transform: scale(1.08);
+    }
+
+    .scene-overlay.clickable:active .play-overlay-btn {
+        transform: scale(0.95);
     }
 
     .scene-error {

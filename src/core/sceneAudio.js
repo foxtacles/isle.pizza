@@ -49,6 +49,7 @@ export class SceneAudioPlayer {
         this.tracks = [];     // { buffer, timeOffset, source, started }
         this.volume = 1.0;
         this._muted = false;
+        this.blocked = false;
     }
 
     /**
@@ -87,7 +88,7 @@ export class SceneAudioPlayer {
      * Starts tracks whose timeOffset has been reached.
      */
     tick(elapsedMs) {
-        if (!this.audioContext) return;
+        if (!this.audioContext || this.blocked) return;
 
         for (const track of this.tracks) {
             if (!track.started && elapsedMs >= track.timeOffset) {
@@ -111,8 +112,11 @@ export class SceneAudioPlayer {
         this.audioContext?.suspend();
     }
 
-    resume() {
-        this.audioContext?.resume();
+    async resume() {
+        if (!this.audioContext) return true;
+        await this.audioContext.resume();
+        this.blocked = this.audioContext.state !== 'running';
+        return !this.blocked;
     }
 
     stop() {
@@ -152,6 +156,10 @@ export class SceneAudioPlayer {
                 }
             }
         }
+    }
+
+    get canAutoplay() {
+        return !this.audioContext || this.audioContext.state === 'running';
     }
 
     get muted() {
