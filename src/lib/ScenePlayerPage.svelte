@@ -308,6 +308,7 @@
 <div class="page-content">
     <BackButton />
     <div class="page-inner-content scene-player-inner">
+    {#if !error}
     <div class="scene-title-area">
         <h2 class="scene-title">{title || '\u00A0'}</h2>
         <div class="scene-participants">
@@ -323,22 +324,26 @@
             {/if}
         </div>
     </div>
+    {/if}
 
-    <div class="scene-canvas-area">
+    <div class="scene-canvas-area" class:has-error={error}>
         {#if loading}
             <div class="scene-loading">
                 <div class="spinner"></div>
             </div>
         {:else if error}
             <div class="scene-error">
-                <p>{error}</p>
-                <a href="#memories">Back to Memories</a>
+                <img src="images/callfail.webp" alt="" class="scene-error-image" />
+                <p class="scene-error-title">{error}</p>
+                <p class="scene-error-message">This memory may have been deleted or the link could be invalid. Try browsing existing memories or create new ones by playing with others!</p>
+                <a href="#memories" class="scene-error-back">Back to Memories</a>
             </div>
         {:else if $currentPage === 'scene-player'}
             <canvas bind:this={canvasEl} class="scene-canvas"></canvas>
         {/if}
     </div>
 
+    {#if !error}
     <div class="scene-controls" class:disabled={!ready}>
         <button class="ctrl-btn" onclick={togglePlay} title={playing ? 'Pause' : 'Play'}>
             {#if playing}
@@ -348,6 +353,7 @@
             {/if}
         </button>
 
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class="progress-bar" class:seeking bind:this={progressBarEl}
              onpointerdown={onProgressPointerDown}
              onpointermove={onProgressPointerMove}
@@ -370,6 +376,7 @@
             <ShareLinkButton url={shareUrl} />
         {/if}
     </div>
+    {/if}
     </div>
 </div>
 
@@ -414,13 +421,18 @@
         overflow: hidden;
     }
 
+    .scene-canvas-area.has-error {
+        aspect-ratio: auto;
+        overflow: visible;
+    }
+
     .scene-canvas {
         width: 100%;
         height: 100%;
         display: block;
     }
 
-    .scene-loading, .scene-error {
+    .scene-loading {
         position: absolute;
         inset: 0;
         display: flex;
@@ -432,12 +444,61 @@
         z-index: 1;
     }
 
-    .scene-error a {
-        color: #6af;
+    .scene-error {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 40px 24px;
+    }
+
+    .scene-error-image {
+        width: 80px;
+        height: auto;
+        border-radius: 10px;
+        border: 2px solid var(--color-border-medium);
+        box-shadow: var(--shadow-md);
+        margin-bottom: 16px;
+    }
+
+    .scene-error-title {
+        color: #ff6b6b;
+        font-size: 1.1em;
+        font-weight: bold;
+        margin: 0 0 8px 0;
+    }
+
+    .scene-error-message {
+        color: var(--color-text-muted);
+        font-size: 0.85em;
+        line-height: 1.5;
+        margin: 0 0 20px 0;
+        max-width: 320px;
+    }
+
+    .scene-error-back {
+        display: inline-block;
+        padding: 10px 24px;
+        background-color: var(--color-primary);
+        color: #000;
+        border-radius: 8px;
+        font-size: 0.9em;
+        font-weight: bold;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(255, 215, 0, 0.25);
+    }
+
+    .scene-error-back:hover {
+        background-color: #fff;
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
         text-decoration: none;
     }
-    .scene-error a:hover {
-        text-decoration: underline;
+
+    .scene-error-back:active {
+        transform: scale(0.98);
     }
 
     .spinner {
