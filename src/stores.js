@@ -42,8 +42,13 @@ export const multiplayerRoom = writable(initial.room);
 export const initialInvalidRoom = initial.invalidRoom || false;
 
 // Initialize scene player stores from URL hash if applicable
-export const _initialEventId = initial.eventId || null;
-export const _initialSceneData = initial.sceneData || null;
+const _initialEventId = initial.eventId || null;
+const _initialSceneData = initial.sceneData || null;
+
+function tryDecodeSceneData(encoded) {
+    if (!encoded) return null;
+    try { return JSON.parse(atob(encoded)); } catch { return null; }
+}
 
 // Debug mode
 export const debugEnabled = writable(false);
@@ -109,9 +114,7 @@ export const memoryCompletions = writable(null);
 // Scene player state (set when navigating to #memory/ or #scene/ URLs)
 // Initialize from URL hash so they're available before onMount runs
 export const scenePlayerEventId = writable(_initialEventId);
-export const scenePlayerData = writable(
-    _initialSceneData ? (() => { try { return JSON.parse(atob(_initialSceneData)); } catch { return null; } })() : null
-);
+export const scenePlayerData = writable(tryDecodeSceneData(_initialSceneData));
 
 // Crash state — set when game aborts/crashes
 export const gameCrashed = writable(null);

@@ -53,6 +53,11 @@ const MXCH_FLAG_SPLIT = 0x10;
 const MXCH_FLAG_END = 0x02;
 const MXCH_HEADER_SIZE = 14; // flags(2) + objectId(4) + time(4) + dataSize(4)
 
+/** Seek past a RIFF chunk, accounting for 2-byte padding alignment. */
+function seekPastChunk(r, chunkDataStart, chunkSize) {
+    r.seek(Math.min(chunkDataStart + chunkSize + (chunkSize % 2), r.buffer.byteLength));
+}
+
 /**
  * Parsed SI object with all MxOb fields.
  */
@@ -237,7 +242,7 @@ export class SIReader {
                     const child = this._readChunkTree(r, baseOffset);
                     if (child instanceof SIObject && !obj) obj = child;
                 }
-                r.seek(Math.min(chunkEnd + (chunkSize % 2), r.buffer.byteLength));
+                seekPastChunk(r, chunkStart, chunkSize);
                 return obj;
             }
 
@@ -263,15 +268,15 @@ export class SIReader {
                             }
                         }
                     }
-                    r.seek(Math.min(innerStart + innerChunkSize + (innerChunkSize % 2), r.buffer.byteLength));
+                    seekPastChunk(r, innerStart, innerChunkSize);
                 }
 
-                r.seek(Math.min(chunkEnd + (chunkSize % 2), r.buffer.byteLength));
+                seekPastChunk(r, chunkStart, chunkSize);
                 return obj;
             }
 
             case LIST: {
-                if (r.remaining() < 4) { r.seek(Math.min(chunkEnd + (chunkSize % 2), r.buffer.byteLength)); return null; }
+                if (r.remaining() < 4) { seekPastChunk(r, chunkStart, chunkSize); return null; }
                 const listType = r.readU32();
 
                 if (listType === MxDa || listType === MxSt) {
@@ -281,23 +286,23 @@ export class SIReader {
                         const child = this._readChunkTree(r, baseOffset);
                         if (child instanceof SIObject && !obj) obj = child;
                     }
-                    r.seek(Math.min(chunkEnd + (chunkSize % 2), r.buffer.byteLength));
+                    seekPastChunk(r, chunkStart, chunkSize);
                     return obj;
                 }
 
-                r.seek(Math.min(chunkEnd + (chunkSize % 2), r.buffer.byteLength));
+                seekPastChunk(r, chunkStart, chunkSize);
                 return null;
             }
 
             case MxCh: {
                 // Data chunk - handled by _collectMxChFromBuffer
-                r.seek(Math.min(chunkEnd + (chunkSize % 2), r.buffer.byteLength));
+                seekPastChunk(r, chunkStart, chunkSize);
                 return null;
             }
 
             case pad_:
             default: {
-                r.seek(Math.min(chunkEnd + (chunkSize % 2), r.buffer.byteLength));
+                seekPastChunk(r, chunkStart, chunkSize);
                 return null;
             }
         }

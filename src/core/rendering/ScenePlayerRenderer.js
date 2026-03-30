@@ -155,6 +155,19 @@ export class ScenePlayerRenderer extends BaseRenderer {
      * Tries trimmed LOD suffix first, then the original name.
      */
     _assembleProp(canonicalName) {
+        const group = this._lookupProp(canonicalName);
+        if (group) {
+            group.name = canonicalName;
+            this.modelGroup.addChild(group);
+        }
+    }
+
+    /**
+     * Look up a prop by name, trying trimmed LOD suffix first, then the original.
+     * @param {string} canonicalName - Lowercased prop name
+     * @returns {Transform|null}
+     */
+    _lookupProp(canonicalName) {
         const trimmedName = trimLODSuffix(canonicalName);
         let group = this.assemblePropHierarchical(
             trimmedName, this._parser, this._wdb, this._worldPartsMaps, this._globalPartsMap
@@ -164,11 +177,7 @@ export class ScenePlayerRenderer extends BaseRenderer {
                 canonicalName, this._parser, this._wdb, this._worldPartsMaps, this._globalPartsMap
             );
         }
-
-        if (group) {
-            group.name = canonicalName;
-            this.modelGroup.addChild(group);
-        }
+        return group;
     }
 
     // ── Animation Tree Resolution ───────────────────────────────────
@@ -236,16 +245,7 @@ export class ScenePlayerRenderer extends BaseRenderer {
         const rawName = node.data?.name;
         if (rawName && !node.data._transform) {
             const canonicalName = stripStar(rawName).toLowerCase();
-            const trimmedName = trimLODSuffix(canonicalName);
-
-            let group = this.assemblePropHierarchical(
-                trimmedName, this._parser, this._wdb, this._worldPartsMaps, this._globalPartsMap
-            );
-            if (!group && trimmedName !== canonicalName) {
-                group = this.assemblePropHierarchical(
-                    canonicalName, this._parser, this._wdb, this._worldPartsMaps, this._globalPartsMap
-                );
-            }
+            const group = this._lookupProp(canonicalName);
 
             if (group) {
                 group.name = canonicalName;

@@ -3,6 +3,7 @@
     import { currentPage, scenePlayerEventId, scenePlayerData, memoryCompletions } from '../stores.js';
     import { AnimationTitles, AnimationObjectIds } from './multiplayer/animationCatalog.js';
     import { ActorDisplayNames } from '../core/savegame/actorConstants.js';
+    import { encodeSceneData, formatDateTime } from '../core/navigation.js';
     import { API_URL } from '../core/config.js';
     import { getWdb } from '../core/wdbCache.js';
     import { getSIReader, decodeAnimIndex } from '../core/formats/SIParser.js';
@@ -321,14 +322,6 @@
         return `${m}:${sec.toString().padStart(2, '0')}`;
     }
 
-    function formatTimestamp(ts) {
-        if (!ts) return '';
-        const d = new Date(ts * 1000);
-        const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-        const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-        return `${date} \u00b7 ${time}`;
-    }
-
     // Is this memory confirmed available on the server?
     $: serverAvailable = loadedFromServer ||
         (!!$scenePlayerEventId && ($memoryCompletions || []).some(
@@ -338,7 +331,7 @@
     $: shareUrl = animIndex != null
         ? (serverAvailable && $scenePlayerEventId
             ? `${window.location.origin}${window.location.pathname}#memory/${$scenePlayerEventId}`
-            : buildSceneUrl(animIndex, participants, sceneLanguage, sceneTimestamp))
+            : `${window.location.origin}${window.location.pathname}#scene/${encodeSceneData(animIndex, participants, sceneLanguage, sceneTimestamp)}`)
         : null;
 
     // Keep URL bar in sync with the shareable URL
@@ -353,13 +346,6 @@
             }
             history.replaceState(newState, '', targetHash);
         }
-    }
-
-    function buildSceneUrl(idx, parts, lang, t) {
-        const data = { a: idx, p: parts.map(p => ({ n: p.displayName ?? p.n, c: p.charIndex ?? p.c })) };
-        if (lang && lang !== 'en') data.l = lang;
-        if (t) data.t = t;
-        return `${window.location.origin}${window.location.pathname}#scene/${btoa(JSON.stringify(data))}`;
     }
 </script>
 
@@ -379,7 +365,7 @@
                 {/each}
                 {#if sceneTimestamp}
                     <span class="sep">&middot;</span>
-                    <span class="scene-timestamp">{formatTimestamp(sceneTimestamp)}</span>
+                    <span class="scene-timestamp">{formatDateTime(sceneTimestamp)}</span>
                 {/if}
             {:else}
                 &nbsp;

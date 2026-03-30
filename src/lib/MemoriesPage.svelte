@@ -3,7 +3,7 @@
     import { buildingThumbnails, actorThumbnails } from '../core/thumbnails.js';
     import { AnimationTitles, ClusterAnimIndices, TOTAL_ANIMATIONS } from './multiplayer/animationCatalog.js';
     import { ActorDisplayNames } from '../core/savegame/actorConstants.js';
-    import { navigateToMemory, navigateToScene } from '../core/navigation.js';
+    import { navigateToMemory, navigateToScene, encodeSceneData, formatDateTime } from '../core/navigation.js';
     import BackButton from './BackButton.svelte';
 
     let filter = 'all';
@@ -144,10 +144,7 @@
 
     function compHref(comp) {
         if (comp.synced) return `#memory/${comp.eventId}`;
-        const data = { a: comp.animIndex, p: comp.participants.map(p => ({ n: p.displayName, c: p.charIndex })) };
-        if (comp.language && comp.language !== 'en') data.l = comp.language;
-        if (comp.timestamp) data.t = comp.timestamp;
-        return `#scene/${btoa(JSON.stringify(data))}`;
+        return `#scene/${encodeSceneData(comp.animIndex, comp.participants, comp.language, comp.timestamp)}`;
     }
 
     function formatDateShort(timestamp, now) {
@@ -163,14 +160,6 @@
         if (diffHours < 24) return `${diffHours}h ago`;
         if (diffDays < 7) return `${diffDays}d ago`;
         return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    }
-
-    function formatDateFull(timestamp) {
-        if (!timestamp) return '';
-        const d = new Date(timestamp * 1000);
-        const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-        const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-        return `${date} \u00b7 ${time}`;
     }
 
     function locPct(group) {
@@ -360,7 +349,7 @@
                                                             <span class="comp-more">+{comp.participants.length - 3}</span>
                                                         {/if}
                                                     </div>
-                                                    <span class="comp-time" title={formatDateFull(comp.timestamp)}>{formatDateShort(comp.timestamp, now)}</span>
+                                                    <span class="comp-time" title={formatDateTime(comp.timestamp)}>{formatDateShort(comp.timestamp, now)}</span>
                                                 </div>
                                             </a>
                                         {/each}
