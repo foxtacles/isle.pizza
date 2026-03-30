@@ -3,7 +3,7 @@
     import { buildingThumbnails, actorThumbnails } from '../core/thumbnails.js';
     import { AnimationTitles, ClusterAnimIndices, TOTAL_ANIMATIONS } from './multiplayer/animationCatalog.js';
     import { ActorDisplayNames } from '../core/savegame/actorConstants.js';
-    import { navigateToMemory } from '../core/navigation.js';
+    import { navigateToMemory, navigateToScene } from '../core/navigation.js';
     import BackButton from './BackButton.svelte';
 
     let filter = 'all';
@@ -47,7 +47,10 @@
                 completions: sorted.map(comp => ({
                     eventId: comp.eventId,
                     timestamp: comp.t,
-                    participants: comp.participants || []
+                    participants: comp.participants || [],
+                    synced: comp.synced || false,
+                    animIndex: comp.animIndex,
+                    language: comp.language
                 }))
             };
         }
@@ -128,6 +131,23 @@
         if (!anim.completions) return [];
         if (showAll.has(anim.animIndex)) return anim.completions;
         return anim.completions.slice(0, COMP_CAP);
+    }
+
+    function handleCompClick(e, comp) {
+        e.preventDefault();
+        if (comp.synced) {
+            navigateToMemory(comp.eventId);
+        } else {
+            navigateToScene(comp.animIndex, comp.participants, comp.language, comp.timestamp);
+        }
+    }
+
+    function compHref(comp) {
+        if (comp.synced) return `#memory/${comp.eventId}`;
+        const data = { a: comp.animIndex, p: comp.participants.map(p => ({ n: p.displayName, c: p.charIndex })) };
+        if (comp.language && comp.language !== 'en') data.l = comp.language;
+        if (comp.timestamp) data.t = comp.timestamp;
+        return `#scene/${btoa(JSON.stringify(data))}`;
     }
 
     function formatDateShort(timestamp, now) {
@@ -321,7 +341,7 @@
                                 <div class="completions" class:open={expandedAnims.has(anim.animIndex)}>
                                     <div class="completions-inner">
                                         {#each visibleCompletions(anim, showAllComps) as comp}
-                                            <a class="comp-row" href="#memory/{comp.eventId}" onclick={e => { e.preventDefault(); navigateToMemory(comp.eventId); }}>
+                                            <a class="comp-row" href={compHref(comp)} onclick={e => handleCompClick(e, comp)}>
                                                 {@render avatarStack(comp.participants)}
                                                 <div class="comp-detail">
                                                     <div class="comp-names">

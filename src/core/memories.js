@@ -64,7 +64,8 @@ export async function recordCompletion(animIndex, eventId, participants) {
                 eventId,
                 t: Math.floor(Date.now() / 1000),
                 participants,
-                language
+                language,
+                synced: false
             });
             req.onerror = (e) => {
                 if (req.error?.name === 'ConstraintError') {
@@ -106,6 +107,28 @@ async function rebuildStores() {
 }
 
 /**
+ * Mark completions as synced to server by eventId.
+ */
+async function markAsSynced(eventIdSet) {
+    if (!db || eventIdSet.size === 0) return;
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.openCursor();
+    req.onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (!cursor) return;
+        if (eventIdSet.has(cursor.value.eventId) && !cursor.value.synced) {
+            cursor.update({ ...cursor.value, synced: true });
+        }
+        cursor.continue();
+    };
+    await new Promise((resolve, reject) => {
+        tx.oncomplete = resolve;
+        tx.onerror = (e) => reject(e.target.error);
+    });
+}
+
+/**
  * Clear all completions from IndexedDB and reset both stores.
  */
 export async function clearLocalMemories() {
@@ -133,12 +156,16 @@ export async function clearLocalMemories() {
 
 async function reportToServer(animIndex, eventId, participants, language) {
     try {
-        await fetch(`${API_URL}/api/memories`, {
+        const res = await fetch(`${API_URL}/api/memories`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ animIndex, eventId, participants, language })
         });
+        if (res.ok) {
+            await markAsSynced(new Set([eventId]));
+            await rebuildStores();
+        }
     } catch (e) {
         console.warn('[Memory] Failed to report to server:', e);
     }
@@ -178,7 +205,8 @@ async function syncWithServer() {
                     eventId: sc.event_id,
                     t: sc.completed_at,
                     participants: JSON.parse(sc.participants || '[]'),
-                    language: sc.language || 'en'
+                    language: sc.language || 'en',
+                    synced: true
                 });
             }
         }
@@ -188,6 +216,12 @@ async function syncWithServer() {
             tx.onerror = (e) => reject(e.target.error);
         });
 
+        // Mark all local records as synced (server accepted our data)
+        const allEventIds = new Set([
+            ...localCompletions.map(c => c.eventId),
+            ...serverCompletions.map(c => c.event_id)
+        ]);
+        await markAsSynced(allEventIds);
         await rebuildStores();
         console.log('[Memory] Synced with server');
     } catch (e) {

@@ -18,6 +18,9 @@
     let animIndex = null;
     let participants = [];
     let title = '';
+    let sceneLanguage = 'en';
+    let sceneTimestamp = null;
+    let loadedFromServer = false;
 
     // Playback state
     let renderer = null;
@@ -61,6 +64,9 @@
         ready = false;
         elapsed = 0;
         duration = 0;
+        sceneLanguage = 'en';
+        sceneTimestamp = null;
+        loadedFromServer = false;
     }
 
     function startLoad() {
@@ -82,18 +88,31 @@
             // Step 1: Resolve the completion record
             let record = null;
 
+            loadedFromServer = false;
             if ($scenePlayerData) {
-                record = $scenePlayerData;
+                // Support both long keys (legacy) and short keys (new compact format)
+                const d = $scenePlayerData;
+                const rawParts = d.participants ?? d.p ?? [];
+                record = {
+                    animIndex: d.animIndex ?? d.a,
+                    participants: rawParts.map(p => ({
+                        displayName: p.displayName ?? p.n,
+                        charIndex: p.charIndex ?? p.c
+                    })),
+                    language: d.language ?? d.l,
+                    t: d.t
+                };
             } else if ($scenePlayerEventId) {
                 const local = ($memoryCompletions || []).find(c => c.eventId === $scenePlayerEventId);
                 if (local) {
-                    record = { animIndex: local.animIndex, participants: local.participants, language: local.language };
+                    record = { animIndex: local.animIndex, participants: local.participants, language: local.language, t: local.t };
                 } else {
                     const res = await fetch(`${API_URL}/api/memory/${encodeURIComponent($scenePlayerEventId)}`);
                     if (gen !== loadGeneration) return;
                     if (res.ok) {
                         const data = await res.json();
-                        record = { animIndex: data.animIndex, participants: data.participants, language: data.language };
+                        record = { animIndex: data.animIndex, participants: data.participants, language: data.language, t: data.t };
+                        loadedFromServer = true;
                     }
                 }
             }
@@ -106,7 +125,9 @@
 
             animIndex = record.animIndex;
             participants = record.participants || [];
-            const language = record.language || 'en';
+            sceneLanguage = record.language || record.l || 'en';
+            sceneTimestamp = record.t || null;
+            const language = sceneLanguage;
             title = AnimationTitles[animIndex] || `Animation #${animIndex}`;
 
             // Step 2: Derive world slot and objectId
@@ -300,9 +321,38 @@
         return `${m}:${sec.toString().padStart(2, '0')}`;
     }
 
-    $: shareUrl = $scenePlayerEventId
-        ? `${window.location.origin}${window.location.pathname}#memory/${$scenePlayerEventId}`
+    // Is this memory confirmed available on the server?
+    $: serverAvailable = loadedFromServer ||
+        (!!$scenePlayerEventId && ($memoryCompletions || []).some(
+            c => c.eventId === $scenePlayerEventId && c.synced
+        ));
+
+    $: shareUrl = animIndex != null
+        ? (serverAvailable && $scenePlayerEventId
+            ? `${window.location.origin}${window.location.pathname}#memory/${$scenePlayerEventId}`
+            : buildSceneUrl(animIndex, participants, sceneLanguage, sceneTimestamp))
         : null;
+
+    // Keep URL bar in sync with the shareable URL
+    $: if ($currentPage === 'scene-player' && shareUrl && !loading) {
+        const targetHash = new URL(shareUrl).hash;
+        if (window.location.hash !== targetHash) {
+            const newState = { page: 'scene-player' };
+            if (targetHash.startsWith('#memory/')) {
+                newState.eventId = targetHash.slice(8);
+            } else if (targetHash.startsWith('#scene/')) {
+                newState.sceneData = targetHash.slice(7);
+            }
+            history.replaceState(newState, '', targetHash);
+        }
+    }
+
+    function buildSceneUrl(idx, parts, lang, t) {
+        const data = { a: idx, p: parts.map(p => ({ n: p.displayName ?? p.n, c: p.charIndex ?? p.c })) };
+        if (lang && lang !== 'en') data.l = lang;
+        if (t) data.t = t;
+        return `${window.location.origin}${window.location.pathname}#scene/${btoa(JSON.stringify(data))}`;
+    }
 </script>
 
 <div class="page-content">
