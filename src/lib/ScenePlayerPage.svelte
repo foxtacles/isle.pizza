@@ -111,7 +111,7 @@
                     if (gen !== loadGeneration) return;
                     if (res.ok) {
                         const data = await res.json();
-                        record = { animIndex: data.animIndex, participants: data.participants, language: data.language, t: data.t };
+                        record = { animIndex: data.animIndex, participants: data.participants, language: data.language, t: data.completedAt };
                         loadedFromServer = true;
                     }
                 }
