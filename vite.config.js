@@ -44,6 +44,12 @@ export default defineConfig(({ mode }) => ({
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp'
+    },
+    proxy: {
+      '^/symbols/.+/isle\\.wasm\\.map$': {
+        target: 'http://localhost:5173',
+        rewrite: () => '/isle.wasm.map'
+      }
     }
   }
 }));
