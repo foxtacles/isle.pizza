@@ -321,6 +321,14 @@
         return `${m}:${sec.toString().padStart(2, '0')}`;
     }
 
+    function formatTimestamp(ts) {
+        if (!ts) return '';
+        const d = new Date(ts * 1000);
+        const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        return `${date} \u00b7 ${time}`;
+    }
+
     // Is this memory confirmed available on the server?
     $: serverAvailable = loadedFromServer ||
         (!!$scenePlayerEventId && ($memoryCompletions || []).some(
@@ -369,6 +377,10 @@
                         <span class="char-name">as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}</span>
                     </span>
                 {/each}
+                {#if sceneTimestamp}
+                    <span class="sep">&middot;</span>
+                    <span class="scene-timestamp">{formatTimestamp(sceneTimestamp)}</span>
+                {/if}
             {:else}
                 &nbsp;
             {/if}
@@ -460,6 +472,10 @@
     .scene-participants .char-name {
         color: #777;
         font-style: italic;
+    }
+
+    .scene-timestamp {
+        color: #777;
     }
 
     .scene-canvas-area {
