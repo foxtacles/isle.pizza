@@ -165,6 +165,16 @@ export class SceneAudioPlayer {
         }
     }
 
+    /** Maximum end time (ms) across all audio tracks. */
+    get maxEndTime() {
+        let max = 0;
+        for (const track of this.tracks) {
+            const endMs = track.timeOffset + track.buffer.duration * 1000;
+            if (endMs > max) max = endMs;
+        }
+        return max;
+    }
+
     dispose() {
         this.stop();
         this.audioContext?.close();

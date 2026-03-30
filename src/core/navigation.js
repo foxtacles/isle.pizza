@@ -33,8 +33,9 @@ export function navigateToMemory(eventId) {
     history.pushState({ page: 'scene-player', eventId }, '', '#memory/' + eventId);
 }
 
-export function navigateToScene(animIndex, participants) {
+export function navigateToScene(animIndex, participants, language = null) {
     const data = { animIndex, participants };
+    if (language) data.language = language;
     const encoded = btoa(JSON.stringify(data));
     scenePlayerEventId.set(null);
     scenePlayerData.set(data);

@@ -87,13 +87,13 @@
             } else if ($scenePlayerEventId) {
                 const local = ($memoryCompletions || []).find(c => c.eventId === $scenePlayerEventId);
                 if (local) {
-                    record = { animIndex: local.animIndex, participants: local.participants };
+                    record = { animIndex: local.animIndex, participants: local.participants, language: local.language };
                 } else {
                     const res = await fetch(`${API_URL}/api/memory/${encodeURIComponent($scenePlayerEventId)}`);
                     if (gen !== loadGeneration) return;
                     if (res.ok) {
                         const data = await res.json();
-                        record = { animIndex: data.animIndex, participants: data.participants };
+                        record = { animIndex: data.animIndex, participants: data.participants, language: data.language };
                     }
                 }
             }
@@ -106,6 +106,7 @@
 
             animIndex = record.animIndex;
             participants = record.participants || [];
+            const language = record.language || 'en';
             title = AnimationTitles[animIndex] || `Animation #${animIndex}`;
 
             // Step 2: Derive world slot and objectId
@@ -119,7 +120,7 @@
 
             // Step 3: Load SI and WDB in parallel
             const [siReader, wdbData] = await Promise.all([
-                getSIReader(worldSlot),
+                getSIReader(worldSlot, language),
                 getWdb(),
             ]);
             if (gen !== loadGeneration) return;
@@ -159,6 +160,13 @@
             audioPlayer = new SceneAudioPlayer();
             await audioPlayer.init(sceneData.audioTracks);
             if (gen !== loadGeneration) return;
+
+            // Extend duration if audio extends beyond animation
+            const audioEnd = audioPlayer.maxEndTime;
+            if (audioEnd > duration) {
+                duration = audioEnd;
+                renderer.duration = duration;
+            }
 
             // Step 9: Initialize phoneme player
             phonemePlayer = new PhonemePlayer();

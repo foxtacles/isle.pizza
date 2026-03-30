@@ -35,7 +35,7 @@ app.get("/api/memory/:eventId", async (c) => {
 	}
 
 	const result = await c.env.DB.prepare(
-		"SELECT anim_index, event_id, completed_at, participants FROM memory_completions WHERE event_id = ? LIMIT 1"
+		"SELECT anim_index, event_id, completed_at, participants, language FROM memory_completions WHERE event_id = ? LIMIT 1"
 	)
 		.bind(eventId)
 		.first<{
@@ -43,6 +43,7 @@ app.get("/api/memory/:eventId", async (c) => {
 			event_id: string;
 			completed_at: number;
 			participants: string;
+			language: string;
 		}>();
 
 	if (!result) {
@@ -54,6 +55,7 @@ app.get("/api/memory/:eventId", async (c) => {
 		eventId: result.event_id,
 		completedAt: result.completed_at,
 		participants: JSON.parse(result.participants || "[]"),
+		language: result.language,
 	});
 });
 

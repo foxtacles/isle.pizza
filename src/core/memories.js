@@ -2,6 +2,7 @@
 import { memoryUnlocks, memoryCompletions } from '../stores.js';
 import { authSession, authReady } from './auth.js';
 import { API_URL } from './config.js';
+import { getConfigLanguage } from './opfs.js';
 
 const DB_NAME = 'isle-pizza-memories';
 const DB_VERSION = 1;
@@ -54,6 +55,7 @@ export async function initMemories() {
 export async function recordCompletion(animIndex, eventId, participants) {
     if (!db) return;
     try {
+        const language = await getConfigLanguage();
         let wasDuplicate = false;
         await new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -61,7 +63,8 @@ export async function recordCompletion(animIndex, eventId, participants) {
                 animIndex,
                 eventId,
                 t: Math.floor(Date.now() / 1000),
-                participants
+                participants,
+                language
             });
             req.onerror = (e) => {
                 if (req.error?.name === 'ConstraintError') {
@@ -78,7 +81,7 @@ export async function recordCompletion(animIndex, eventId, participants) {
         await rebuildStores();
 
         if (currentSession && participants.length > 0) {
-            reportToServer(animIndex, eventId, participants);
+            reportToServer(animIndex, eventId, participants, language);
         }
     } catch (e) {
         console.error('[Memory] Failed to record completion:', e);
@@ -128,13 +131,13 @@ export async function clearLocalMemories() {
 
 // --- Server sync ---
 
-async function reportToServer(animIndex, eventId, participants) {
+async function reportToServer(animIndex, eventId, participants, language) {
     try {
         await fetch(`${API_URL}/api/memories`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ animIndex, eventId, participants })
+            body: JSON.stringify({ animIndex, eventId, participants, language })
         });
     } catch (e) {
         console.warn('[Memory] Failed to report to server:', e);
@@ -150,7 +153,12 @@ async function syncWithServer() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ completions: localCompletions })
+            body: JSON.stringify({
+                completions: localCompletions.map(c => ({
+                    ...c,
+                    language: c.language || 'en'
+                }))
+            })
         });
 
         if (!res.ok) return;
@@ -169,7 +177,8 @@ async function syncWithServer() {
                     animIndex: sc.anim_index,
                     eventId: sc.event_id,
                     t: sc.completed_at,
-                    participants: JSON.parse(sc.participants || '[]')
+                    participants: JSON.parse(sc.participants || '[]'),
+                    language: sc.language || 'en'
                 });
             }
         }

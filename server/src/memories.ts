@@ -16,12 +16,21 @@ interface CompletionRow {
 	event_id: string;
 	completed_at: number;
 	participants: string;
+	language: string;
+}
+
+const VALID_LANGUAGES = new Set([
+	"da", "el", "en", "fr", "de", "it", "jp", "ko", "pt", "ru", "es",
+]);
+
+function isValidLanguage(lang: unknown): lang is string {
+	return typeof lang === "string" && VALID_LANGUAGES.has(lang);
 }
 
 function getUserCompletions(db: D1Database, userId: string) {
 	return db
 		.prepare(
-			"SELECT anim_index, event_id, completed_at, participants FROM memory_completions WHERE user_id = ? ORDER BY completed_at DESC"
+			"SELECT anim_index, event_id, completed_at, participants, language FROM memory_completions WHERE user_id = ? ORDER BY completed_at DESC"
 		)
 		.bind(userId)
 		.all<CompletionRow>();
@@ -30,6 +39,7 @@ function getUserCompletions(db: D1Database, userId: string) {
 function isValidCompletion(c: {
 	animIndex: unknown;
 	eventId: unknown;
+	language: unknown;
 }): boolean {
 	if (
 		typeof c.animIndex !== "number" ||
@@ -38,6 +48,7 @@ function isValidCompletion(c: {
 	)
 		return false;
 	if (typeof c.eventId !== "string" || c.eventId.length > 16) return false;
+	if (!isValidLanguage(c.language)) return false;
 	return true;
 }
 
@@ -51,6 +62,7 @@ memories.post("/", async (c) => {
 		animIndex: number;
 		eventId: string;
 		participants: Array<{ charIndex: number; displayName: string }>;
+		language: string;
 	}>();
 
 	if (
@@ -64,14 +76,15 @@ memories.post("/", async (c) => {
 	const participantsJson = JSON.stringify(body.participants);
 
 	await c.env.DB.prepare(
-		"INSERT OR IGNORE INTO memory_completions (user_id, anim_index, event_id, completed_at, participants) VALUES (?, ?, ?, ?, ?)"
+		"INSERT OR IGNORE INTO memory_completions (user_id, anim_index, event_id, completed_at, participants, language) VALUES (?, ?, ?, ?, ?, ?)"
 	)
 		.bind(
 			session.user.id,
 			body.animIndex,
 			body.eventId,
 			Math.floor(Date.now() / 1000),
-			participantsJson
+			participantsJson,
+			body.language
 		)
 		.run();
 
@@ -87,6 +100,7 @@ memories.post("/sync", async (c) => {
 			eventId: string;
 			t: number;
 			participants?: Array<{ charIndex: number; displayName: string }>;
+			language: string;
 		}>;
 	}>();
 
@@ -95,7 +109,7 @@ memories.post("/sync", async (c) => {
 	}
 
 	const stmt = c.env.DB.prepare(
-		"INSERT OR IGNORE INTO memory_completions (user_id, anim_index, event_id, completed_at, participants) VALUES (?, ?, ?, ?, ?)"
+		"INSERT OR IGNORE INTO memory_completions (user_id, anim_index, event_id, completed_at, participants, language) VALUES (?, ?, ?, ?, ?, ?)"
 	);
 
 	// Find existing event_ids for this user to avoid duplicates
@@ -125,7 +139,8 @@ memories.post("/sync", async (c) => {
 				completion.animIndex,
 				completion.eventId,
 				completion.t || Math.floor(Date.now() / 1000),
-				JSON.stringify(completion.participants)
+				JSON.stringify(completion.participants),
+				completion.language
 			)
 		);
 		existingSet.add(completion.eventId);

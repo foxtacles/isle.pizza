@@ -168,6 +168,28 @@ export async function listFiles(pattern) {
 // Config File Operations
 // ============================================================================
 
+/**
+ * Read the Language value from the INI config file.
+ * @returns {Promise<string>} Language code (e.g. 'en', 'de'), defaults to 'en'
+ */
+export async function getConfigLanguage() {
+    try {
+        const handle = await getFileHandle(CONFIG_FILE, false);
+        if (!handle) return 'en';
+        const file = await handle.getFile();
+        const text = await file.text();
+        if (!text) return 'en';
+        for (const line of text.split('\n')) {
+            if (line.startsWith('[') || !line.includes('=')) continue;
+            const [key, ...valueParts] = line.split('=');
+            if (key.trim().toLowerCase() === 'language') return valueParts.join('=').trim() || 'en';
+        }
+        return 'en';
+    } catch {
+        return 'en';
+    }
+}
+
 export async function loadConfig(form) {
     const handle = await getFileHandle(CONFIG_FILE, false);
     if (!handle) return null;

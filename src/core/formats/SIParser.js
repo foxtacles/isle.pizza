@@ -98,6 +98,7 @@ export class SIObject {
 export class SIReader {
     constructor() {
         this.url = null;
+        this.language = null;
         this.version = 0;
         this.bufferSize = 0;
         this.bufferCount = 0;
@@ -108,9 +109,11 @@ export class SIReader {
     /**
      * Open an SI file: fetch header (MxHd + MxOf) via Range request.
      * @param {string} url - URL to the SI file
+     * @param {string|null} [language] - Language code for Accept-Language header
      */
-    async open(url) {
+    async open(url, language = null) {
         this.url = url;
+        this.language = language;
 
         // Fetch first 16KB to get RIFF header + MxHd + start of MxOf.
         // MxOf for ISLE.SI (~1200 objects) is about 4808 bytes, well within 16KB.
@@ -489,9 +492,11 @@ export class SIReader {
      */
     async _fetchRange(start, length) {
         const end = start + length - 1;
-        const response = await fetch(this.url, {
-            headers: { 'Range': `bytes=${start}-${end}` }
-        });
+        const headers = { 'Range': `bytes=${start}-${end}` };
+        if (this.language) {
+            headers['Accept-Language'] = this.language;
+        }
+        const response = await fetch(this.url, { headers });
 
         if (response.status === 206) {
             // Partial content - expected
@@ -535,22 +540,24 @@ const siReaderCache = new Map();
  * Get or create an SIReader for the given world slot.
  * The reader is opened once (header-only) and cached.
  * @param {number} worldSlot - 0=ACT1, 1=ACT2, 2=ACT3
+ * @param {string|null} [language] - Language code for Accept-Language header
  * @returns {Promise<SIReader>}
  */
-export async function getSIReader(worldSlot) {
-    if (siReaderCache.has(worldSlot)) {
-        return siReaderCache.get(worldSlot);
+export async function getSIReader(worldSlot, language = null) {
+    const cacheKey = language ? `${worldSlot}:${language}` : worldSlot;
+    if (siReaderCache.has(cacheKey)) {
+        return siReaderCache.get(cacheKey);
     }
 
     const url = SI_PATHS[worldSlot];
     if (!url) throw new Error(`Unknown world slot: ${worldSlot}`);
 
     const reader = new SIReader();
-    const promise = reader.open(url).then(() => {
-        siReaderCache.set(worldSlot, reader);
+    const promise = reader.open(url, language).then(() => {
+        siReaderCache.set(cacheKey, reader);
         return reader;
     });
-    siReaderCache.set(worldSlot, promise);
+    siReaderCache.set(cacheKey, promise);
 
     return promise;
 }

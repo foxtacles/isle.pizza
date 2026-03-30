@@ -466,6 +466,7 @@ export class ScenePlayerRenderer extends BaseRenderer {
     get playing() { return this._playing; }
     get elapsed() { return this._elapsed * 1000; }
     get duration() { return this._duration; }
+    set duration(value) { this._duration = value; }
     get finished() { return this._duration > 0 && this._elapsed * 1000 >= this._duration; }
 
     /**
