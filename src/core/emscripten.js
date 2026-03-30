@@ -2,6 +2,7 @@
 import { gameRunning, debugUIVisible, multiplayerPlayerCount, thirdPersonEnabled, showNameBubbles, allowCustomize, connectionStatus, animationState, gameCrashed } from '../stores.js';
 import { recordCompletion } from './memories.js';
 import { pauseInstallAudio } from './audio.js';
+import { API_URL } from './config.js';
 
 const DEFAULT_RENDERER = "0 0x682656f3 0x0 0x0 0x4000000"; // WebGL default
 let progressUpdates = 0;
@@ -124,6 +125,26 @@ export function setupCanvasEvents() {
     window.addEventListener('game-crash', function (event) {
         if (crashed) return;
         crashed = true;
-        gameCrashed.set({ message: event.detail.message });
+        var detail = event.detail;
+        gameCrashed.set({
+            stack: detail.stack,
+            buildVersion: detail.buildVersion,
+            wasmVersion: detail.wasmVersion
+        });
+
+        // Send crash report to server (fire-and-forget, survives page unload)
+        try {
+            fetch(API_URL + '/api/crash', {
+                method: 'POST',
+                body: JSON.stringify({
+                    stack: detail.stack,
+                    buildVersion: detail.buildVersion,
+                    wasmVersion: detail.wasmVersion
+                }),
+                headers: { 'Content-Type': 'application/json' },
+                keepalive: true,
+                credentials: 'include'
+            });
+        } catch (e) {}
     });
 }

@@ -146,7 +146,6 @@ export async function clearLocalMemories() {
         });
         memoryUnlocks.set(new Set());
         memoryCompletions.set([]);
-        console.log('[Memory] Cleared local memories');
     } catch (e) {
         console.error('[Memory] Failed to clear local memories:', e);
     }
@@ -223,7 +222,6 @@ async function syncWithServer() {
         ]);
         await markAsSynced(allEventIds);
         await rebuildStores();
-        console.log('[Memory] Synced with server');
     } catch (e) {
         console.warn('[Memory] Sync failed:', e);
     }

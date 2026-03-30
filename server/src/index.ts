@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createAuth, type Env } from "./auth";
 import { memories } from "./memories";
+import { crashes } from "./crashes";
 
 type Variables = {
 	session: { user: { id: string } };
@@ -78,5 +79,8 @@ app.use("/api/memories/*", memoriesAuth);
 
 // Auth-protected memory routes
 app.route("/api/memories", memories);
+
+// Crash reporting (no auth required)
+app.route("/api/crash", crashes);
 
 export default app;

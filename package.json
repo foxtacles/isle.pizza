@@ -9,7 +9,9 @@
     "check": "svelte-check --fail-on-warnings",
     "preview": "vite preview",
     "prepare:assets": "node scripts/prepare.js",
-    "generate:save-editor-assets": "node scripts/generate-save-editor-assets.js"
+    "generate:save-editor-assets": "node scripts/generate-save-editor-assets.js",
+    "deploy": "bash scripts/deploy.sh",
+    "deploy:prod": "bash scripts/deploy.sh production"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.7.5",
