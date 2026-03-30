@@ -453,6 +453,14 @@ export class ScenePlayerRenderer extends BaseRenderer {
         this._elapsed = 0;
     }
 
+    /** Seek to a specific time in the animation. */
+    seek(timeMs) {
+        const clampedMs = Math.max(0, Math.min(timeMs, this._duration));
+        this._elapsed = clampedMs / 1000;
+        this._lastTime = performance.now();
+        this._applyFrame(clampedMs);
+    }
+
     get playing() { return this._playing; }
     get elapsed() { return this._elapsed * 1000; }
     get duration() { return this._duration; }

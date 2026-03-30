@@ -29,8 +29,11 @@
     let muted = false;
     let ready = false;
     let canvasEl;
+    let progressBarEl;
     let tickRaf = null;
     let loadGeneration = 0; // guard against stale async callbacks
+    let seeking = false;
+    let wasPlayingBeforeSeek = false;
 
     $: if ($currentPage === 'scene-player') {
         startLoad();
@@ -230,6 +233,53 @@
         tickRaf = requestAnimationFrame(tick);
     }
 
+    function onProgressPointerDown(e) {
+        if (!renderer || !ready) return;
+        e.preventDefault();
+
+        seeking = true;
+        wasPlayingBeforeSeek = playing;
+
+        if (playing) {
+            playing = false;
+            renderer.pause();
+        }
+        audioPlayer?.pause();
+
+        seekToPosition(e);
+        progressBarEl.setPointerCapture(e.pointerId);
+    }
+
+    function onProgressPointerMove(e) {
+        if (!seeking) return;
+        seekToPosition(e);
+    }
+
+    function onProgressPointerUp(e) {
+        if (!seeking) return;
+        seeking = false;
+
+        seekToPosition(e);
+        audioPlayer?.seek(elapsed);
+
+        if (wasPlayingBeforeSeek && !renderer.finished) {
+            playing = true;
+            renderer.play();
+            audioPlayer?.resume();
+            startTick();
+        }
+    }
+
+    function seekToPosition(e) {
+        const rect = progressBarEl.getBoundingClientRect();
+        const fraction = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const seekTime = fraction * duration;
+
+        renderer.seek(seekTime);
+        phonemePlayer?.seek(seekTime);
+        elapsed = seekTime;
+    }
+
     function toggleMute() {
         muted = !muted;
         if (audioPlayer) audioPlayer.muted = muted;
@@ -251,19 +301,19 @@
     <BackButton />
     <div class="page-inner-content scene-player-inner">
     <div class="scene-title-area">
-        {#if title}
-            <h2 class="scene-title">{title}</h2>
-        {/if}
-        {#if participants.length > 0}
-            <div class="scene-participants">
+        <h2 class="scene-title">{title || '\u00A0'}</h2>
+        <div class="scene-participants">
+            {#if participants.length > 0}
                 {#each participants as p, idx}
                     {#if idx > 0}<span class="sep">&middot;</span>{/if}
                     <span class="participant">{p.displayName}
                         <span class="char-name">as {ActorDisplayNames[p.charIndex] || `#${p.charIndex}`}</span>
                     </span>
                 {/each}
-            </div>
-        {/if}
+            {:else}
+                &nbsp;
+            {/if}
+        </div>
     </div>
 
     <div class="scene-canvas-area">
@@ -281,36 +331,37 @@
         {/if}
     </div>
 
-    {#if ready}
-        <div class="scene-controls">
-            <button class="ctrl-btn" onclick={togglePlay} title={playing ? 'Pause' : 'Play'}>
-                {#if playing}
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                {:else}
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-                {/if}
-            </button>
-
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: {duration > 0 ? Math.min(elapsed / duration * 100, 100) : 0}%"></div>
-            </div>
-
-            <span class="time-display">{formatTime(elapsed)} / {formatTime(duration)}</span>
-
-            <button class="ctrl-btn" onclick={toggleMute} title={muted ? 'Unmute' : 'Mute'}>
-                {#if muted}
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="currentColor"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-                {:else}
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-                {/if}
-            </button>
-
-            {#if shareUrl}
-                <span class="controls-spacer"></span>
-                <ShareLinkButton url={shareUrl} />
+    <div class="scene-controls" class:disabled={!ready}>
+        <button class="ctrl-btn" onclick={togglePlay} title={playing ? 'Pause' : 'Play'}>
+            {#if playing}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            {:else}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
             {/if}
+        </button>
+
+        <div class="progress-bar" class:seeking bind:this={progressBarEl}
+             onpointerdown={onProgressPointerDown}
+             onpointermove={onProgressPointerMove}
+             onpointerup={onProgressPointerUp}>
+            <div class="progress-fill" style="width: {duration > 0 ? Math.min(elapsed / duration * 100, 100) : 0}%"></div>
         </div>
-    {/if}
+
+        <span class="time-display">{formatTime(elapsed)} / {formatTime(duration)}</span>
+
+        <button class="ctrl-btn" onclick={toggleMute} title={muted ? 'Unmute' : 'Mute'}>
+            {#if muted}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="currentColor"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+            {:else}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="currentColor"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            {/if}
+        </button>
+
+        {#if shareUrl}
+            <span class="controls-spacer"></span>
+            <ShareLinkButton url={shareUrl} />
+        {/if}
+    </div>
     </div>
 </div>
 
@@ -361,7 +412,6 @@
         display: block;
     }
 
-
     .scene-loading, .scene-error {
         position: absolute;
         inset: 0;
@@ -385,14 +435,11 @@
     .spinner {
         width: 32px;
         height: 32px;
-        border: 3px solid #333;
-        border-top-color: #888;
         border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-        to { transform: rotate(360deg); }
+        background:
+            radial-gradient(transparent 55%, transparent 56%),
+            conic-gradient(var(--color-primary, #FFD700) 0deg 90deg, var(--color-border-dark, #333) 90deg 360deg);
+        animation: spin 1s linear infinite;
     }
 
     .scene-controls {
@@ -403,6 +450,11 @@
         padding: 0.5rem 0.75rem;
         background: #1a1a1a;
         border-radius: 8px;
+    }
+
+    .scene-controls.disabled {
+        opacity: 0.35;
+        pointer-events: none;
     }
 
     .ctrl-btn {
@@ -429,7 +481,10 @@
         background: #333;
         border-radius: 3px;
         overflow: hidden;
-        cursor: default;
+        cursor: pointer;
+        padding: 6px 0;
+        background-clip: content-box;
+        touch-action: none;
     }
 
     .progress-fill {
@@ -437,6 +492,10 @@
         background: #6af;
         border-radius: 3px;
         transition: width 0.1s linear;
+    }
+
+    .progress-bar.seeking .progress-fill {
+        transition: none;
     }
 
     .time-display {

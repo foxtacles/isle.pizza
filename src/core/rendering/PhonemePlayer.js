@@ -130,6 +130,12 @@ export class PhonemePlayer {
         }
     }
 
+    /** Seek to a specific time by resetting and re-decoding from frame 0. */
+    seek(elapsedMs) {
+        this.stop();
+        this.tick(elapsedMs);
+    }
+
     dispose() {
         this.stop();
         this.states = [];

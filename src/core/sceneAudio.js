@@ -125,6 +125,35 @@ export class SceneAudioPlayer {
         }
     }
 
+    /**
+     * Seek to a specific time. Stops all tracks and restarts those
+     * that should be mid-playback at the given time.
+     * @param {number} elapsedMs - Target time in milliseconds
+     */
+    seek(elapsedMs) {
+        if (!this.audioContext) return;
+        this.stop();
+
+        for (const track of this.tracks) {
+            if (elapsedMs >= track.timeOffset) {
+                const offsetSec = (elapsedMs - track.timeOffset) / 1000;
+                if (offsetSec < track.buffer.duration) {
+                    const source = this.audioContext.createBufferSource();
+                    source.buffer = track.buffer;
+                    const trackGain = this.audioContext.createGain();
+                    trackGain.gain.value = track.gain;
+                    source.connect(trackGain);
+                    trackGain.connect(this.gainNode);
+                    source.start(0, offsetSec);
+                    track.source = source;
+                    track.started = true;
+                } else {
+                    track.started = true;
+                }
+            }
+        }
+    }
+
     get muted() {
         return this._muted;
     }
