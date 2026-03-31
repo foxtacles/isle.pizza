@@ -292,6 +292,13 @@ body {
     font-size: 0.8em;
     color: #777;
     font-family: 'Consolas', 'Menlo', monospace;
+    white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+    .app-footer p {
+        font-size: 0.65em;
+    }
 }
 
 .page-wrapper {
