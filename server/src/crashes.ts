@@ -8,7 +8,13 @@ type Variables = {
 export const crashes = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 crashes.post("/", async (c) => {
-	const body = await c.req.json();
+	let body;
+	try {
+		body = await c.req.json();
+	} catch {
+		return c.json({ error: "invalid JSON" }, 400);
+	}
+
 	const { stack, buildVersion, wasmVersion } = body;
 
 	if (!stack || typeof stack !== "string") {
