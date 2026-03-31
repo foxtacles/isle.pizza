@@ -143,8 +143,8 @@
     }
 
     function compHref(comp) {
-        if (comp.synced) return `#memory/${comp.eventId}`;
-        return `#scene/${encodeSceneData(comp.animIndex, comp.participants, comp.language, comp.timestamp)}`;
+        if (comp.synced) return `/memory/${comp.eventId}`;
+        return `/scene/${encodeSceneData(comp.animIndex, comp.participants, comp.language, comp.timestamp)}`;
     }
 
     function formatDateShort(timestamp, now) {

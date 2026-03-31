@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import { validateRoomName } from './core/room-names.js';
+import { fromUrlSafeBase64 } from './core/base64.js';
 
 const PAGE_MAP = {
     '#read-me': 'read-me',
@@ -10,8 +11,8 @@ const PAGE_MAP = {
     '#memories': 'memories'
 };
 
-// Parse a hash string into { page, room, invalidRoom, eventId, sceneData }
-export function parseHash(hash) {
+// Parse a hash string into { page, room, invalidRoom }
+function parseHash(hash) {
     if (hash.startsWith('#r/')) {
         const room = hash.slice(3);
         if (validateRoomName(room)) {
@@ -19,19 +20,31 @@ export function parseHash(hash) {
         }
         return { page: 'multiplayer', room: null, invalidRoom: true };
     }
-    if (hash.startsWith('#memory/')) {
-        return { page: 'scene-player', room: null, eventId: hash.slice(8) };
-    }
-    if (hash.startsWith('#scene/')) {
-        return { page: 'scene-player', room: null, sceneData: hash.slice(7) };
-    }
     return { page: PAGE_MAP[hash] || 'main', room: null };
 }
 
-// Page navigation - initialize from URL hash to prevent flicker on reload
+// Match a pathname against /memory/:id or /scene/:encoded path routes.
+// Returns { eventId } or { sceneData } on match, null otherwise.
+export function matchPathRoute(path) {
+    const memoryMatch = path.match(/^\/memory\/([A-Za-z0-9_-]+)$/);
+    if (memoryMatch) return { eventId: memoryMatch[1] };
+    const sceneMatch = path.match(/^\/scene\/([A-Za-z0-9_-]+)$/);
+    if (sceneMatch) return { sceneData: sceneMatch[1] };
+    return null;
+}
+
+// Parse the full URL (pathname + hash) into route state
+export function parseRoute() {
+    if (typeof window === 'undefined') return { page: 'main', room: null };
+    const match = matchPathRoute(window.location.pathname);
+    if (match) return { page: 'scene-player', room: null, ...match };
+    return parseHash(window.location.hash);
+}
+
+// Page navigation - initialize from URL to prevent flicker on reload
 function getInitialState() {
     if (typeof window === 'undefined') return { page: 'main', room: null };
-    return parseHash(window.location.hash);
+    return parseRoute();
 }
 
 const initial = getInitialState();
@@ -41,13 +54,13 @@ export const multiplayerRoom = writable(initial.room);
 // Set on startup if the initial URL had an invalid room
 export const initialInvalidRoom = initial.invalidRoom || false;
 
-// Initialize scene player stores from URL hash if applicable
+// Initialize scene player stores from URL if applicable
 const _initialEventId = initial.eventId || null;
 const _initialSceneData = initial.sceneData || null;
 
-function tryDecodeSceneData(encoded) {
+export function tryDecodeSceneData(encoded) {
     if (!encoded) return null;
-    try { return JSON.parse(atob(encoded)); } catch { return null; }
+    try { return JSON.parse(fromUrlSafeBase64(encoded)); } catch { return null; }
 }
 
 // Debug mode
@@ -111,8 +124,8 @@ export const memoryUnlocks = writable(new Set());
 // All completion records from IndexedDB (null = not loaded yet)
 export const memoryCompletions = writable(null);
 
-// Scene player state (set when navigating to #memory/ or #scene/ URLs)
-// Initialize from URL hash so they're available before onMount runs
+// Scene player state (set when navigating to /memory/ or /scene/ URLs)
+// Initialize from URL so they're available before onMount runs
 export const scenePlayerEventId = writable(_initialEventId);
 export const scenePlayerData = writable(tryDecodeSceneData(_initialSceneData));
 

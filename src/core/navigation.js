@@ -1,49 +1,46 @@
 // Navigation utilities
 import { get } from 'svelte/store';
 import { currentPage, multiplayerRoom, scenePlayerEventId, scenePlayerData } from '../stores.js';
+import { toUrlSafeBase64 } from './base64.js';
 
 export function navigateTo(page) {
     if (get(currentPage) === page) return;
     currentPage.set(page);
-    history.pushState({ page }, '', '#' + page);
-}
-
-export function navigateBack() {
-    history.back();
+    history.pushState({ page, fromApp: true }, '', '#' + page);
 }
 
 export function navigateToRoom(name) {
     if (get(currentPage) === 'multiplayer' && get(multiplayerRoom) === name) return;
     multiplayerRoom.set(name);
     currentPage.set('multiplayer');
-    history.pushState({ page: 'multiplayer', room: name }, '', '#r/' + name);
+    history.pushState({ page: 'multiplayer', room: name, fromApp: true }, '', '#r/' + name);
 }
 
 export function navigateToMultiplayer() {
     if (get(currentPage) === 'multiplayer' && get(multiplayerRoom) === null) return;
     multiplayerRoom.set(null);
     currentPage.set('multiplayer');
-    history.pushState({ page: 'multiplayer' }, '', '#multiplayer');
+    history.pushState({ page: 'multiplayer', fromApp: true }, '', '#multiplayer');
 }
 
 export function navigateToMemory(eventId) {
     scenePlayerEventId.set(eventId);
     scenePlayerData.set(null);
     currentPage.set('scene-player');
-    history.pushState({ page: 'scene-player', eventId }, '', '#memory/' + eventId);
+    history.pushState({ page: 'scene-player', eventId, fromApp: true }, '', '/memory/' + eventId);
 }
 
 export function navigateToScene(animIndex, participants, language = null, timestamp = null) {
     const data = buildSceneData(animIndex, participants, language, timestamp);
-    const encoded = btoa(JSON.stringify(data));
+    const encoded = toUrlSafeBase64(JSON.stringify(data));
     scenePlayerEventId.set(null);
     scenePlayerData.set(data);
     currentPage.set('scene-player');
-    history.pushState({ page: 'scene-player', sceneData: encoded }, '', '#scene/' + encoded);
+    history.pushState({ page: 'scene-player', sceneData: encoded, fromApp: true }, '', '/scene/' + encoded);
 }
 
 /**
- * Build the compact short-key data object for a #scene/ URL.
+ * Build the compact short-key data object for a /scene/ URL.
  */
 function buildSceneData(animIndex, participants, language, timestamp) {
     const data = { a: animIndex, p: participants.map(p => ({ n: p.displayName ?? p.n, c: p.charIndex ?? p.c })) };
@@ -53,12 +50,12 @@ function buildSceneData(animIndex, participants, language, timestamp) {
 }
 
 /**
- * Encode scene data into a compact btoa string for use in #scene/ URLs.
+ * Encode scene data into a compact URL-safe base64 string for use in /scene/ URLs.
  * Uses short keys (a/p/n/c/l/t) to minimize encoded URL length.
- * @returns {string} Base64-encoded JSON string
+ * @returns {string} URL-safe base64-encoded JSON string
  */
 export function encodeSceneData(animIndex, participants, language = null, timestamp = null) {
-    return btoa(JSON.stringify(buildSceneData(animIndex, participants, language, timestamp)));
+    return toUrlSafeBase64(JSON.stringify(buildSceneData(animIndex, participants, language, timestamp)));
 }
 
 /**

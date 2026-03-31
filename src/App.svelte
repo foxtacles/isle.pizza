@@ -1,7 +1,7 @@
 <script>
     import { onMount } from 'svelte';
     import { computePosition, flip, shift, offset } from '@floating-ui/dom';
-    import { currentPage, debugEnabled, gameRunning, multiplayerRoom, scenePlayerEventId, scenePlayerData, parseHash, initialInvalidRoom } from './stores.js';
+    import { currentPage, debugEnabled, gameRunning, multiplayerRoom, scenePlayerEventId, scenePlayerData, matchPathRoute, parseRoute, tryDecodeSceneData, initialInvalidRoom } from './stores.js';
     import { showToast } from './core/toast.js';
     import { registerServiceWorker, checkCacheStatus, requestPersistentStorage } from './core/service-worker.js';
     import { setupCanvasEvents } from './core/emscripten.js';
@@ -113,25 +113,26 @@
         setupTooltips();
 
         // Initialize history state based on current page
+        const initialPath = window.location.pathname;
         const initialHash = window.location.hash;
-        if (initialHash) {
+        const state = { page: $currentPage };
+        const pathRoute = matchPathRoute(initialPath);
+
+        if (pathRoute) {
+            Object.assign(state, pathRoute);
+        } else if (initialHash.startsWith('#r/') && $multiplayerRoom) {
+            state.room = $multiplayerRoom;
+        }
+
+        if (initialInvalidRoom) {
+            history.replaceState(state, '', '#multiplayer');
+        } else if (pathRoute) {
+            history.replaceState(state, '', initialPath);
+        } else if (initialHash) {
             history.replaceState({ page: 'main' }, '', window.location.pathname);
-            const state = { page: $currentPage };
-            if (initialHash.startsWith('#r/') && $multiplayerRoom) {
-                state.room = $multiplayerRoom;
-            }
-            if (initialHash.startsWith('#memory/')) {
-                state.eventId = initialHash.slice(8);
-                scenePlayerEventId.set(state.eventId);
-            }
-            if (initialHash.startsWith('#scene/')) {
-                state.sceneData = initialHash.slice(7);
-                try { scenePlayerData.set(JSON.parse(atob(state.sceneData))); }
-                catch { /* invalid data, page will show error */ }
-            }
-            history.pushState(state, '', initialInvalidRoom ? '#multiplayer' : initialHash);
+            history.pushState({ ...state, fromApp: true }, '', initialHash);
         } else {
-            history.replaceState({ page: 'main' }, '', window.location.pathname);
+            history.replaceState(state, '', window.location.pathname);
         }
 
         // Show error toast if initial URL had an invalid room
@@ -146,24 +147,16 @@
                 currentPage.set('multiplayer');
             } else if (e.state && e.state.page === 'scene-player') {
                 scenePlayerEventId.set(e.state.eventId || null);
-                if (e.state.sceneData) {
-                    try { scenePlayerData.set(JSON.parse(atob(e.state.sceneData))); }
-                    catch { scenePlayerData.set(null); }
-                } else {
-                    scenePlayerData.set(null);
-                }
+                scenePlayerData.set(tryDecodeSceneData(e.state.sceneData));
                 currentPage.set('scene-player');
             } else if (e.state && e.state.page && e.state.page !== 'main') {
                 currentPage.set(e.state.page);
             } else {
-                // No state (e.g. URL pasted in address bar) — parse hash directly
-                const result = parseHash(window.location.hash);
+                // No state (e.g. URL pasted in address bar) — parse route from URL
+                const result = parseRoute();
                 multiplayerRoom.set(result.room);
                 if (result.eventId) scenePlayerEventId.set(result.eventId);
-                if (result.sceneData) {
-                    try { scenePlayerData.set(JSON.parse(atob(result.sceneData))); }
-                    catch { scenePlayerData.set(null); }
-                }
+                scenePlayerData.set(tryDecodeSceneData(result.sceneData));
                 currentPage.set(result.page);
                 if (result.invalidRoom) {
                     showToast('Invalid island URL', { error: true, duration: 3000 });

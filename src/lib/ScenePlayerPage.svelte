@@ -3,7 +3,7 @@
     import { currentPage, scenePlayerEventId, scenePlayerData, memoryCompletions } from '../stores.js';
     import { AnimationTitles, AnimationObjectIds } from './multiplayer/animationCatalog.js';
     import { ActorDisplayNames } from '../core/savegame/actorConstants.js';
-    import { encodeSceneData, formatDateTime } from '../core/navigation.js';
+    import { navigateTo, encodeSceneData, formatDateTime } from '../core/navigation.js';
     import { API_URL } from '../core/config.js';
     import { getWdb } from '../core/wdbCache.js';
     import { getSIReader, decodeAnimIndex } from '../core/formats/SIParser.js';
@@ -344,21 +344,21 @@
 
     $: shareUrl = animIndex != null
         ? (serverAvailable && $scenePlayerEventId
-            ? `${window.location.origin}${window.location.pathname}#memory/${$scenePlayerEventId}`
-            : `${window.location.origin}${window.location.pathname}#scene/${encodeSceneData(animIndex, participants, sceneLanguage, sceneTimestamp)}`)
+            ? `${window.location.origin}/memory/${$scenePlayerEventId}`
+            : `${window.location.origin}/scene/${encodeSceneData(animIndex, participants, sceneLanguage, sceneTimestamp)}`)
         : null;
 
     // Keep URL bar in sync with the shareable URL
     $: if ($currentPage === 'scene-player' && shareUrl && !loading) {
-        const targetHash = new URL(shareUrl).hash;
-        if (window.location.hash !== targetHash) {
-            const newState = { page: 'scene-player' };
-            if (targetHash.startsWith('#memory/')) {
-                newState.eventId = targetHash.slice(8);
-            } else if (targetHash.startsWith('#scene/')) {
-                newState.sceneData = targetHash.slice(7);
+        const targetPath = new URL(shareUrl).pathname;
+        if (window.location.pathname !== targetPath) {
+            const newState = { page: 'scene-player', fromApp: history.state?.fromApp };
+            if (serverAvailable && $scenePlayerEventId) {
+                newState.eventId = $scenePlayerEventId;
+            } else {
+                newState.sceneData = encodeSceneData(animIndex, participants, sceneLanguage, sceneTimestamp);
             }
-            history.replaceState(newState, '', targetHash);
+            history.replaceState(newState, '', targetPath);
         }
     }
 </script>
@@ -394,7 +394,7 @@
                 <img src="images/callfail.webp" alt="" class="scene-error-image" />
                 <p class="scene-error-title">{error}</p>
                 <p class="scene-error-message">This memory may have been deleted or the link could be invalid. Try browsing existing memories or create new ones by playing with others!</p>
-                <a href="#memories" class="scene-error-back">Back to Memories</a>
+                <a href="#memories" class="scene-error-back" onclick={e => { e.preventDefault(); navigateTo('memories'); }}>Back to Memories</a>
             </div>
         {:else if $currentPage === 'scene-player'}
             <canvas bind:this={canvasEl} class="scene-canvas" class:dimmed={loading || audioBlocked}></canvas>
