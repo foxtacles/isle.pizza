@@ -83,6 +83,11 @@ function injectOgTags(html: string, title: string, description: string, url: str
 		`$1${safeDesc}$2`
 	);
 
+	html = html.replace(
+		/(<link\s+rel="canonical"\s+href=")[^"]*(")/,
+		`$1${safeUrl}$2`
+	);
+
 	return html;
 }
 

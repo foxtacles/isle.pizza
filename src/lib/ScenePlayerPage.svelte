@@ -50,6 +50,12 @@
 
     onDestroy(cleanup);
 
+    function updateMetaUrls(url) {
+        document.querySelector('link[rel="canonical"]')?.setAttribute('href', url);
+        document.querySelector('meta[property="og:url"]')?.setAttribute('content', url);
+        document.querySelector('meta[name="twitter:url"]')?.setAttribute('content', url);
+    }
+
     function cleanup() {
         loadGeneration++;
         if (tickRaf) { cancelAnimationFrame(tickRaf); tickRaf = null; }
@@ -70,6 +76,7 @@
         sceneTimestamp = null;
         loadedFromServer = false;
         audioBlocked = false;
+        updateMetaUrls(window.location.origin + '/');
     }
 
     function startLoad() {
@@ -360,6 +367,11 @@
             }
             history.replaceState(newState, '', targetPath);
         }
+    }
+
+    // Keep canonical / OG meta in sync so native share uses the correct URL
+    $: if (shareUrl) {
+        updateMetaUrls(shareUrl);
     }
 </script>
 
