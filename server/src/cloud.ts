@@ -37,7 +37,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 async function computeHash(buffer: ArrayBuffer): Promise<string> {
-	const hash = await crypto.subtle.digest("SHA-256", buffer);
+	const hash = await crypto.subtle.digest("SHA-256", new Uint8Array(buffer));
 	return Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
