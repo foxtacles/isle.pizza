@@ -54,6 +54,14 @@ export async function initCloudSync() {
         }
     });
 
+    // Listen for individual file writes (e.g. Players.gsi from save editor)
+    window.addEventListener('opfs-save-file-written', (e) => {
+        if (currentSession) {
+            pendingFiles.add(e.detail.filename);
+            scheduleSaveUpload();
+        }
+    });
+
     // Listen for config writes
     window.addEventListener('opfs-config-written', (e) => {
         if (currentSession) {

@@ -383,7 +383,9 @@ export async function updatePlayerName(playerIndex, newName) {
     if (success) {
         // Clear cache so next load gets fresh data
         clearPlayersCache();
-        window.dispatchEvent(new CustomEvent('opfs-save-state-changed'));
+        window.dispatchEvent(new CustomEvent('opfs-save-file-written', {
+            detail: { filename: PLAYERS_FILE }
+        }));
     }
 
     return success;
