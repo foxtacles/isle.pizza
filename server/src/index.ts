@@ -1,12 +1,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { createAuth, type Env } from "./auth";
+import { createAuth, type Env, type Variables } from "./auth";
 import { memories } from "./memories";
 import { crashes } from "./crashes";
-
-type Variables = {
-	session: { user: { id: string } };
-};
+import { account } from "./account";
+import { cloud } from "./cloud";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -60,8 +58,8 @@ app.get("/api/memory/:eventId", async (c) => {
 	});
 });
 
-// Auth middleware for protected /api/memories routes
-const memoriesAuth = async (c: any, next: any) => {
+// Auth middleware for protected routes
+const authMiddleware = async (c: any, next: any) => {
 	const auth = createAuth(c.env);
 	const session = await auth.api.getSession({
 		headers: c.req.raw.headers,
@@ -74,11 +72,19 @@ const memoriesAuth = async (c: any, next: any) => {
 	c.set("session", session);
 	await next();
 };
-app.use("/api/memories", memoriesAuth);
-app.use("/api/memories/*", memoriesAuth);
 
 // Auth-protected memory routes
+app.use("/api/memories", authMiddleware);
+app.use("/api/memories/*", authMiddleware);
 app.route("/api/memories", memories);
+
+// Account management (delete account)
+app.use("/api/account", authMiddleware);
+app.route("/api/account", account);
+
+// Cloud sync routes (all auth-protected)
+app.use("/api/cloud/*", authMiddleware);
+app.route("/api/cloud", cloud);
 
 // Crash reporting (no auth required)
 app.route("/api/crash", crashes);

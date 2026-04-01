@@ -11,7 +11,7 @@
     import PlantEditor from './save-editor/PlantEditor.svelte';
     import BuildingEditor from './save-editor/BuildingEditor.svelte';
     import { fetchBitmapAsURL } from '../core/assetLoader.js';
-    import { saveEditorState, currentPage, opfsDisabled } from '../stores.js';
+    import { saveEditorState, currentPage, opfsDisabled, savesVersion } from '../stores.js';
     import { getOpfsRoot } from '../core/opfs.js';
     import { listSaveSlots, updateSaveSlot, updatePlayerName } from '../core/savegame/index.js';
     import { Actor, ActorNames } from '../core/savegame/constants.js';
@@ -40,6 +40,12 @@
         selectedSlot = null;
         activeTab = 'player';
         openSection = 'name';
+    }
+
+    // Reload saves from OPFS when navigating to this page or after cloud sync
+    $: if ($currentPage === 'save-editor' && !$opfsDisabled) {
+        $savesVersion;
+        loadSlots();
     }
 
     // Name editing state (7 characters)

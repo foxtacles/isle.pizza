@@ -6,6 +6,7 @@
     import { registerServiceWorker, checkCacheStatus, requestPersistentStorage } from './core/service-worker.js';
     import { setupCanvasEvents } from './core/emscripten.js';
     import { initMemories } from './core/memories.js';
+    import { initCloudSync } from './core/cloud-sync.js';
     import { initAuth } from './core/auth.js';
     import { initThumbnails } from './core/thumbnails.js';
     import TopContent from './lib/TopContent.svelte';
@@ -104,8 +105,9 @@
         // Setup canvas events
         setupCanvasEvents();
 
-        // Initialize memory persistence (IndexedDB), auth, and building thumbnails
+        // Initialize memory persistence (IndexedDB), cloud sync, auth, and building thumbnails
         initMemories();
+        initCloudSync();
         initAuth();
         initThumbnails();
 
@@ -209,7 +211,6 @@
     <div class="page-wrapper" class:active={$currentPage === 'scene-player'}>
         <ScenePlayerPage />
     </div>
-
     <div class="footer-disclaimer">
         <p>LEGO® and LEGO Island™ are trademarks of The LEGO Group.</p>
         <p>This is an unofficial fan project and is not affiliated with or endorsed by The LEGO Group.</p>

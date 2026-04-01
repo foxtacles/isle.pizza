@@ -7,7 +7,7 @@
     import ControlsTab from './config/ControlsTab.svelte';
     import AudioTab from './config/AudioTab.svelte';
     import ExtrasTab from './config/ExtrasTab.svelte';
-    import { installState, currentPage, opfsDisabled } from '../stores.js';
+    import { installState, currentPage, opfsDisabled, configVersion } from '../stores.js';
     import { loadConfig, saveConfig, getFileHandle } from '../core/opfs.js';
     import { checkCacheStatus, startInstall, startUninstall, getSiFilesForCache } from '../core/service-worker.js';
     import { getMsaaSamples, getMaxAnisotropy, populateMsaaSelect, populateAfSelect } from '../core/webgl.js';
@@ -19,6 +19,12 @@
     $: if ($currentPage === 'configure') {
         activeTab = 'display';
         openSection = 'game';
+    }
+
+    // Reload config from OPFS when navigating to this page or after cloud sync
+    $: if ($currentPage === 'configure' && configForm && !$opfsDisabled) {
+        $configVersion;
+        loadConfig(configForm);
     }
 
     let configForm;

@@ -1,6 +1,10 @@
 import { betterAuth } from "better-auth";
 import { anonymous } from "better-auth/plugins";
 
+export type Variables = {
+	session: { user: { id: string } };
+};
+
 export type Env = {
 	DB: D1Database;
 	API_URL: string;
@@ -19,12 +23,18 @@ export function createAuth(env: Env) {
 		plugins: [
 			anonymous({
 				onLinkAccount: async ({ anonymousUser, newUser }) => {
-					// Transfer memory completions from anonymous to linked account
-					await env.DB.prepare(
-						"UPDATE memory_completions SET user_id = ? WHERE user_id = ?"
-					)
-						.bind(newUser.user.id, anonymousUser.user.id)
-						.run();
+					// Transfer all data from anonymous to linked account
+					await env.DB.batch([
+						env.DB.prepare(
+							"UPDATE memory_completions SET user_id = ? WHERE user_id = ?"
+						).bind(newUser.user.id, anonymousUser.user.id),
+						env.DB.prepare(
+							"UPDATE user_saves SET user_id = ? WHERE user_id = ?"
+						).bind(newUser.user.id, anonymousUser.user.id),
+						env.DB.prepare(
+							"UPDATE user_config SET user_id = ? WHERE user_id = ?"
+						).bind(newUser.user.id, anonymousUser.user.id),
+					]);
 				},
 			}),
 		],

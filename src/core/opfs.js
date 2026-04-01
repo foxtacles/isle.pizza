@@ -2,7 +2,7 @@
 import { showToast } from './toast.js';
 import { getSiFilesForCache } from './service-worker.js';
 
-const CONFIG_FILE = 'isle.ini';
+export const CONFIG_FILE = 'isle.ini';
 
 // ============================================================================
 // Core OPFS Operations
@@ -325,7 +325,13 @@ export async function saveConfig(form, getSiFiles, silent = false, multiplayer =
         }
     }
 
-    return writeTextFile(CONFIG_FILE, iniContent, silent);
+    const result = await writeTextFile(CONFIG_FILE, iniContent, silent);
+    if (result) {
+        window.dispatchEvent(new CustomEvent('opfs-config-written', {
+            detail: { iniText: iniContent }
+        }));
+    }
+    return result;
 }
 
 export async function saveConfigFromDOM(multiplayer = null) {

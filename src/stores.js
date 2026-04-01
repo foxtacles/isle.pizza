@@ -114,6 +114,10 @@ export const swRegistration = writable(null);
 // OPFS availability
 export const opfsDisabled = writable(false);
 
+// Bumped when cloud sync writes config/saves from the server
+export const configVersion = writable(0);
+export const savesVersion = writable(0);
+
 // Animation state pushed from C++ backend (reactive, always current)
 // { location, state, currentAnimIndex, animations[] }
 export const animationState = writable(null);

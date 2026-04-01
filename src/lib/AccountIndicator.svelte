@@ -2,6 +2,9 @@
     import { tick } from 'svelte';
     import { computePosition, flip, shift, offset } from '@floating-ui/dom';
     import { authSession, signInWithDiscord, signInWithGoogle, signOut } from '../core/auth.js';
+    import { clearLocalMemories } from '../core/memories.js';
+    import { API_URL } from '../core/config.js';
+    import { showToast } from '../core/toast.js';
     import { currentPage } from '../stores.js';
     import { navigateTo, navigateToMultiplayer } from '../core/navigation.js';
     import SignInModal from './SignInModal.svelte';
@@ -10,6 +13,9 @@
 
     let openMenu = null; // null | 'nav' | 'account'
     let showSignInModal = false;
+    let showDeleteDialog = false;
+    let deleteConfirmText = '';
+    let deleting = false;
 
     let navButtonEl, navDropdownEl;
     let accountButtonEl, accountDropdownEl;
@@ -62,6 +68,52 @@
         fn();
     }
 
+    function handleDeleteKeydown(e) {
+        if (showDeleteDialog && e.key === 'Escape') {
+            closeDeleteDialog();
+        }
+    }
+
+    function handleDeleteBackdropClick(e) {
+        if (e.target === e.currentTarget) {
+            closeDeleteDialog();
+        }
+    }
+
+    function openDeleteDialog() {
+        closeMenus();
+        showDeleteDialog = true;
+        deleteConfirmText = '';
+    }
+
+    function closeDeleteDialog() {
+        showDeleteDialog = false;
+        deleteConfirmText = '';
+    }
+
+    async function handleDeleteAccount() {
+        if (deleteConfirmText !== 'DELETE') return;
+        deleting = true;
+        try {
+            const res = await fetch(`${API_URL}/api/account`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+            if (res.ok) {
+                await clearLocalMemories();
+                await signOut();
+                showToast('Account deleted');
+            } else {
+                showToast('Failed to delete account', { error: true });
+            }
+        } catch {
+            showToast('Failed to delete account', { error: true });
+        } finally {
+            deleting = false;
+            closeDeleteDialog();
+        }
+    }
+
     $: $currentPage, closeMenus();
     $: $authSession, closeMenus();
 
@@ -80,7 +132,7 @@
     $: { userImage; imgLoaded = false; imgFailed = false; }
 </script>
 
-<svelte:window onclick={handleClickOutside} />
+<svelte:window onclick={handleClickOutside} onkeydown={handleDeleteKeydown} />
 
 <div class="nav-bar">
     <div class="nav-menu-wrapper">
@@ -140,6 +192,7 @@
                 {/if}
 
                 <div class="dropdown-divider"></div>
+                <button class="dropdown-item delete-account" onclick={openDeleteDialog}>Delete Account</button>
                 <button class="dropdown-item signout" onclick={() => navAction(signOut)}>Sign out</button>
             </div>
         {/if}
@@ -147,6 +200,37 @@
 </div>
 
 <SignInModal open={showSignInModal} onClose={() => showSignInModal = false} />
+
+{#if showDeleteDialog}
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+    <div class="modal-backdrop" onclick={handleDeleteBackdropClick}>
+        <div class="modal-panel delete-panel">
+            <button class="modal-close" onclick={closeDeleteDialog} aria-label="Close">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+
+            <h2 class="delete-title">Delete Account</h2>
+            <p class="delete-body">This will permanently delete your account and all associated data (saves, settings, memories). Crash reports will be anonymized. This cannot be undone.</p>
+            <p class="delete-body">Type <strong>DELETE</strong> to confirm:</p>
+            <input
+                type="text"
+                class="delete-input"
+                bind:value={deleteConfirmText}
+                placeholder="Type DELETE"
+            />
+            <div class="delete-actions">
+                <button class="delete-cancel-btn" onclick={closeDeleteDialog}>Cancel</button>
+                <button
+                    class="delete-confirm-btn"
+                    disabled={deleteConfirmText !== 'DELETE' || deleting}
+                    onclick={handleDeleteAccount}
+                >{deleting ? 'Deleting...' : 'Delete my account'}</button>
+            </div>
+        </div>
+    </div>
+{/if}
 
 <style>
     .nav-bar {
@@ -269,6 +353,10 @@
         font-weight: 500;
     }
 
+    .dropdown-item.delete-account {
+        color: #ff6b6b;
+    }
+
     .dropdown-item.signout {
         color: rgba(255, 255, 255, 0.5);
     }
@@ -277,5 +365,137 @@
         height: 1px;
         background: var(--color-surface-hover);
         margin: 2px 0;
+    }
+
+    /* Delete account dialog — mirrors SignInModal structure */
+    .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 200;
+        backdrop-filter: blur(2px);
+    }
+
+    .modal-panel {
+        position: relative;
+        box-sizing: border-box;
+        background: var(--color-bg-dark);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 32px 28px;
+        width: 340px;
+        max-width: calc(100vw - 48px);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-panel.delete-panel {
+        border-color: rgba(255, 80, 80, 0.2);
+    }
+
+    .modal-close {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: none;
+        border: none;
+        color: rgba(255, 255, 255, 0.4);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.15s;
+    }
+
+    .modal-close:hover {
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .delete-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #ff6b6b;
+        margin: 0 0 12px;
+    }
+
+    .delete-body {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.5);
+        line-height: 1.5;
+        margin: 0 0 10px;
+    }
+
+    .delete-input {
+        width: 100%;
+        box-sizing: border-box;
+        background: var(--color-bg-input);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        color: rgba(255, 255, 255, 0.9);
+        padding: 11px 16px;
+        font-size: 14px;
+        font-family: inherit;
+        margin-bottom: 16px;
+    }
+
+    .delete-input:focus {
+        outline: none;
+        border-color: rgba(255, 80, 80, 0.4);
+    }
+
+    .delete-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+    }
+
+    .delete-cancel-btn {
+        background: none;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        color: rgba(255, 255, 255, 0.5);
+        padding: 11px 16px;
+        font-size: 14px;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+    }
+
+    .delete-cancel-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .delete-cancel-btn:active {
+        transform: scale(0.98);
+    }
+
+    .delete-confirm-btn {
+        background: rgba(255, 60, 60, 0.15);
+        border: 1px solid rgba(255, 60, 60, 0.3);
+        border-radius: 8px;
+        color: #ff6b6b;
+        padding: 11px 16px;
+        font-size: 14px;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.15s, opacity 0.15s;
+    }
+
+    .delete-confirm-btn:hover:not(:disabled) {
+        background: rgba(255, 60, 60, 0.25);
+    }
+
+    .delete-confirm-btn:active:not(:disabled) {
+        transform: scale(0.98);
+    }
+
+    .delete-confirm-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
     }
 </style>

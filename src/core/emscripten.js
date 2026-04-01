@@ -121,6 +121,16 @@ export function setupCanvasEvents() {
         statusMessageBar.innerHTML = 'Loading ' + event.detail.name + '... please wait! <code>' + event.detail.progress + '%</code>';
     });
 
+    canvas.addEventListener('saveSlotWritten', function (event) {
+        window.dispatchEvent(new CustomEvent('opfs-save-slot-written', {
+            detail: { slot: event.detail.slot }
+        }));
+    });
+
+    canvas.addEventListener('saveStateChanged', function () {
+        window.dispatchEvent(new CustomEvent('opfs-save-state-changed'));
+    });
+
     let crashed = false;
     window.addEventListener('game-crash', function (event) {
         if (crashed) return;
