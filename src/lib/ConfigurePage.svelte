@@ -21,9 +21,14 @@
         openSection = 'game';
     }
 
-    // Reload config from OPFS when navigating to this page or after cloud sync
+    // Reload config from OPFS when navigating to this page
     $: if ($currentPage === 'configure' && configForm && !$opfsDisabled) {
-        $configVersion;
+        loadConfig(configForm);
+    }
+
+    // Reload config from OPFS after cloud sync (even if not on config page),
+    // so that saveConfigFromDOM() before game launch won't overwrite it with stale form values
+    $: if ($configVersion && configForm && !$opfsDisabled) {
         loadConfig(configForm);
     }
 
