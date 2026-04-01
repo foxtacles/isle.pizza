@@ -15,8 +15,61 @@ const SAVE_FILES = [
 let currentSession = null;
 let opfsAvailable = false;
 
+// --- Sync state (localStorage) ---
+
+const SYNC_STATE_KEY = 'isle-cloud-sync';
+
+function loadSyncState() {
+    try {
+        const raw = localStorage.getItem(SYNC_STATE_KEY);
+        if (raw) {
+            const state = JSON.parse(raw);
+            return { synced: state.synced || {}, dirty: new Set(state.dirty || []) };
+        }
+    } catch {}
+    return { synced: {}, dirty: new Set() };
+}
+
+function saveSyncState(state) {
+    try {
+        localStorage.setItem(SYNC_STATE_KEY, JSON.stringify({
+            synced: state.synced,
+            dirty: [...state.dirty],
+        }));
+    } catch {}
+}
+
+let syncState = loadSyncState();
+
+function markDirty(filename) {
+    syncState.dirty.add(filename);
+    saveSyncState(syncState);
+}
+
+function markClean(filename, hash) {
+    syncState.dirty.delete(filename);
+    syncState.synced[filename] = hash;
+    saveSyncState(syncState);
+}
+
+function trackWrite(filename) {
+    markDirty(filename);
+    if (currentSession) {
+        pendingFiles.add(filename);
+        scheduleSaveUpload();
+    }
+}
+
+// --- Hashing ---
+
+async function hashBuffer(buffer) {
+    const hash = await crypto.subtle.digest('SHA-256', buffer);
+    return Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// --- Init ---
+
 export async function initCloudSync() {
-    // Skip entirely if OPFS is not available
     opfsAvailable = !!(await getOpfsRoot());
     if (!opfsAvailable) return;
 
@@ -33,29 +86,27 @@ export async function initCloudSync() {
         if (wasLoggedIn === nowLoggedIn) return;
         if (nowLoggedIn) {
             syncOnLogin();
+        } else {
+            // On logout, cancel pending uploads and clear sync state
+            if (uploadTimer) clearTimeout(uploadTimer);
+            uploadTimer = null;
+            pendingFiles.clear();
+            syncState = { synced: {}, dirty: new Set() };
+            saveSyncState(syncState);
         }
     });
 
-    // Listen for individual slot saves (gameplay) — debounced
     window.addEventListener('opfs-save-slot-written', (e) => {
-        if (currentSession) {
-            queueForUpload(getSaveFileName(e.detail.slot));
-            queueForUpload(HISTORY_FILE);
-        }
+        trackWrite(getSaveFileName(e.detail.slot));
+        trackWrite(HISTORY_FILE);
     });
 
-    // Listen for full state changes (player registration/switching)
     window.addEventListener('opfs-save-state-changed', () => {
-        if (currentSession) {
-            for (const f of SAVE_FILES) queueForUpload(f);
-        }
+        for (const f of SAVE_FILES) trackWrite(f);
     });
 
-    // Listen for individual file writes (e.g. Players.gsi from save editor)
     window.addEventListener('opfs-save-file-written', (e) => {
-        if (currentSession) {
-            queueForUpload(e.detail.filename);
-        }
+        trackWrite(e.detail.filename);
     });
 
     // Listen for config writes
@@ -64,12 +115,6 @@ export async function initCloudSync() {
             uploadConfig(e.detail.iniText);
         }
     });
-
-    // Flush pending uploads before page unload
-    window.addEventListener('beforeunload', () => {
-        if (uploadTimer) clearTimeout(uploadTimer);
-        flushSaveUpload(true);
-    });
 }
 
 async function syncOnLogin() {
@@ -77,7 +122,7 @@ async function syncOnLogin() {
     await syncConfig().catch(e => console.warn('[CloudSync] Config sync failed:', e));
 }
 
-// --- Save sync ---
+// --- Helpers ---
 
 function arrayBufferToBase64(buffer) {
     const bytes = new Uint8Array(buffer);
@@ -97,76 +142,115 @@ function base64ToArrayBuffer(base64) {
     return bytes.buffer;
 }
 
+// --- Save sync (bidirectional, hash-based) ---
+
 async function syncSaves() {
-    // Read all local save files
-    const localSaves = [];
+    const files = [];
+
     for (const filename of SAVE_FILES) {
         const data = await readBinaryFile(filename);
-        if (data) {
-            localSaves.push({ filename, data: arrayBufferToBase64(data) });
-        }
+        const localHash = data ? await hashBuffer(data) : null;
+        const syncedHash = syncState.synced[filename] || null;
+        const isDirty = localHash !== null && (localHash !== syncedHash || syncState.dirty.has(filename));
+
+        files.push({
+            filename,
+            data: isDirty ? arrayBufferToBase64(data) : null,
+            hash: localHash,
+        });
     }
 
     const res = await fetch(`${API_URL}/api/cloud/saves/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ saves: localSaves }),
+        body: JSON.stringify({ files }),
     });
 
     if (!res.ok) return;
 
-    const { saves: serverSaves } = await res.json();
-    if (!Array.isArray(serverSaves) || serverSaves.length === 0) return;
+    const { files: responseFiles } = await res.json();
+    if (!Array.isArray(responseFiles)) return;
 
-    // Server returned saves — write them to OPFS (cloud overrides local)
-    for (const save of serverSaves) {
-        try {
-            const buffer = base64ToArrayBuffer(save.data);
-            await writeBinaryFile(save.filename, buffer, true);
-        } catch (e) {
-            console.warn('[CloudSync] Failed to write save file:', save.filename, e);
+    let wroteAnyFile = false;
+
+    for (const serverFile of responseFiles) {
+        if (serverFile.data) {
+            // Server sent data — write to OPFS
+            try {
+                const buffer = base64ToArrayBuffer(serverFile.data);
+                await writeBinaryFile(serverFile.filename, buffer, true);
+                markClean(serverFile.filename, serverFile.hash);
+                wroteAnyFile = true;
+            } catch (e) {
+                console.warn('[CloudSync] Failed to write save file:', serverFile.filename, e);
+            }
+        } else if (serverFile.hash) {
+            // Server accepted our data or confirmed same content
+            markClean(serverFile.filename, serverFile.hash);
         }
     }
-    savesVersion.update(n => n + 1);
-}
 
-// --- Debounced batch upload ---
-// Data is cached in memory immediately when events fire, so it's available
-// for a synchronous keepalive flush on beforeunload.
-
-const pendingData = new Map(); // filename -> base64 string
-let uploadTimer = null;
-const UPLOAD_DEBOUNCE_MS = 3000;
-
-async function queueForUpload(filename) {
-    const data = await readBinaryFile(filename);
-    if (data) {
-        pendingData.set(filename, arrayBufferToBase64(data));
-        scheduleSaveUpload();
+    if (wroteAnyFile) {
+        savesVersion.update(n => n + 1);
     }
 }
+
+// --- Debounced incremental upload ---
+
+const pendingFiles = new Set();
+let uploadTimer = null;
+const UPLOAD_DEBOUNCE_MS = 3000;
 
 function scheduleSaveUpload() {
     if (uploadTimer) clearTimeout(uploadTimer);
     uploadTimer = setTimeout(flushSaveUpload, UPLOAD_DEBOUNCE_MS);
 }
 
-function flushSaveUpload(keepalive = false) {
+async function flushSaveUpload() {
     if (uploadTimer) clearTimeout(uploadTimer);
     uploadTimer = null;
-    if (pendingData.size === 0) return;
+    if (!currentSession) {
+        pendingFiles.clear();
+        return;
+    }
+    const filenames = [...pendingFiles];
+    pendingFiles.clear();
+    if (filenames.length === 0) return;
 
-    const saves = [...pendingData].map(([filename, data]) => ({ filename, data }));
-    pendingData.clear();
+    const saves = [];
+    for (const filename of filenames) {
+        const data = await readBinaryFile(filename);
+        if (data) {
+            saves.push({ filename, data: arrayBufferToBase64(data) });
+        }
+    }
 
-    fetch(`${API_URL}/api/cloud/saves`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ saves }),
-        keepalive,
-    }).catch(e => console.warn('[CloudSync] Save upload failed:', e));
+    if (saves.length === 0) return;
+
+    try {
+        const res = await fetch(`${API_URL}/api/cloud/saves`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ saves }),
+        });
+        if (res.ok) {
+            const { hashes } = await res.json();
+            if (Array.isArray(hashes)) {
+                for (const { filename, hash } of hashes) {
+                    markClean(filename, hash);
+                }
+            }
+        } else if (res.status !== 401) {
+            for (const fn of filenames) pendingFiles.add(fn);
+            scheduleSaveUpload();
+        }
+    } catch (e) {
+        console.warn('[CloudSync] Save upload failed:', e);
+        for (const fn of filenames) pendingFiles.add(fn);
+        scheduleSaveUpload();
+    }
 }
 
 // --- Config sync ---
