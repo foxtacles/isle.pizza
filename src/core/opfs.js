@@ -104,7 +104,6 @@ export async function writeBinaryFile(filename, data, silent = false, toastMsg =
         worker.postMessage({ filename, buffer: data });
 
         worker.onmessage = (e) => {
-            console.log(e.data.message);
             URL.revokeObjectURL(workerUrl);
             worker.terminate();
 
@@ -197,7 +196,6 @@ export async function loadConfig(form) {
     const file = await handle.getFile();
     const text = await file.text();
     if (!text) {
-        console.log('No existing config file found, using defaults.');
         return null;
     }
 
@@ -211,7 +209,6 @@ export async function loadConfig(form) {
     }
 
     applyConfigToForm(form, config);
-    console.log('Config loaded from', CONFIG_FILE);
     return config;
 }
 

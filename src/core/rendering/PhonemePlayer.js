@@ -78,8 +78,6 @@ export class PhonemePlayer {
             // Save original programs for ALL head meshes so we can restore them
             const origPrograms = headMeshes.map(m => m.program);
 
-            console.log(`[Phoneme] Track: ${targetName}, ${headMeshes.length} head meshes, ${track.frameData.length} frames, ${track.width}x${track.height}, speed=${track.flcHeader.speed}ms`);
-
             this.states.push({
                 track, decoder, headMeshes, flcTexture, flcProgram, origPrograms,
                 canvas, ctx, currentFrame: -1, gl,

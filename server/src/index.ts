@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context, type Next } from "hono";
 import { cors } from "hono/cors";
 import { createAuth, type Env, type Variables } from "./auth";
 import { memories } from "./memories";
@@ -49,17 +49,24 @@ app.get("/api/memory/:eventId", async (c) => {
 		return c.json({ error: "Not found" }, 404);
 	}
 
+	let participants: unknown[];
+	try {
+		participants = JSON.parse(result.participants || "[]");
+	} catch {
+		participants = [];
+	}
+
 	return c.json({
 		animIndex: result.anim_index,
 		eventId: result.event_id,
 		completedAt: result.completed_at,
-		participants: JSON.parse(result.participants || "[]"),
+		participants,
 		language: result.language,
 	});
 });
 
 // Auth middleware for protected routes
-const authMiddleware = async (c: any, next: any) => {
+const authMiddleware = async (c: Context<{ Bindings: Env; Variables: Variables }>, next: Next) => {
 	const auth = createAuth(c.env);
 	const session = await auth.api.getSession({
 		headers: c.req.raw.headers,

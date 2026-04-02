@@ -30,7 +30,6 @@ export function startGame(rendererValue) {
     document.documentElement.style.overscrollBehavior = 'none';
 
     window.Module["disableOffscreenCanvases"] ||= rendererValue === "0 0x682656f3 0x0 0x0 0x2000000";
-    console.log("disableOffscreenCanvases: " + window.Module["disableOffscreenCanvases"]);
 
     window.Module["removeRunDependency"]("isle");
     canvas.focus();

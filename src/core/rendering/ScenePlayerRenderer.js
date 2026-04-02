@@ -14,6 +14,9 @@ import { buildGlobalPartsMap } from '../formats/WdbParser.js';
 import { evaluateLocalTransform, getVisibility } from '../animation/keyframeEval.js';
 import { trimLODSuffix, stripStar } from '../animation/stringUtils.js';
 
+/** Lowercase name with leading '*' stripped — used as the canonical key for actors/props. */
+const canonicalize = (name) => stripStar(name).toLowerCase();
+
 /**
  * Map from animation node names (lowercased) to character part group names.
  * Used to resolve animation tree nodes to the OGL Transform groups created
@@ -89,7 +92,7 @@ export class ScenePlayerRenderer extends BaseRenderer {
         for (const actor of animData.actors) {
             if (!actor.name) continue;
 
-            const canonicalName = stripStar(actor.name).toLowerCase();
+            const canonicalName = canonicalize(actor.name);
 
             if (actor.actorType === 2) {
                 // Character actor (e_managedLegoActor)
@@ -207,7 +210,7 @@ export class ScenePlayerRenderer extends BaseRenderer {
             return;
         }
 
-        const canonicalName = stripStar(rawName).toLowerCase();
+        const canonicalName = canonicalize(rawName);
         let matched = null;
 
         // 1. Character body part? Scoped to parent context (character container),
@@ -244,7 +247,7 @@ export class ScenePlayerRenderer extends BaseRenderer {
     _createMissingTreeProps(node) {
         const rawName = node.data?.name;
         if (rawName && !node.data._transform) {
-            const canonicalName = stripStar(rawName).toLowerCase();
+            const canonicalName = canonicalize(rawName);
             const group = this._lookupProp(canonicalName);
 
             if (group) {
@@ -281,7 +284,7 @@ export class ScenePlayerRenderer extends BaseRenderer {
         const characterNames = new Set();
         for (const actor of animData.actors) {
             if (actor.actorType === 2 && actor.name) {
-                characterNames.add(stripStar(actor.name).toLowerCase());
+                characterNames.add(canonicalize(actor.name));
             }
         }
         if (characterNames.size === 0) return new Mat4();
@@ -326,7 +329,7 @@ export class ScenePlayerRenderer extends BaseRenderer {
         const worldMat = new Mat4().copy(parentMat).multiply(localMat);
 
         if (data.name) {
-            const canonicalName = stripStar(data.name).toLowerCase();
+            const canonicalName = canonicalize(data.name);
             if (characterNames.has(canonicalName)) {
                 return worldMat;
             }
@@ -356,7 +359,7 @@ export class ScenePlayerRenderer extends BaseRenderer {
     /** Recursively collect transforms for nodes matching PTATCAM target names. */
     _collectPtAtCamNodes(node, targetNames) {
         if (node.data?.name) {
-            const canonicalName = stripStar(node.data.name).toLowerCase();
+            const canonicalName = canonicalize(node.data.name);
             if (targetNames.has(canonicalName) && node.data._transform) {
                 this._ptAtCamTransforms.push(node.data._transform);
             }
