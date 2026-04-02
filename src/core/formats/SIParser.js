@@ -508,9 +508,8 @@ export class SIReader {
             return response.arrayBuffer();
         } else if (response.ok) {
             // Server doesn't support Range (returned full file).
-            // Slice the portion we need and cache the full buffer for future use.
+            // Slice the portion we need.
             const fullBuffer = await response.arrayBuffer();
-            this._fullBuffer = fullBuffer;
             return fullBuffer.slice(start, start + length);
         } else {
             throw new Error(`Range request failed: ${response.status} ${response.statusText}`);
